@@ -1,0 +1,32 @@
+{
+  "name": "data-dumpster-diver",
+  "version": "1.0.0",
+  "description": "A web app to explore and visualize exported ChatGPT conversation data.",
+  "license": "ISC",
+  "author": "Ethan Thomason",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-run": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js",
+    "lint": "echo \"No JavaScript linting configured\"",
+    "lint-and-fix": "echo \"No JavaScript linting configured\"",
+    "dev": "node app.js",
+    "migrate": "node data/migration.js data/conversations.json"
+  },
+  "dependencies": {
+    "decompress": "^4.2.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "marked": "^17.0.0",
+    "multer": "^2.0.2",
+    "sanitize-html": "^2.17.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "form-data": "^4.0.4",
+    "node-fetch": "^3.3.2"
+  }
+}

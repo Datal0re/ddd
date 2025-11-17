@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Dumpster Diver – Upload</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>Data Dumpster Diver</h1>
+      <p>Upload your ChatGPT export to explore and visualize your conversation data</p>
+    </div>
+    
+    <div class="card centered-card fade-in">
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+      
+      <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="chatgpt-export" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+            Choose ChatGPT Export File
+          </label>
+          <input type="file" name="chatgpt-export" id="chatgpt-export" accept=".zip" required>
+          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+            Upload the zip file from your ChatGPT data export. The app will extract media assets and process conversations automatically.
+          </p>
+        </div>
+        
+        <div class="actions" style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+          <button type="submit">
+            📤 Upload and Process
+          </button>
+          <button type="button" class="secondary" onclick="cleanupSessions()">
+            🗑️ Clear All Sessions
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <div class="card" style="margin-top: 2rem;">
+      <h3 style="margin-bottom: 1rem;">How it works</h3>
+      <ol style="color: var(--text-secondary); line-height: 1.8;">
+        <li>Export your data from ChatGPT (Settings → Data controls → Export)</li>
+        <li>Upload the resulting zip file using the form above</li>
+        <li>Browse through your conversations in an organized interface</li>
+        <li>View media assets and conversation details</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script>
+    async function cleanupSessions() {
+      if (confirm('Clear all sessions and their data? This cannot be undone.')) {
+        try {
+          const response = await fetch('/cleanup', { method: 'POST' });
+          if (response.ok) {
+            // Create success message instead of alert
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success fade-in';
+            successDiv.textContent = 'Sessions cleared successfully.';
+            successDiv.style.marginTop = '1rem';
+            
+            // Remove any existing messages
+            const existingError = document.querySelector('.error');
+            const existingSuccess = document.querySelector('.success');
+            if (existingError) existingError.remove();
+            if (existingSuccess) existingSuccess.remove();
+            
+            // Insert success message
+            document.querySelector('.card').prepend(successDiv);
+            
+            // Reload after a short delay
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            throw new Error('Failed to clear sessions');
+          }
+        } catch (err) {
+          console.error('Cleanup error:', err);
+          
+          // Create error message instead of alert
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'error fade-in';
+          errorDiv.textContent = 'Error clearing sessions. Please try again.';
+          errorDiv.style.marginTop = '1rem';
+          
+          // Remove any existing messages
+          const existingError = document.querySelector('.error');
+          const existingSuccess = document.querySelector('.success');
+          if (existingError) existingError.remove();
+          if (existingSuccess) existingSuccess.remove();
+          
+          // Insert error message
+          document.querySelector('.card').prepend(errorDiv);
+        }
+      }
+    }
+    
+    // Add file input feedback
+    document.getElementById('chatgpt-export').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name || 'No file selected';
+      const label = document.querySelector('label[for="chatgpt-export"]');
+      if (e.target.files[0]) {
+        label.style.color = 'var(--success-green)';
+      } else {
+        label.style.color = 'var(--text-primary)';
+      }
+    });
+  </script>
+</body>
+</html>
