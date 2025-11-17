@@ -13,16 +13,24 @@
     "lint": "echo \"No JavaScript linting configured\"",
     "lint-and-fix": "echo \"No JavaScript linting configured\"",
     "dev": "node app.js",
-    "migrate": "node data/migration.js data/conversations.json"
+    "migrate": "node data/migration.js data/conversations.json",
+    "db:init": "node database/setup.js",
+    "db:migrate": "node database/setup.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "csrf-sync": "^4.2.1",
     "decompress": "^4.2.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
+    "express-validator": "^7.3.0",
+    "helmet": "^8.1.0",
     "marked": "^17.0.0",
     "multer": "^2.0.2",
     "sanitize-html": "^2.17.0",
+    "sqlite3": "^5.1.7",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

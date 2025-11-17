@@ -7,6 +7,18 @@ import multer from 'multer';
 import decompress from 'decompress';
 import { v4 as uuidv4 } from 'uuid';
 import { getConversationMessages } from './main.js';
+import session from 'express-session';
+import authRoutes from './routes/auth.js';
+import { requireAuth, optionalAuth } from './middleware/auth.js';
+import {
+  securityHeaders,
+  generalLimiter,
+  doubleCsrfProtection,
+  generateToken,
+  sanitizeInput,
+  securityLogger,
+  getSecureCookieOptions
+} from './middleware/security.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,12 +26,29 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Security middleware
+app.use(securityLogger);
+app.use(securityHeaders);
+app.use(generalLimiter);
+app.use(sanitizeInput);
+
 // Middleware
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 
-// Session storage (in-memory for now)
+// Session configuration with secure settings
+app.use(session({
+  name: 'ddd-session',
+  secret: process.env.SESSION_SECRET || 'data-dumpster-diver-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  cookie: getSecureCookieOptions()
+}));
+
+// Session storage (for file uploads, not user sessions)
 const sessions = new Map();
 
 // Helper to clean up old sessions
@@ -69,15 +98,35 @@ async function runMigration(sessionId, outputDir) {
   });
 }
 
-// Routes
-app.get('/', (req, res) => {
-  res.render('upload', { error: null });
+// CSRF token endpoint
+app.get('/api/csrf-token', (req, res) => {
+  const csrfToken = generateToken(req, res);
+  res.json({ csrfToken });
 });
 
-app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
+// Authentication routes with rate limiting
+app.use('/', authRoutes);
+
+// Apply API rate limiting to API routes
+// app.use('/api', apiLimiter);
+
+// Routes
+app.get('/', requireAuth, (req, res) => {
+  res.render('upload', { 
+    error: null, 
+    user: req.user,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+});
+
+app.post('/upload', requireAuth, upload.single('chatgpt-export'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).render('upload', { error: 'No file uploaded.' });
+      return res.status(400).render('upload', { 
+        error: 'No file uploaded.',
+        user: req.user,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
+      });
     }
 
     const sessionId = uuidv4();
@@ -132,7 +181,11 @@ app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
     }
 
     if (!conversationsPath) {
-      return res.status(400).render('upload', { error: 'conversations.json not found in uploaded zip.' });
+      return res.status(400).render('upload', { 
+        error: 'conversations.json not found in uploaded zip.',
+        user: req.user,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
+      });
     }
 
     // Ensure conversations.json is at session root for migration
@@ -163,11 +216,15 @@ app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
     res.redirect(`/conversations?session=${sessionId}`);
   } catch (err) {
     console.error('Upload error:', err);
-    res.status(500).render('upload', { error: 'Upload failed. Please try again.' });
+    res.status(500).render('upload', { 
+      error: 'Upload failed. Please try again.',
+      user: req.user,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
   }
 });
 
-app.get('/conversations', async (req, res) => {
+app.get('/conversations', requireAuth, async (req, res) => {
   const { session } = req.query;
   if (!session || !sessions.has(session)) {
     return res.status(400).send('Invalid or missing session ID.');
@@ -191,7 +248,7 @@ app.get('/conversations', async (req, res) => {
   }
 });
 
-app.get('/conversation/:id', async (req, res) => {
+app.get('/conversation/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   const { session } = req.query;
   if (!session || !sessions.has(session)) {
@@ -210,7 +267,7 @@ app.get('/conversation/:id', async (req, res) => {
 });
 
 // DELETE /sessions/:id endpoint
-app.delete('/sessions/:id', async (req, res) => {
+app.delete('/sessions/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
   
   // Remove session folder and media folder
@@ -229,9 +286,9 @@ app.delete('/sessions/:id', async (req, res) => {
 });
 
 // POST /cleanup endpoint
-app.post('/cleanup', async (req, res) => {
+app.post('/cleanup', requireAuth, doubleCsrfProtection, async (req, res) => {
   await cleanupOldSessions();
-  res.redirect('/');
+  res.json({ success: true, message: 'Sessions cleared successfully' });
 });
 
 app.listen(port, () => {

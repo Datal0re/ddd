@@ -7,9 +7,11 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+  <%- include('partials/header') %>
+  
   <div class="container">
     <div class="page-header">
-      <h1>Data Dumpster Diver</h1>
+      <h2>Upload ChatGPT Export</h2>
       <p>Upload your ChatGPT export to explore and visualize your conversation data</p>
     </div>
     
@@ -19,6 +21,7 @@
       <% } %>
       
       <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <div class="form-group">
           <label for="chatgpt-export" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
             Choose ChatGPT Export File
@@ -55,7 +58,14 @@
     async function cleanupSessions() {
       if (confirm('Clear all sessions and their data? This cannot be undone.')) {
         try {
-          const response = await fetch('/cleanup', { method: 'POST' });
+          const csrfToken = document.querySelector('input[name="_csrf"]')?.value;
+          const response = await fetch('/cleanup', { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken
+            }
+          });
           if (response.ok) {
             // Create success message instead of alert
             const successDiv = document.createElement('div');
