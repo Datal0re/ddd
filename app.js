@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import multer from 'multer';
 import decompress from 'decompress';
 import { v4 as uuidv4 } from 'uuid';
-import { getConversationMessages } from './main.js';
+import { getConversationMessages } from './getConversationMessages.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

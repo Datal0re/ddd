@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Conversation – Data Dumpster Diver</title>
+  <link rel="stylesheet" href="../color-palette.css">
+  <style>
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .conversation-header {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px var(--shadow);
+    }
+    .conversation-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+    .navigation {
+      margin-top: 1rem;
+    }
+    .navigation a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary-blue);
+      font-weight: 500;
+      transition: color 0.2s ease;
+      text-decoration: none;
+    }
+    .navigation a:hover {
+      color: var(--accent-cyan);
+    }
+    .message-container {
+      scroll-margin-top: 2rem;
+    }
+    .message-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .message-timestamp {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .content pre {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+    .content code {
+      background: var(--bg-tertiary);
+      padding: 0.125rem 0.25rem;
+      border-radius: 0.25rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.875rem;
+    }
+    .content blockquote {
+      border-left: 4px solid var(--primary-blue);
+      padding-left: 1rem;
+      margin: 1rem 0;
+      font-style: italic;
+      color: var(--text-secondary);
+    }
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    .content th,
+    .content td {
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .content th {
+      background: var(--bg-tertiary);
+      font-weight: 600;
+    }
+    .asset-info {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-family: monospace;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .transcript-info {
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 1rem 0;
+      color: var(--accent-cyan);
+      font-style: italic;
+    }
+    .scroll-to-top {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--primary-blue);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 3rem;
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px var(--shadow);
+      transition: all 0.2s ease;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 1000;
+    }
+    .scroll-to-top.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    .scroll-to-top:hover {
+      background: #2563EB;
+      transform: translateY(-2px);
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+    }
+    .message {
+      margin-bottom: 2rem;
+      transition: transform 0.2s ease;
+    }
+    .author {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .author.user {
+      color: var(--primary-blue);
+    }
+    .author.assistant {
+      color: var(--success-green);
+    }
+    .message-bubble {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    @media (max-width: 768px) {
+      .scroll-to-top {
+        bottom: 1rem;
+        right: 1rem;
+        width: 2.5rem;
+        height: 2.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="conversation-header fade-in">
+      <div class="conversation-title centered" id="conversation-title">Loading...</div>
+      <div class="navigation centered">
+        <a href="conversations.html" id="back-link">
+          ← Back to conversations
+        </a>
+      </div>
+    </div>
+    
+    <div id="messages-container">
+      <!-- Messages will be loaded here -->
+    </div>
+    
+    <div id="empty-state" class="card empty-state" style="display: none;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">💬</div>
+      <h3>No messages found</h3>
+      <p style="color: var(--text-secondary);">
+        This conversation doesn't contain any messages.
+      </p>
+    </div>
+    
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="conversations.html" id="footer-back-link" style="color: var(--text-muted); font-size: 0.875rem;">
+        ← Back to conversations
+      </a>
+    </div>
+  </div>
+  
+  <button class="scroll-to-top" id="scrollToTop" onclick="scrollToTop()" title="Scroll to top">
+    ↑
+  </button>
+  
+  <script>
+    let conversationData = null;
+    let sessionId = '';
+    let conversationId = '';
+    
+    // Load conversation on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      sessionId = urlParams.get('session');
+      conversationId = urlParams.get('id');
+      
+      if (!sessionId || !conversationId) {
+        showError('Missing session or conversation ID');
+        return;
+      }
+      
+      // Update navigation links
+      const backLinks = ['back-link', 'footer-back-link'];
+      backLinks.forEach(linkId => {
+        const link = document.getElementById(linkId);
+        if (link) {
+          link.href = `conversations.html?session=${sessionId}`;
+        }
+      });
+      
+      try {
+        const result = await window.electronAPI.getConversation(sessionId, conversationId);
+        if (result.success) {
+          conversationData = result;
+          renderConversation();
+        } else {
+          showError(result.error || 'Failed to load conversation');
+        }
+      } catch (err) {
+        console.error('Error loading conversation:', err);
+        showError('Error loading conversation');
+      }
+    });
+    
+    function renderConversation() {
+      if (!conversationData) return;
+      
+      // Update title
+      document.title = `${conversationData.title} – Data Dumpster Diver`;
+      document.getElementById('page-title').textContent = `${conversationData.title} – Data Dumpster Diver`;
+      document.getElementById('conversation-title').textContent = conversationData.title;
+      
+      const messagesContainer = document.getElementById('messages-container');
+      const emptyState = document.getElementById('empty-state');
+      
+      // Clear existing content
+      messagesContainer.innerHTML = '';
+      
+      if (!conversationData.messages || conversationData.messages.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      conversationData.messages.forEach((msg, index) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${msg.author.toLowerCase()} message-container fade-in`;
+        messageDiv.style.animationDelay = `${index * 0.1}s`;
+        messageDiv.id = `message-${index}`;
+        
+        let contentHtml = '';
+        msg.parts.forEach(part => {
+          if (part.html) {
+            contentHtml += part.html;
+          } else if (part.transcript) {
+            contentHtml += `
+              <div class="transcript-info">
+                🎵 Audio Transcript: ${part.transcript}
+              </div>
+            `;
+          } else if (part.asset) {
+            contentHtml += `
+              <div class="asset-info">
+                📎 Asset: ${JSON.stringify(part.asset, null, 2)}
+              </div>
+            `;
+          }
+        });
+        
+        messageDiv.innerHTML = `
+          <div class="author ${msg.author.toLowerCase()}">
+            ${msg.author}
+          </div>
+          <div class="message-bubble">
+            <div class="content">
+              ${contentHtml}
+            </div>
+          </div>
+          <div class="message-timestamp">
+            Message ${index + 1}
+          </div>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+      });
+      
+      // Add message hover effects
+      addMessageEffects();
+    }
+    
+    function addMessageEffects() {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach(message => {
+        message.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateX(4px)';
+        });
+        
+        message.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateX(0)';
+        });
+        
+        // Copy message content on double-click
+        message.addEventListener('dblclick', function() {
+          const content = this.querySelector('.content').textContent;
+          navigator.clipboard.writeText(content).then(() => {
+            // Show a subtle feedback
+            const originalBg = this.style.backgroundColor;
+            this.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+            setTimeout(() => {
+              this.style.backgroundColor = originalBg;
+            }, 200);
+          }).catch(err => {
+            console.error('Failed to copy text: ', err);
+          });
+        });
+      });
+    }
+    
+    function showError(message) {
+      const messagesContainer = document.getElementById('messages-container');
+      messagesContainer.innerHTML = `
+        <div class="card" style="background: var(--error-bg); color: var(--error-text);">
+          ${message}
+        </div>
+      `;
+    }
+    
+    // Scroll to top functionality
+    function scrollToTop() {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+    
+    // Show/hide scroll to top button
+    window.addEventListener('scroll', function() {
+      const scrollButton = document.getElementById('scrollToTop');
+      if (window.pageYOffset > 300) {
+        scrollButton.classList.add('visible');
+      } else {
+        scrollButton.classList.remove('visible');
+      }
+    });
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Home' && e.ctrlKey) {
+        e.preventDefault();
+        scrollToTop();
+      }
+      
+      if (e.key === 'b' && e.ctrlKey) {
+        e.preventDefault();
+        window.location.href = `conversations.html?session=${sessionId}`;
+      }
+    });
+    
+    // Smooth scroll for anchor links if any
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute('href'));
+          if (target) {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

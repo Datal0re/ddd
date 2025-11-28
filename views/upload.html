@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Dumpster Diver – Upload</title>
+  <link rel="stylesheet" href="../color-palette.css">
+  <style>
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .centered-card {
+      max-width: 500px;
+      margin: 0 auto 2rem;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .error {
+      background: var(--error-bg);
+      color: var(--error-text);
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    .success {
+      background: var(--success-bg);
+      color: var(--success-text);
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    .actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    button {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button.secondary {
+      background: var(--secondary-color);
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    input[type="file"] {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--input-bg);
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>Data Dumpster Diver</h1>
+      <p>Upload your ChatGPT export to explore and visualize your conversation data</p>
+    </div>
+    
+    <div class="card centered-card fade-in">
+      <div id="error-message" class="error" style="display: none;"></div>
+      <div id="success-message" class="success" style="display: none;"></div>
+      
+      <form id="upload-form">
+        <div class="form-group">
+          <label for="chatgpt-export" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+            Choose ChatGPT Export File
+          </label>
+          <input type="file" id="chatgpt-export" accept=".zip" required>
+          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+            Upload the zip file from your ChatGPT data export. The app will extract media assets and process conversations automatically.
+          </p>
+        </div>
+        
+        <div class="actions">
+          <button type="submit">
+            📤 Upload and Process
+          </button>
+          <button type="button" class="secondary" onclick="cleanupSessions()">
+            🗑️ Clear All Sessions
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">How it works</h3>
+      <ol style="color: var(--text-secondary); line-height: 1.8;">
+        <li>Export your data from ChatGPT (Settings → Data controls → Export)</li>
+        <li>Upload the resulting zip file using the form above</li>
+        <li>Browse through your conversations in an organized interface</li>
+        <li>View media assets and conversation details</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script>
+    async function cleanupSessions() {
+      if (confirm('Clear all sessions and their data? This cannot be undone.')) {
+        try {
+          const result = await window.electronAPI.cleanupSessions();
+          if (result.success) {
+            showMessage('Sessions cleared successfully.', 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            throw new Error(result.error || 'Failed to clear sessions');
+          }
+        } catch (err) {
+          console.error('Cleanup error:', err);
+          showMessage('Error clearing sessions. Please try again.', 'error');
+        }
+      }
+    }
+    
+    function showMessage(message, type) {
+      const errorDiv = document.getElementById('error-message');
+      const successDiv = document.getElementById('success-message');
+      
+      // Hide both messages
+      errorDiv.style.display = 'none';
+      successDiv.style.display = 'none';
+      
+      // Show the appropriate message
+      if (type === 'error') {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+      } else {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+      }
+    }
+    
+    // Handle form submission
+    document.getElementById('upload-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('chatgpt-export');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        showMessage('Please select a file to upload.', 'error');
+        return;
+      }
+      
+      try {
+        // Show file selection dialog and get file path
+        const result = await window.electronAPI.selectFile();
+        
+        if (!result.success) {
+          showMessage(result.error || 'File selection cancelled.', 'error');
+          return;
+        }
+        
+        // Process the upload
+        const processResult = await window.electronAPI.processUpload(result.filePath);
+        
+        if (processResult.success) {
+          // Redirect to conversations page
+          window.location.href = `conversations.html?session=${processResult.sessionId}`;
+        } else {
+          showMessage(processResult.error || 'Upload failed. Please try again.', 'error');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+        showMessage('Upload failed. Please try again.', 'error');
+      }
+    });
+    
+    // Add file input feedback
+    document.getElementById('chatgpt-export').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name || 'No file selected';
+      const label = document.querySelector('label[for="chatgpt-export"]');
+      if (e.target.files[0]) {
+        label.style.color = 'var(--success-green)';
+      } else {
+        label.style.color = 'var(--text-primary)';
+      }
+    });
+  </script>
+</body>
+</html>

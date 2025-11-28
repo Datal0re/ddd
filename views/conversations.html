@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Dumpster Diver – Conversations</title>
+  <link rel="stylesheet" href="../color-palette.css">
+  <style>
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .search-container {
+      margin-bottom: 2rem;
+    }
+    .search-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      font-size: 1rem;
+    }
+    .conversation-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .conversation-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .conversation-item a {
+      display: block;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+    .conversation-date {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+    }
+    button {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button.secondary {
+      background: var(--secondary-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>Your Conversations</h1>
+      <p style="color: var(--text-secondary);">Browse through your ChatGPT conversation history</p>
+    </div>
+    
+    <div class="search-container">
+      <input 
+        type="search" 
+        id="search" 
+        class="search-input" 
+        placeholder="🔍 Search conversation titles..." 
+        onkeyup="filter()"
+        autocomplete="off"
+      >
+      <div id="search-results" style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
+        <span id="result-count">Loading...</span> conversations found
+      </div>
+    </div>
+    
+    <div id="conversation-list">
+      <!-- Conversations will be loaded here -->
+    </div>
+    
+    <div id="empty-state" class="card empty-state" style="display: none;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+      <h3>No conversations found</h3>
+      <p style="color: var(--text-secondary);">
+        No conversations were found in this session. Try uploading a different ChatGPT export file.
+      </p>
+      <a href="upload.html" style="margin-top: 1rem; display: inline-block;">
+        <button class="secondary">← Back to Upload</button>
+      </a>
+    </div>
+    
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="upload.html" style="color: var(--text-muted); font-size: 0.875rem;">
+        ← Back to Upload
+      </a>
+    </div>
+  </div>
+  
+  <script>
+    let conversations = [];
+    let sessionId = '';
+    
+    // Load conversations on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      sessionId = urlParams.get('session');
+      
+      if (!sessionId) {
+        showError('Missing session ID');
+        return;
+      }
+      
+      try {
+        const result = await window.electronAPI.getConversations(sessionId);
+        if (result.success) {
+          conversations = result.conversations;
+          renderConversations();
+        } else {
+          showError(result.error || 'Failed to load conversations');
+        }
+      } catch (err) {
+        console.error('Error loading conversations:', err);
+        showError('Error loading conversations');
+      }
+    });
+    
+    function renderConversations() {
+      const listContainer = document.getElementById('conversation-list');
+      const emptyState = document.getElementById('empty-state');
+      const resultCount = document.getElementById('result-count');
+      
+      // Clear existing content
+      listContainer.innerHTML = '';
+      
+      // Update result count
+      resultCount.textContent = conversations.length;
+      
+      if (conversations.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      conversations.forEach((conv, index) => {
+        const item = document.createElement('div');
+        item.className = 'conversation-item fade-in';
+        item.style.animationDelay = `${index * 50}ms`;
+        
+        item.innerHTML = `
+          <a href="conversation.html?id=${conv.id}&session=${sessionId}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 500; margin-bottom: 0.25rem; word-break: break-word;">
+                  ${conv.title || 'Untitled Conversation'}
+                </div>
+                <div class="conversation-date">
+                  ${conv.date}
+                </div>
+              </div>
+              <div style="color: var(--primary-blue); font-size: 1.25rem; flex-shrink: 0;">
+                →
+              </div>
+            </div>
+          </a>
+        `;
+        
+        listContainer.appendChild(item);
+      });
+    }
+    
+    function filter() {
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const items = document.querySelectorAll('.conversation-item');
+      let visibleCount = 0;
+      
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        const isVisible = text.includes(searchTerm);
+        item.style.display = isVisible ? 'block' : 'none';
+        
+        if (isVisible) {
+          visibleCount++;
+        }
+      });
+      
+      // Update result count
+      const resultCount = document.getElementById('result-count');
+      const totalItems = conversations.length;
+      if (searchTerm) {
+        resultCount.textContent = `${visibleCount} of ${totalItems}`;
+      } else {
+        resultCount.textContent = totalItems;
+      }
+      
+      // Show/hide "no results" message
+      const noResults = document.getElementById('no-results');
+      if (visibleCount === 0 && searchTerm) {
+        if (!noResults) {
+          const noResultsDiv = document.createElement('div');
+          noResultsDiv.id = 'no-results';
+          noResultsDiv.className = 'card fade-in';
+          noResultsDiv.style.textAlign = 'center';
+          noResultsDiv.style.padding = '2rem';
+          noResultsDiv.innerHTML = `
+            <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
+            <h3>No conversations found</h3>
+            <p style="color: var(--text-secondary);">
+              No conversations match "${searchTerm}". Try a different search term.
+            </p>
+          `;
+          document.getElementById('conversation-list').appendChild(noResultsDiv);
+        }
+      } else if (noResults) {
+        noResults.remove();
+      }
+    }
+    
+    function showError(message) {
+      const listContainer = document.getElementById('conversation-list');
+      listContainer.innerHTML = `
+        <div class="card" style="background: var(--error-bg); color: var(--error-text);">
+          ${message}
+        </div>
+      `;
+    }
+    
+    // Add keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+        e.preventDefault();
+        document.getElementById('search').focus();
+      }
+      
+      if (e.key === 'Escape') {
+        document.getElementById('search').blur();
+        document.getElementById('search').value = '';
+        filter();
+      }
+    });
+  </script>
+</body>
+</html>
