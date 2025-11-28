@@ -21,16 +21,19 @@ database/
 ## Setup
 
 1. **Initialize the database:**
+
    ```bash
    npm run db:init
    ```
 
 2. **Run migrations (if needed):**
+
    ```bash
    npm run db:migrate
    ```
 
 3. **Test the models:**
+
    ```bash
    node database/test-models.js
    ```
@@ -38,6 +41,7 @@ database/
 ## Database Schema
 
 ### Users Table
+
 - `id` - Primary key (auto-increment)
 - `username` - Unique username (max 50 chars)
 - `email` - Unique email address
@@ -46,6 +50,7 @@ database/
 - `last_login` - Last login timestamp
 
 ### User Sessions Table
+
 - `id` - Primary key (auto-increment)
 - `user_id` - Foreign key to users table
 - `session_id` - Unique session identifier
@@ -53,6 +58,7 @@ database/
 - `expires_at` - Session expiration timestamp
 
 ### Migrations Table
+
 - `id` - Primary key (auto-increment)
 - `filename` - Migration filename
 - `executed_at` - Migration execution timestamp
@@ -114,6 +120,7 @@ export async function up(db) {
 ## Error Handling
 
 All database operations throw descriptive errors:
+
 - Unique constraint violations for duplicate usernames/emails
 - Connection errors for database issues
 - Validation errors for missing required fields

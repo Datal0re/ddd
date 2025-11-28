@@ -9,6 +9,7 @@ A modern web application for exploring and visualizing exported ChatGPT conversa
 ## ✨ Features
 
 ### 🚀 Core Functionality
+
 - **Web-based Upload Interface**: Drag-and-drop or click-to-upload ChatGPT export zip files
 - **Automatic Data Processing**: Extract conversations, media assets, and metadata from exports
 - **Session Management**: Isolated processing sessions with automatic cleanup
@@ -16,6 +17,7 @@ A modern web application for exploring and visualizing exported ChatGPT conversa
 - **Rich Message Display**: Markdown rendering, code highlighting, and media embedding
 
 ### 🎨 User Experience
+
 - **Modern Dark Mode**: Eye-friendly interface with comprehensive color palette
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Smooth Animations**: Polished transitions and micro-interactions
@@ -23,6 +25,7 @@ A modern web application for exploring and visualizing exported ChatGPT conversa
 - **Accessibility**: WCAG-compliant design with proper contrast ratios
 
 ### 🔧 Technical Features
+
 - **Secure File Handling**: Type validation and sanitization
 - **Efficient Processing**: Streaming file extraction and memory management
 - **Error Handling**: Comprehensive error reporting and recovery
@@ -32,23 +35,27 @@ A modern web application for exploring and visualizing exported ChatGPT conversa
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - **Node.js 18+** - [Download Node.js](https://nodejs.org/)
 - **ChatGPT Data Export** - Export your data from [ChatGPT Settings](https://chat.openai.com/settings/data-controls)
 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd data-dumpster-diver
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Start the application**
+
    ```bash
    npm start
    # or for development
@@ -178,18 +185,22 @@ SESSION_CLEANUP_INTERVAL=86400000
 ### Common Issues
 
 **Upload fails with "conversations.json not found"**
+
 - Ensure you're uploading the complete ChatGPT export zip file
 - Check that the export was generated successfully from ChatGPT settings
 
 **Media files not displaying**
+
 - Verify the export contains media files in the expected format
 - Check browser console for any asset loading errors
 
 **Session data disappears**
+
 - Sessions automatically expire after 24 hours for privacy
 - Use the "Clear All Sessions" button to manually clean up
 
 **Performance issues with large exports**
+
 - Large exports (>1GB) may take several minutes to process
 - Consider breaking up very large exports into smaller chunks
 
@@ -221,12 +232,14 @@ Contributions are welcome! Please see [`AGENTS.md`](./AGENTS.md) for development
 ## 📈 Roadmap
 
 ### Version 1.1 (Planned)
+
 - [ ] User authentication and persistent sessions
 - [ ] Advanced search and filtering options
 - [ ] Data visualization and analytics dashboard
 - [ ] Export functionality (PDF, JSON, CSV)
 
 ### Version 1.2 (Future)
+
 - [ ] Theme customization (light mode, custom colors)
 - [ ] API for external integrations
 - [ ] Real-time collaboration features
