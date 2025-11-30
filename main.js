@@ -27,7 +27,7 @@ function createWindow() {
   });
 
   // Load the initial view
-  mainWindow.loadFile('views/upload.html');
+  mainWindow.loadFile('views/conversations.html');
   
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
@@ -49,23 +49,47 @@ app.on('activate', () => {
 });
 
 // Session storage (in-memory for now)
-const sessions = new Map();
+let sessions;
+
+(async () => {
+  try {
+    sessions = await deserializeSessions();
+  } catch (err) {
+    console.error('Failed to load existing sessions:', err);
+    sessions = new Map();
+  }
+})();
 
 // Helper to clean up old sessions
 async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
   const now = Date.now();
   for (const [id, info] of sessions.entries()) {
     if (now - info.uploadedAt.getTime() > maxAgeMs) {
-      // Remove session folder and media folder
-      const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-      const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-      try {
-        await fs.rmdir(sessionDir, { recursive: true });
-        await fs.rmdir(mediaDir, { recursive: true });
-      } catch {
-        // Ignore errors if already gone
-      }
-      sessions.delete(id);
+    // Add new session to map
+    sessions.set(sessionId, { uploadedAt: new Date() });
+
+    // Serialize sessions to disk with error handling
+    try {
+      await serializeSessions(sessions);
+      console.log('Session serialized successfully');
+    } catch (error) {
+      console.error(`Serialization failed: ${error.message}`);
+      // Optionally send error response to client
+      // res.status(500).send('Failed to save session data');
+    }
+    const sessionDir = path.join(__dirname, 'data', 'sessions', id);
+    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
+    
+    try {
+      await fs.rmdir(sessionDir, { recursive: true });
+      await fs.rmdir(mediaDir, { recursive: true });
+    } catch {
+      // Ignore errors if directories don't exist
+    }
+    
+    sessions.delete(id);
+    await serializeSessions(sessions);
+    await serializeSessions(sessions);
     }
   }
 }
@@ -217,8 +241,10 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     // Run migration with session-scoped output directory
     await runMigration(sessionId, path.join(sessionDir, 'conversations'));
 
-    // Store session info
-    sessions.set(sessionId, { uploadedAt: new Date() });
+  // Store session info
+  sessions.set(sessionId, { uploadedAt: new Date() });
+  await serializeSessions(sessions);
+  await serializeSessions(sessions);
 
     return { success: true, sessionId };
   } catch (err) {
@@ -274,11 +300,12 @@ ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
   }
 });
 
-// IPC handler for session cleanup
-ipcMain.handle('cleanup-sessions', async () => {
-  await cleanupOldSessions();
-  return { success: true };
-});
+  // IPC handler for session cleanup
+  ipcMain.handle('cleanup-sessions', async () => {
+    await cleanupOldSessions();
+    await serializeSessions(sessions);
+    return { success: true };
+  });
 
 // IPC handler for deleting a session
 ipcMain.handle('delete-session', async (_, sessionId) => {

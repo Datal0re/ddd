@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { deserializeSessions, serializeSessions } from './utils/sessionUtils.js';
+import { deserializeSessions, serializeSessions } from './utils/sessionUtils.js';
 import { dirname } from 'path';
 import fs from 'fs/promises';
 import multer from 'multer';
@@ -20,23 +22,45 @@ app.use(express.json());
 app.set('view engine', 'ejs');
 
 // Session storage (in-memory for now)
-const sessions = new Map();
+const sessions = await deserializeSessions().catch((error) => {
+  console.error('Failed to load existing sessions:', error);
+  return new Map();
+});
+
+// Periodically clean up old sessions
+setInterval(cleanupOldSessions, 24 * 60 * 60 * 1000); // Daily cleanup
 
 // Helper to clean up old sessions
 async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
+  // Load current sessions from disk (not in-memory)
+  let diskSessions;
+  try {
+    diskSessions = await deserializeSessions();
+  } catch (error) {
+    console.error('Failed to load sessions for cleanup:', error);
+    return;
+  }
   const now = Date.now();
-  for (const [id, info] of sessions.entries()) {
+  let diskSessions;
+  try {
+    diskSessions = await deserializeSessions();
+  } catch (error) {
+    console.error('Failed to load sessions for cleanup:', error);
+    return;
+  }
+
+  // Iterate through disk-persisted sessions
+  for (const [id, info] of diskSessions) {
     if (now - info.uploadedAt.getTime() > maxAgeMs) {
-      // Remove session folder and media folder
       const sessionDir = path.join(__dirname, 'data', 'sessions', id);
       const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
       try {
         await fs.rmdir(sessionDir, { recursive: true });
         await fs.rmdir(mediaDir, { recursive: true });
-      } catch {
-        // Ignore errors if already gone
+      } catch (err) {
+        console.error(`Failed to delete session ${id}:`, err);
       }
-      sessions.delete(id);
+      sessions.delete(id); // Remove from in-memory map
     }
   }
 }
@@ -92,7 +116,18 @@ app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
 
     // Extract zip
     const files = await decompress(tempZipPath, sessionDir);
-    // Find conversations.json and media assets
+    // Add new session to map
+    sessions.set(sessionId, { uploadedAt: new Date() });
+
+    // Serialize sessions to disk with error handling
+    try {
+      await serializeSessions(sessions);
+      console.log('Session serialized successfully');
+    } catch (error) {
+      console.error(`Serialization failed: ${error.message}`);
+      // Optionally send error response to client
+      // res.status(500).send('Failed to save session data');
+    }
     let conversationsPath = null;
     // Detect if there is a single top-level folder (common in macOS exports)
     const topLevelDirs = new Set();
@@ -156,8 +191,12 @@ app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
     // Run migration with session-scoped output directory
     await runMigration(sessionId, path.join(sessionDir, 'conversations'));
 
-    // Store session info
-    sessions.set(sessionId, { uploadedAt: new Date() });
+  // Store session info
+  sessions.set(sessionId, { uploadedAt: new Date() });
+  await serializeSessions(sessions);
+
+  // Ensure sessions.json is updated immediately after upload
+    await serializeSessions(sessions);
 
     // Redirect to conversation list
     res.redirect(`/conversations?session=${sessionId}`);
@@ -213,26 +252,28 @@ app.get('/conversation/:id', async (req, res) => {
 app.delete('/sessions/:id', async (req, res) => {
   const { id } = req.params;
   
-  // Remove session folder and media folder
-  const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-  const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-  
-  try {
-    await fs.rmdir(sessionDir, { recursive: true });
-    await fs.rmdir(mediaDir, { recursive: true });
-  } catch {
-    // Ignore errors if directories don't exist
-  }
-  
-  sessions.delete(id);
+    // Remove session folder and media folder
+    const sessionDir = path.join(__dirname, 'data', 'sessions', id);
+    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
+    
+    try {
+      await fs.rmdir(sessionDir, { recursive: true });
+      await fs.rmdir(mediaDir, { recursive: true });
+    } catch {
+      // Ignore errors if directories don't exist
+    }
+    
+    sessions.delete(id);
+    await serializeSessions(sessions);    await serializeSessions(sessions);
   res.sendStatus(204);
 });
 
-// POST /cleanup endpoint
-app.post('/cleanup', async (req, res) => {
-  await cleanupOldSessions();
-  res.redirect('/');
-});
+  // POST /cleanup endpoint
+  app.post('/cleanup', async (req, res) => {
+    await cleanupOldSessions();
+    await serializeSessions(sessions);
+    res.redirect('/');
+  });
 
 app.listen(port, () => {
   console.log(`Data Dumpster Diver listening on port ${port}`);
