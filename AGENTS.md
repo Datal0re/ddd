@@ -1,30 +1,30 @@
-This AGENTS.md provides guidelines for agentic work in this repository.
+# AGENTS.md
 
-**Build/Lint/Test**
+## **Build/Lint/Test**
 
-- Install deps: `npm ci` (or `npm install` if no lockfile).
-- Lint: `npm run lint` (configure ESLint at root).
-- Format: `npm run format` (configure Prettier at root).
-- Test: `npm test` (unit/integration tests; adjust per framework).
-- Run a single test (examples):
+- Install deps: `npm ci`
+- Lint: `npm run lint` (ESLint at root)
+- Format: `npm run format` (Prettier at root)
+- Test: `npm test`
+- Single test:
   - Jest: `npx jest path/to/file.test.js -t 'test name'`
   - Vitest: `npx vitest path/to/file.test.js -t 'test name'`
-- Build: `npm run build` (if a build script exists).
+- Build: `npm run build` if script exists
 
-**Code Style**
+## **Code Style**
 
-- Imports: standard ordering (builtin, third-party, local); explicit imports; no wildcard.
-- Formatting: prefer Prettier (88 char line length); trailing commas; consistent multi-line formatting.
-- Types/Naming: TypeScript preferred; if JS, use JSDoc; snake_case for data, camelCase for functions, PascalCase for classes.
-- Error handling: throw/return precise errors; avoid bare `catch`; include clear messages; validate inputs early.
-- Documentation: docstrings/comments for public APIs; keep README/docs in sync with code.
-- Testing: add tests for core utilities and edge cases; keep tests fast and deterministic.
+- Imports: standard order (builtin, third-party, local), explicit, no wildcards
+- Formatting: Prettier (88 char line length), trailing commas, consistent multi-line formatting
+- Types/Naming: Prefer TypeScript; JS uses JSDoc. snake_case for data, camelCase for functions, PascalCase for classes
+- Error handling: Precise errors, avoid bare `catch`, validate inputs early
+- Docs: Public APIs with docstrings/comments; keep README/docs synced
+- Testing: Core utilities and edge cases, fast/deterministic tests
 
-**Rules Visibility**
+## **Rules Visibility**
 
-- Cursor Rules: none detected (look for `.cursor/rules/` or `.cursorrules`).
-- Copilot Rules: none detected (look for `.github/copilot-instructions.md`).
+- Cursor Rules: None detected (check `.cursor/rules/` or `.cursorrules`)
+- Copilot Rules: None detected (check `.github/copilot-instructions.md`)
 
-**Notes**
+## **Notes**
 
-- This workspace is not guaranteed to be a git repo in all environments; commit via your usual workflow when ready.
+- Workspace is a git repo; commit via usual workflow.

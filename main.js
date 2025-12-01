@@ -27,7 +27,7 @@ function createWindow() {
   });
 
   // Load the initial view
-  mainWindow.loadFile('views/conversations.html');
+  mainWindow.loadFile('views/upload.html');
   
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
