@@ -132,7 +132,7 @@
     // Load conversations on page load
     document.addEventListener('DOMContentLoaded', async function() {
       const urlParams = new URLSearchParams(window.location.search);
-      sessionId = urlParams.get('session');
+      sessionId = '36333105-9da5-4de4-9f82-8deb4ed78260' || urlParams.get('session');
       
       if (!sessionId) {
         showError('Missing session ID');

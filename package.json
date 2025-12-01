@@ -22,8 +22,10 @@
     "electron": "^33.0.0",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
+    "fs": "^0.0.1-security",
     "marked": "^17.0.0",
     "multer": "^2.0.2",
+    "path": "^0.12.7",
     "sanitize-html": "^2.17.0",
     "uuid": "^13.0.0"
   },

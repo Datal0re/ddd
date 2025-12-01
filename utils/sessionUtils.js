@@ -29,29 +29,28 @@ async function serializeSessions(sessions) {
  */
 async function deserializeSessions() {
   try {
-    const filePath = path.join(__dirname, 'data', 'sessions.json');
+    const filePath = path.join(__dirname, '..', 'data', 'sessions.json');
     let data;
 try {
   data = await fs.readFile(filePath, 'utf-8');
 } catch (err) {
   if (err.code === 'ENOENT') {
-    console.warn('Sessions file not found - returning empty map');
-    return new Map();
+    throw new Error('Sessions file not found');
   }
   throw err;
 }
     
     if (!data || data.trim() === '') {
-  console.warn('Empty or missing sessions file - returning empty map');
-  return new Map();
+throw new Error('Empty or missing sessions file');
 }
 
-    const sessions = new Map(JSON.parse(data));
+    const parsedData = JSON.parse(data);
+  const sessions = new Map(Object.entries(typeof parsedData === 'object' && parsedData !== null ? parsedData : {}));
     console.log('Sessions deserialized successfully');
     return sessions;
   } catch (error) {
     console.error(`Deserialization failed: ${error.message} (Code: ${error.code || 'N/A'})`);
-    return new Map(); // Return empty map on error
+    throw error;
   }
 }
 

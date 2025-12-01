@@ -53,7 +53,9 @@ let sessions;
 
 (async () => {
   try {
-    sessions = await deserializeSessions();
+
+const { deserializeSessions } = require("./utils/sessionUtils");
+sessions = await deserializeSessions();
   } catch (err) {
     console.error('Failed to load existing sessions:', err);
     sessions = new Map();

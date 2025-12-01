@@ -2,6 +2,18 @@
 
 All notable changes to Data Dumpster Diver will be documented in this file.
 
+## [1.0.1] - 2025-11-30
+
+### 🛠️ Session Persistence Fix
+- Problem: Sessions were lost on server restart
+- Solution: Implemented disk-based session storage with startup rehydration
+- Implementation:
+  - Sessions now saved to `data/sessions.json` using disk storage
+  - On server startup, sessions are automatically rehydrated from disk
+- Validation:
+  - Restart server and verify session data persistence
+  - Test with `npm test` suite (includes session serialization tests)
+
 ## [1.0.0] - 2025-11-16
 
 ### 🎉 MVP Release

@@ -73,6 +73,18 @@ A modern web application for exploring and visualizing exported ChatGPT conversa
    - Click any conversation to view detailed messages
    - Use keyboard shortcuts for efficient navigation
 
+## 🛠️ Recent Improvements
+
+- **Session Persistence Fix (v1.0.1)**
+  - Problem: Sessions were lost on server restart
+  - Solution: Implemented disk-based session storage with startup rehydration
+  - Implementation:
+    - Sessions now saved to `data/sessions.json` using disk storage
+    - On server startup, sessions are automatically rehydrated from disk
+  - Validation:
+    - Restart server and verify session data persistence
+    - Test with `npm test` suite (includes session serialization tests)
+
 ## 📁 Project Structure
 
 ```

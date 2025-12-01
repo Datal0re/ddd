@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { deserializeSessions, serializeSessions } from './utils/sessionUtils.js';
-import { deserializeSessions, serializeSessions } from './utils/sessionUtils.js';
 import { dirname } from 'path';
 import fs from 'fs/promises';
 import multer from 'multer';
@@ -40,14 +39,8 @@ async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
     console.error('Failed to load sessions for cleanup:', error);
     return;
   }
+  
   const now = Date.now();
-  let diskSessions;
-  try {
-    diskSessions = await deserializeSessions();
-  } catch (error) {
-    console.error('Failed to load sessions for cleanup:', error);
-    return;
-  }
 
   // Iterate through disk-persisted sessions
   for (const [id, info] of diskSessions) {
