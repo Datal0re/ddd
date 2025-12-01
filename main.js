@@ -1,8 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const fsSync = require('fs');
-const multer = require('multer');
+// const fsSync = require('fs');
+// const multer = require('multer');
 const decompress = require('decompress');
 const { spawn } = require('child_process');
 
