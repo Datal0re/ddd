@@ -32,7 +32,7 @@ async function waitForApiServer(maxRetries = 5, delay = 1000) {
 // Wait for API server to be ready before creating window
 app.whenReady().then(async () => {
   console.log('Electron app ready, waiting for API server...');
-  
+
   // Wait for API server with retry mechanism
   const apiReady = await waitForApiServer();
   if (apiReady) {
@@ -45,11 +45,11 @@ app.whenReady().then(async () => {
 });
 
 // Add error handling for API connection failures
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   console.error('Uncaught exception:', err);
 });
 
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', reason => {
   console.error('Unhandled rejection:', reason);
 });
 
@@ -60,19 +60,17 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'renderer.js')
-    }
+      preload: path.join(__dirname, 'renderer.js'),
+    },
   });
 
   // Load the initial view
   mainWindow.loadFile('views/index.html');
-  
+
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
 }
-
-
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -85,8 +83,6 @@ app.on('activate', () => {
     createWindow();
   }
 });
-
-
 
 // Helper function to make API calls
 async function apiCall(method, endpoint, data = null) {
@@ -108,7 +104,9 @@ async function apiCall(method, endpoint, data = null) {
 
     console.log(`Making API call: ${method} ${config.url}`);
     const response = await axios(config);
-    console.log(`API response: ${response.status} ${JSON.stringify(response.data).substring(0, 100)}...`);
+    console.log(
+      `API response: ${response.status} ${JSON.stringify(response.data).substring(0, 100)}...`
+    );
     return response.data;
   } catch (error) {
     console.error(`API call failed: ${method} ${endpoint}`, error.message);
@@ -146,15 +144,13 @@ ipcMain.handle('get-app-path', async (_, pathName) => {
 ipcMain.handle('select-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
-    filters: [
-      { name: 'ZIP Files', extensions: ['zip'] }
-    ]
+    filters: [{ name: 'ZIP Files', extensions: ['zip'] }],
   });
-  
+
   if (result.canceled) {
     return { success: false, error: 'File selection cancelled' };
   }
-  
+
   return { success: true, filePath: result.filePaths[0] };
 });
 
@@ -162,27 +158,27 @@ ipcMain.handle('select-file', async () => {
 ipcMain.handle('process-upload', async (_, filePath) => {
   try {
     console.log('Upload request received for file path:', filePath);
-    
+
     if (!filePath) {
       throw new Error('File path is null or undefined');
     }
-    
+
     const fileBuffer = await fs.readFile(filePath);
-    
+
     console.log('File read successfully, buffer size:', fileBuffer.length);
-    
+
     // Create FormData for file upload
     const FormData = require('form-data');
     const form = new FormData();
     form.append('chatgpt-export', fileBuffer, {
       filename: 'chatgpt-export.zip',
-      contentType: 'application/zip'
+      contentType: 'application/zip',
     });
 
     console.log('Sending file to API...');
     const response = await axios.post(`${API_BASE_URL}/upload`, form, {
       headers: form.getHeaders(),
-      timeout: 60000 // 60 seconds for large files
+      timeout: 60000, // 60 seconds for large files
     });
 
     console.log('API response:', response.data);
@@ -192,19 +188,20 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     console.error('Error details:', {
       message: err.message,
       stack: err.stack,
-      code: err.code
+      code: err.code,
     });
     return { success: false, error: err.message || 'Upload failed. Please try again.' };
   }
 });
 
 // IPC handler for getting file path from input (for browser file inputs)
-ipcMain.handle('get-file-path', async (_, fileObject) => {
+ipcMain.handle('get-file-path', async (_, _fileObject) => {
   // In the browser context, we can't access the file path directly
   // This handler is a fallback that returns an error to force using the file dialog
-  return { 
-    success: false, 
-    error: 'Cannot access file path from browser input. Please use the Browse button instead.' 
+  return {
+    success: false,
+    error:
+      'Cannot access file path from browser input. Please use the Browse button instead.',
   };
 });
 
@@ -231,7 +228,10 @@ ipcMain.handle('get-conversations', async (_, sessionId) => {
 // IPC handler for getting conversation details
 ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
   try {
-    const response = await apiCall('GET', `/sessions/${sessionId}/conversations/${conversationId}`);
+    const response = await apiCall(
+      'GET',
+      `/sessions/${sessionId}/conversations/${conversationId}`
+    );
     return response;
   } catch (err) {
     return { success: false, error: err.message || 'Error loading conversation.' };
@@ -261,18 +261,21 @@ ipcMain.handle('cleanup-sessions', async () => {
 // ===== AI INTEGRATION IPC HANDLERS =====
 
 // IPC handler for AI conversation analysis
-ipcMain.handle('ai-analyze-conversation', async (_, sessionId, conversationId, analysisType) => {
-  try {
-    const response = await apiCall('POST', '/ai/analyze-conversation', {
-      sessionId,
-      conversationId,
-      analysisType
-    });
-    return response;
-  } catch (err) {
-    return { success: false, error: err.message || 'AI analysis failed.' };
+ipcMain.handle(
+  'ai-analyze-conversation',
+  async (_, sessionId, conversationId, analysisType) => {
+    try {
+      const response = await apiCall('POST', '/ai/analyze-conversation', {
+        sessionId,
+        conversationId,
+        analysisType,
+      });
+      return response;
+    } catch (err) {
+      return { success: false, error: err.message || 'AI analysis failed.' };
+    }
   }
-});
+);
 
 // IPC handler for AI conversation search
 ipcMain.handle('ai-search-conversations', async (_, sessionId, query, searchType) => {
@@ -280,7 +283,7 @@ ipcMain.handle('ai-search-conversations', async (_, sessionId, query, searchType
     const response = await apiCall('POST', '/ai/search-conversations', {
       sessionId,
       query,
-      searchType
+      searchType,
     });
     return response;
   } catch (err) {
@@ -293,7 +296,7 @@ ipcMain.handle('ai-summarize-session', async (_, sessionId, summaryType) => {
   try {
     const response = await apiCall('POST', '/ai/summarize-session', {
       sessionId,
-      summaryType
+      summaryType,
     });
     return response;
   } catch (err) {
@@ -326,7 +329,9 @@ ipcMain.handle('list-backups', async (_, sessionId) => {
 // IPC handler for restoring session backup
 ipcMain.handle('restore-backup', async (_, sessionId, backupFile) => {
   try {
-    const response = await apiCall('POST', `/sessions/${sessionId}/restore`, { backupFile });
+    const response = await apiCall('POST', `/sessions/${sessionId}/restore`, {
+      backupFile,
+    });
     return response;
   } catch (err) {
     return { success: false, error: err.message || 'Backup restore failed.' };

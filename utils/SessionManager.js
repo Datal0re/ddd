@@ -5,7 +5,12 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
-const { ensureDir, runMigration, processZipUpload, removeDirectories } = require('./fileUtils.js');
+const {
+  ensureDir,
+  runMigration,
+  processZipUpload,
+  removeDirectories,
+} = require('./fileUtils.js');
 const BackupManager = require('./BackupManager.js');
 
 // Dynamic import for uuid (ES module)
@@ -49,9 +54,9 @@ class SessionManager {
     const sessionId = uuidv4();
     const sessionDir = path.join(this.dataDir, sessionId);
     const mediaDir = path.join(this.mediaDir, sessionId);
-    
+
     console.log(`Creating session ${sessionId} with isBuffer=${isBuffer}`);
-    
+
     // Ensure directories exist
     await ensureDir(sessionDir);
     await ensureDir(mediaDir);
@@ -59,30 +64,36 @@ class SessionManager {
     try {
       // Process zip upload with enhanced security and progress tracking
       console.log('Starting enhanced zip upload processing...');
-      
-      const conversationsPath = await processZipUpload(
-        zipData, 
-        sessionId, 
-        sessionDir, 
-        mediaDir, 
+
+      await processZipUpload(
+        zipData,
+        sessionId,
+        sessionDir,
+        mediaDir,
         isBuffer,
-        (progress) => {
-          console.log(`Upload progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`);
+        progress => {
+          console.log(
+            `Upload progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`
+          );
         }
       );
-      
+
       console.log('Zip upload completed successfully');
 
       // Run migration
       console.log('Starting migration process...');
-      await runMigration(sessionId, path.join(sessionDir, 'conversations'), this.baseDir);
+      await runMigration(
+        sessionId,
+        path.join(sessionDir, 'conversations'),
+        this.baseDir
+      );
       console.log('Migration completed successfully');
 
       // Store session info with enhanced metadata
-      this.sessions.set(sessionId, { 
+      this.sessions.set(sessionId, {
         uploadedAt: new Date(),
         size: Buffer.isBuffer(zipData) ? zipData.length : 0,
-        status: 'completed'
+        status: 'completed',
       });
       await this.saveSessions();
 
@@ -93,9 +104,9 @@ class SessionManager {
         message: error.message,
         stack: error.stack,
         code: error.code,
-        name: error.name
+        name: error.name,
       });
-      
+
       // Clean up on failure
       try {
         await removeDirectories(sessionDir, mediaDir);
@@ -103,7 +114,7 @@ class SessionManager {
       } catch (cleanupError) {
         console.error('Cleanup failed:', cleanupError);
       }
-      
+
       throw error;
     }
   }
@@ -146,10 +157,10 @@ class SessionManager {
 
     const sessionDir = path.join(this.dataDir, sessionId);
     const mediaDir = path.join(this.mediaDir, sessionId);
-    
+
     // Remove directories
     await removeDirectories(sessionDir, mediaDir);
-    
+
     // Remove from memory
     this.sessions.delete(sessionId);
     await this.saveSessions();
@@ -219,23 +230,23 @@ class SessionManager {
   async cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
     const now = Date.now();
     const sessionsToDelete = [];
-    
+
     // Find sessions to delete
     for (const [id, info] of this.sessions.entries()) {
       if (now - info.uploadedAt.getTime() > maxAgeMs) {
         sessionsToDelete.push(id);
       }
     }
-    
+
     // Delete old sessions
     for (const id of sessionsToDelete) {
       await this.deleteSession(id);
     }
-    
+
     if (sessionsToDelete.length > 0) {
       console.log(`Cleaned up ${sessionsToDelete.length} old sessions`);
     }
-    
+
     return sessionsToDelete.length;
   }
 
@@ -248,25 +259,25 @@ class SessionManager {
     if (!this.sessions.has(sessionId)) {
       throw new Error('Session not found');
     }
-    
+
     const conversationsDir = path.join(this.dataDir, sessionId, 'conversations');
     try {
       const files = await fs.readdir(conversationsDir);
       const conversations = [];
-      
+
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(conversationsDir, file);
           const content = await fs.readFile(filePath, 'utf8');
           const conv = JSON.parse(content);
-          conversations.push({ 
-            id: file, 
-            title: conv.title || 'Untitled', 
-            date: file.split('_')[0] 
+          conversations.push({
+            id: file,
+            title: conv.title || 'Untitled',
+            date: file.split('_')[0],
           });
         }
       }
-      
+
       return conversations;
     } catch (error) {
       console.error(`Error loading conversations for session ${sessionId}:`, error);
@@ -284,19 +295,24 @@ class SessionManager {
     if (!this.sessions.has(sessionId)) {
       throw new Error('Session not found');
     }
-    
-    const filePath = path.join(this.dataDir, sessionId, 'conversations', conversationId);
+
+    const filePath = path.join(
+      this.dataDir,
+      sessionId,
+      'conversations',
+      conversationId
+    );
     try {
       const content = await fs.readFile(filePath, 'utf8');
       const conv = JSON.parse(content);
-      
+
       // Import getConversationMessages function
       const { getConversationMessages } = require('../getConversationMessages.js');
       const messages = getConversationMessages(conv);
-      
+
       return {
         title: conv.title || 'Untitled',
-        messages
+        messages,
       };
     } catch (error) {
       console.error(`Error loading conversation ${conversationId}:`, error);
@@ -316,8 +332,8 @@ class SessionManager {
           id,
           {
             ...info,
-            uploadedAt: new Date(info.uploadedAt)
-          }
+            uploadedAt: new Date(info.uploadedAt),
+          },
         ])
       );
       console.log(`Loaded ${this.sessions.size} sessions from disk`);

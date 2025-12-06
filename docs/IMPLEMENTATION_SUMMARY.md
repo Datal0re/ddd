@@ -126,13 +126,13 @@ public/
 
 ## 📊 **Security Improvements**
 
-| Before | After | Improvement |
-|---------|--------|-------------|
-| Basic file validation | Signature + size validation | 🔒 |
-| Session dir processing | Temp dir isolation | 🛡️ |
-| No progress feedback | Real-time progress tracking | 📈 |
-| No backup system | Automated backup/restore | 💾 |
-| Basic error handling | Enhanced error recovery | 🛠️ |
+| Before                 | After                       | Improvement |
+| ---------------------- | --------------------------- | ----------- |
+| Basic file validation  | Signature + size validation | 🔒          |
+| Session dir processing | Temp dir isolation          | 🛡️          |
+| No progress feedback   | Real-time progress tracking | 📈          |
+| No backup system       | Automated backup/restore    | 💾          |
+| Basic error handling   | Enhanced error recovery     | 🛠️          |
 
 ## 🎯 **Benefits Achieved**
 

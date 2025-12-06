@@ -15,9 +15,9 @@ const MAX_EXTRACTED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB extracted limit
 const MAX_COMPRESSION_RATIO = 100; // Maximum allowed compression ratio (100:1)
 const MAX_FILES_IN_ZIP = 10000; // Maximum number of files in a zip
 const ZIP_SIGNATURES = [
-  Buffer.from([0x50, 0x4B, 0x03, 0x04]), // ZIP
-  Buffer.from([0x50, 0x4B, 0x05, 0x06]), // ZIP
-  Buffer.from([0x50, 0x4B, 0x07, 0x08]), // ZIP
+  Buffer.from([0x50, 0x4b, 0x03, 0x04]), // ZIP
+  Buffer.from([0x50, 0x4b, 0x05, 0x06]), // ZIP
+  Buffer.from([0x50, 0x4b, 0x07, 0x08]), // ZIP
 ];
 
 // Dynamic import for decompress (ES module)
@@ -35,7 +35,10 @@ const getDecompress = async () => {
  * @returns {Promise<string>} Path to temp directory
  */
 async function createTempDir() {
-  const tempDir = path.join(os.tmpdir(), `dddiver-${crypto.randomBytes(8).toString('hex')}`);
+  const tempDir = path.join(
+    os.tmpdir(),
+    `dddiver-${crypto.randomBytes(8).toString('hex')}`
+  );
   await fs.mkdir(tempDir, { recursive: true });
   return tempDir;
 }
@@ -61,31 +64,31 @@ async function cleanupTempDir(tempDir) {
  */
 async function validateUpload(fileData, maxSize = MAX_UPLOAD_SIZE) {
   try {
-    const size = typeof fileData === 'string' 
-      ? (await fs.stat(fileData)).size 
-      : fileData.length;
-    
+    const size =
+      typeof fileData === 'string' ? (await fs.stat(fileData)).size : fileData.length;
+
     // Size validation
     if (size > maxSize) {
-      throw new Error(`File too large: ${Math.round(size / 1024 / 1024)}MB (max: ${Math.round(maxSize / 1024 / 1024)}MB)`);
+      throw new Error(
+        `File too large: ${Math.round(size / 1024 / 1024)}MB (max: ${Math.round(maxSize / 1024 / 1024)}MB)`
+      );
     }
-    
+
     // Basic zip signature validation
-    const buffer = typeof fileData === 'string' 
-      ? await fs.readFile(fileData)
-      : fileData;
-    
-    const isValidZip = ZIP_SIGNATURES.some(sig => 
+    const buffer =
+      typeof fileData === 'string' ? await fs.readFile(fileData) : fileData;
+
+    const isValidZip = ZIP_SIGNATURES.some(sig =>
       buffer.slice(0, sig.length).equals(sig)
     );
-    
+
     if (!isValidZip) {
       throw new Error('Invalid file format - expected ZIP archive');
     }
-    
+
     // Enhanced zip validation for zip bomb protection
     await validateZipStructure(buffer);
-    
+
     console.log(`Upload validation passed: ${Math.round(size / 1024 / 1024)}MB`);
     return true;
   } catch (error) {
@@ -101,39 +104,47 @@ async function validateUpload(fileData, maxSize = MAX_UPLOAD_SIZE) {
  */
 async function validateZipStructure(zipBuffer) {
   const decompress = await getDecompress();
-  
+
   // Create a temporary file for analysis
   const tempDir = await createTempDir();
   const tempZipPath = path.join(tempDir, 'validate.zip');
-  
+
   try {
     await fs.writeFile(tempZipPath, zipBuffer);
-    
+
     // Extract file list without extracting content
     const files = await decompress(tempZipPath, tempDir);
-    
+
     // Check file count limit
     if (files.length > MAX_FILES_IN_ZIP) {
-      throw new Error(`Too many files in zip: ${files.length} (max: ${MAX_FILES_IN_ZIP})`);
+      throw new Error(
+        `Too many files in zip: ${files.length} (max: ${MAX_FILES_IN_ZIP})`
+      );
     }
-    
+
     // Calculate compression ratio
-    const totalCompressedSize = files.reduce((total, file) => total + (file.size || 0), 0);
+    const totalCompressedSize = files.reduce(
+      (total, file) => total + (file.size || 0),
+      0
+    );
     const compressionRatio = totalCompressedSize / zipBuffer.length;
-    
+
     if (compressionRatio > MAX_COMPRESSION_RATIO) {
-      throw new Error(`Compression ratio too high: ${Math.round(compressionRatio)}:1 (max: ${MAX_COMPRESSION_RATIO}:1) - possible zip bomb`);
+      throw new Error(
+        `Compression ratio too high: ${Math.round(compressionRatio)}:1 (max: ${MAX_COMPRESSION_RATIO}:1) - possible zip bomb`
+      );
     }
-    
+
     // Check for suspicious file paths
     for (const file of files) {
       if (!validatePath(file.path)) {
         throw new Error(`Suspicious file path detected: ${file.path}`);
       }
     }
-    
-    console.log(`Zip structure validation passed: ${files.length} files, ${Math.round(compressionRatio)}:1 ratio`);
-    
+
+    console.log(
+      `Zip structure validation passed: ${files.length} files, ${Math.round(compressionRatio)}:1 ratio`
+    );
   } finally {
     await cleanupTempDir(tempDir);
   }
@@ -159,14 +170,24 @@ async function ensureDir(dirPath) {
  * @returns {Promise<void>}
  */
 async function runMigration(sessionId, outputDir, baseDir) {
-  const inputPath = path.join(baseDir, 'data', 'sessions', sessionId, 'conversations.json');
+  const inputPath = path.join(
+    baseDir,
+    'data',
+    'sessions',
+    sessionId,
+    'conversations.json'
+  );
   await ensureDir(outputDir);
-  
+
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [path.join(baseDir, 'data', 'migration.js'), inputPath, outputDir], {
-      stdio: 'inherit',
-    });
-    child.on('close', (code) => {
+    const child = spawn(
+      'node',
+      [path.join(baseDir, 'data', 'migration.js'), inputPath, outputDir],
+      {
+        stdio: 'inherit',
+      }
+    );
+    child.on('close', code => {
       if (code === 0) resolve();
       else reject(new Error(`Migration exited with code ${code}`));
     });
@@ -183,23 +204,30 @@ async function runMigration(sessionId, outputDir, baseDir) {
  * @param {Function} onProgress - Optional progress callback
  * @returns {Promise<string>} Path to conversations.json
  */
-async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuffer = true, onProgress = null) {
+async function processZipUpload(
+  zipData,
+  sessionId,
+  sessionDir,
+  mediaDir,
+  isBuffer = true,
+  onProgress = null
+) {
   const decompress = await getDecompress();
   const path = require('path');
   let tempDir = null;
   let tempZipPath = null;
-  
+
   try {
     // Create secure temp directory for processing
     tempDir = await createTempDir();
     tempZipPath = path.join(tempDir, 'upload.zip');
-    
+
     console.log(`Processing zip upload: isBuffer=${isBuffer}, sessionId=${sessionId}`);
-    
+
     // Validate upload before processing
     onProgress?.({ stage: 'validating', progress: 0, message: 'Validating upload...' });
     await validateUpload(zipData);
-    
+
     // Save or copy zip file to temp location
     if (isBuffer) {
       console.log('Writing buffer to temp file:', tempZipPath);
@@ -209,46 +237,58 @@ async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuff
       await fs.copyFile(zipData, tempZipPath);
     }
 
-    onProgress?.({ stage: 'extracting', progress: 10, message: 'Extracting archive...' });
+    onProgress?.({
+      stage: 'extracting',
+      progress: 10,
+      message: 'Extracting archive...',
+    });
     console.log('Starting zip extraction...');
-    
+
     // Extract zip to temp directory first (security)
     const files = await decompress(tempZipPath, tempDir);
-    
-    console.log(`Extracted ${files.length} files:`, files.map(f => ({ path: f.path, type: f.type })));
-    
+
+    console.log(
+      `Extracted ${files.length} files:`,
+      files.map(f => ({ path: f.path, type: f.type }))
+    );
+
     if (!files || files.length === 0) {
       console.error('No files extracted from zip archive');
       throw new Error('No files found in zip archive or extraction failed');
     }
 
     // Validate extracted content size
-    const totalExtractedSize = files.reduce((total, file) => total + (file.size || 0), 0);
+    const totalExtractedSize = files.reduce(
+      (total, file) => total + (file.size || 0),
+      0
+    );
     if (totalExtractedSize > MAX_EXTRACTED_SIZE) {
-      throw new Error(`Extracted content too large: ${Math.round(totalExtractedSize / 1024 / 1024)}MB (max: ${Math.round(MAX_EXTRACTED_SIZE / 1024 / 1024)}MB)`);
+      throw new Error(
+        `Extracted content too large: ${Math.round(totalExtractedSize / 1024 / 1024)}MB (max: ${Math.round(MAX_EXTRACTED_SIZE / 1024 / 1024)}MB)`
+      );
     }
 
     onProgress?.({ stage: 'organizing', progress: 50, message: 'Organizing files...' });
-    
+
     // Find conversations.json and detect top-level folder structure
     let conversationsPath = null;
     const topLevelDirs = new Set();
-    
+
     for (const file of files) {
       const parts = file.path.split(path.sep);
       if (parts.length > 1) {
         topLevelDirs.add(parts[0]);
       }
     }
-    
+
     console.log('Top-level directories found:', [...topLevelDirs]);
-    
+
     const hasSingleTopLevel = topLevelDirs.size === 1;
     const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : '';
-    
+
     console.log('Has single top level:', hasSingleTopLevel);
     console.log('Top level folder:', topLevelFolder);
-    
+
     // Process each file
     for (const file of files) {
       // Find conversations.json
@@ -262,30 +302,36 @@ async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuff
           }
         }
       }
-      
+
       // Copy media assets
-      if ((file.path.startsWith('file-') || file.path.includes('audio/') || file.path.includes('dalle-generations/')) && !file.path.endsWith('/')) {
+      if (
+        (file.path.startsWith('file-') ||
+          file.path.includes('audio/') ||
+          file.path.includes('dalle-generations/')) &&
+        !file.path.endsWith('/')
+      ) {
         const src = path.join(sessionDir, file.path);
-        const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-          ? file.path.slice((topLevelFolder + path.sep).length)
-          : file.path;
+        const relativePath =
+          hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
+            ? file.path.slice((topLevelFolder + path.sep).length)
+            : file.path;
         const destPath = path.join(mediaDir, relativePath);
         await ensureDir(path.dirname(destPath));
         await fs.copyFile(src, destPath);
       }
     }
-    
+
     if (!conversationsPath) {
       throw new Error('conversations.json not found in uploaded zip.');
     }
-    
+
     // Ensure conversations.json is at session root
     const targetConversationsPath = path.join(sessionDir, 'conversations.json');
     if (conversationsPath !== targetConversationsPath) {
       await fs.rename(conversationsPath, targetConversationsPath);
       conversationsPath = targetConversationsPath;
     }
-    
+
     // Clean up nested directory if present
     if (hasSingleTopLevel && topLevelFolder) {
       const nestedDir = path.join(sessionDir, topLevelFolder);
@@ -295,19 +341,26 @@ async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuff
         console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
       }
     }
-    
+
     // Move files from temp to final locations
-    onProgress?.({ stage: 'finalizing', progress: 80, message: 'Finalizing organization...' });
+    onProgress?.({
+      stage: 'finalizing',
+      progress: 80,
+      message: 'Finalizing organization...',
+    });
     await moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files);
-    
-    onProgress?.({ stage: 'completed', progress: 100, message: 'Processing complete!' });
+
+    onProgress?.({
+      stage: 'completed',
+      progress: 100,
+      message: 'Processing complete!',
+    });
     return conversationsPath;
-    
   } catch (error) {
     console.error('Zip upload processing failed:', {
       message: error.message,
       stack: error.stack,
-      code: error.code
+      code: error.code,
     });
     throw error;
   } finally {
@@ -329,22 +382,22 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
   // Find conversations.json and detect top-level folder structure
   let conversationsPath = null;
   const topLevelDirs = new Set();
-  
+
   for (const file of files) {
     const parts = file.path.split(path.sep);
     if (parts.length > 1) {
       topLevelDirs.add(parts[0]);
     }
   }
-  
+
   console.log('Top-level directories found:', [...topLevelDirs]);
-  
+
   const hasSingleTopLevel = topLevelDirs.size === 1;
   const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : '';
-  
+
   console.log('Has single top level:', hasSingleTopLevel);
   console.log('Top level folder:', topLevelFolder);
-  
+
   // Process each file
   for (const file of files) {
     // Validate file path to prevent path traversal
@@ -352,9 +405,9 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
       console.warn(`Skipping file with dangerous path: ${file.path}`);
       continue;
     }
-    
+
     const tempPath = path.join(tempDir, file.path);
-    
+
     // Find conversations.json
     if (file.path.endsWith('conversations.json')) {
       const candidatePath = path.join(tempPath);
@@ -368,44 +421,48 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
         }
       }
     }
-    
+
     // Copy media assets
     else if (isMediaFile(file.path) && !file.path.endsWith('/')) {
       const src = tempPath;
-      const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-        ? file.path.slice((topLevelFolder + path.sep).length)
-        : file.path;
-      
+      const relativePath =
+        hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
+          ? file.path.slice((topLevelFolder + path.sep).length)
+          : file.path;
+
       // Validate the relative path as well
       if (!validatePath(relativePath)) {
-        console.warn(`Skipping media file with dangerous relative path: ${relativePath}`);
+        console.warn(
+          `Skipping media file with dangerous relative path: ${relativePath}`
+        );
         continue;
       }
-      
+
       const destPath = path.join(mediaDir, relativePath);
       await ensureDir(path.dirname(destPath));
       await fs.copyFile(src, destPath);
     }
-    
+
     // Move other files to session directory
     else if (!file.path.endsWith('/')) {
       const src = tempPath;
-      const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-        ? file.path.slice((topLevelFolder + path.sep).length)
-        : file.path;
-      
+      const relativePath =
+        hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
+          ? file.path.slice((topLevelFolder + path.sep).length)
+          : file.path;
+
       // Validate the relative path as well
       if (!validatePath(relativePath)) {
         console.warn(`Skipping file with dangerous relative path: ${relativePath}`);
         continue;
       }
-      
+
       const destPath = path.join(sessionDir, relativePath);
       await ensureDir(path.dirname(destPath));
       await fs.rename(src, destPath);
     }
   }
-  
+
   // Clean up nested directory if present
   if (hasSingleTopLevel && topLevelFolder) {
     const nestedDir = path.join(tempDir, topLevelFolder);
@@ -415,7 +472,7 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
       console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
     }
   }
-  
+
   return conversationsPath;
 }
 
@@ -426,13 +483,13 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
  */
 function isMediaFile(filePath) {
   const mediaPatterns = [
-    /^file-/,                    // ChatGPT file attachments
-    /^audio\//,                  // Audio files
-    /^dalle-generations\//,        // DALL-E images
-    /\.(jpeg|jpg|png|gif|webp)$/i,  // Image extensions
-    /\.(wav|mp3|m4a|ogg)$/i,        // Audio extensions
+    /^file-/, // ChatGPT file attachments
+    /^audio\//, // Audio files
+    /^dalle-generations\//, // DALL-E images
+    /\.(jpeg|jpg|png|gif|webp)$/i, // Image extensions
+    /\.(wav|mp3|m4a|ogg)$/i, // Audio extensions
   ];
-  
+
   return mediaPatterns.some(pattern => pattern.test(filePath));
 }
 
@@ -445,20 +502,28 @@ function validatePath(filePath) {
   if (!filePath || typeof filePath !== 'string') {
     return false;
   }
-  
+
   // Normalize the path to resolve any .. sequences
   const normalized = path.normalize(filePath);
-  
+
   // Check for path traversal attempts
-  if (normalized.includes('..') || normalized.startsWith('/') || normalized.includes('\\')) {
+  if (
+    normalized.includes('..') ||
+    normalized.startsWith('/') ||
+    normalized.includes('\\')
+  ) {
     return false;
   }
-  
+
   // Check for null bytes and other dangerous characters
-  if (normalized.includes('\0') || normalized.includes('\r') || normalized.includes('\n')) {
+  if (
+    normalized.includes('\0') ||
+    normalized.includes('\r') ||
+    normalized.includes('\n')
+  ) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -490,5 +555,5 @@ module.exports = {
   validatePath,
   validateZipStructure,
   isMediaFile,
-  moveFilesToFinalLocations
+  moveFilesToFinalLocations,
 };

@@ -1,514 +1,578 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Data Dumpster Diver - Color Palette Demo</title>
     <style>
-        :root {
-            /* Primary Colors */
-            --primary-blue: #3B82F6;
-            --primary-blue-hover: #2563EB;
-            --primary-blue-light: #60A5FA;
+      :root {
+        /* Primary Colors */
+        --primary-blue: #3b82f6;
+        --primary-blue-hover: #2563eb;
+        --primary-blue-light: #60a5fa;
 
-            /* Secondary Colors */
-            --secondary-purple: #8B5CF6;
-            --secondary-purple-hover: #7C3AED;
+        /* Secondary Colors */
+        --secondary-purple: #8b5cf6;
+        --secondary-purple-hover: #7c3aed;
 
-            /* Accent Colors */
-            --accent-cyan: #06B6D4;
-            --accent-green: #10B981;
-            --accent-orange: #F59E0B;
-            --accent-red: #EF4444;
+        /* Accent Colors */
+        --accent-cyan: #06b6d4;
+        --accent-green: #10b981;
+        --accent-orange: #f59e0b;
+        --accent-red: #ef4444;
 
-            /* Neutral Grays */
-            --background-primary: #0F172A;
-            --background-secondary: #1E293B;
-            --background-tertiary: #334155;
-            --surface: #1E293B;
-            --border: #334155;
-            --text-primary: #F8FAFC;
-            --text-secondary: #CBD5E1;
-            --text-muted: #94A3B8;
-            --text-inverse: #0F172A;
+        /* Neutral Grays */
+        --background-primary: #0f172a;
+        --background-secondary: #1e293b;
+        --background-tertiary: #334155;
+        --surface: #1e293b;
+        --border: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #94a3b8;
+        --text-inverse: #0f172a;
 
-            /* Interactive States */
-            --focus-ring: #3B82F640;
-            --hover-overlay: #FFFFFF10;
-            --active-overlay: #FFFFFF20;
-            --disabled: #475569;
+        /* Interactive States */
+        --focus-ring: #3b82f640;
+        --hover-overlay: #ffffff10;
+        --active-overlay: #ffffff20;
+        --disabled: #475569;
 
-            /* Message Colors */
-            --message-user-bg: #3B82F6;
-            --message-user-text: #FFFFFF;
-            --message-assistant-bg: #1E293B;
-            --message-assistant-text: #F8FAFC;
-            --message-system-bg: #374151;
-            --message-system-text: #CBD5E1;
-        }
+        /* Message Colors */
+        --message-user-bg: #3b82f6;
+        --message-user-text: #ffffff;
+        --message-assistant-bg: #1e293b;
+        --message-assistant-text: #f8fafc;
+        --message-system-bg: #374151;
+        --message-system-text: #cbd5e1;
+      }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--background-primary);
-            color: var(--text-primary);
-            line-height: 1.6;
-            padding: 2rem;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--background-primary);
+        color: var(--text-primary);
+        line-height: 1.6;
+        padding: 2rem;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
 
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
+      .header {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary-blue),
+          var(--secondary-purple)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
 
-        .header p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-        }
+      .header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+      }
 
-        .section {
-            margin-bottom: 3rem;
-        }
+      .section {
+        margin-bottom: 3rem;
+      }
 
-        .section h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            color: var(--text-primary);
-        }
+      .section h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary);
+      }
 
-        .color-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
+      .color-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
 
-        .color-card {
-            background: var(--background-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
+      .color-card {
+        background: var(--background-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
 
-        .color-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
+      .color-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
 
-        .color-swatch {
-            height: 80px;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+      .color-swatch {
+        height: 80px;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
 
-        .color-info {
-            font-size: 0.9rem;
-        }
+      .color-info {
+        font-size: 0.9rem;
+      }
 
-        .color-hex {
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.25rem;
-        }
+      .color-hex {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+      }
 
-        .color-name {
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
+      .color-name {
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+      }
 
-        .color-usage {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
+      .color-usage {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+      }
 
-        .demo-section {
-            background: var(--background-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
+      .demo-section {
+        background: var(--background-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+      }
 
-        .demo-upload {
-            text-align: center;
-            padding: 3rem;
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            background: var(--background-primary);
-            margin-bottom: 2rem;
-        }
+      .demo-upload {
+        text-align: center;
+        padding: 3rem;
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        background: var(--background-primary);
+        margin-bottom: 2rem;
+      }
 
-        .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--primary-blue);
-        }
+      .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--primary-blue);
+      }
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 1rem;
-            margin: 0.5rem;
-        }
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+        margin: 0.5rem;
+      }
 
-        .btn-primary {
-            background: var(--primary-blue);
-            color: var(--text-inverse);
-        }
+      .btn-primary {
+        background: var(--primary-blue);
+        color: var(--text-inverse);
+      }
 
-        .btn-primary:hover {
-            background: var(--primary-blue-hover);
-            transform: translateY(-1px);
-        }
+      .btn-primary:hover {
+        background: var(--primary-blue-hover);
+        transform: translateY(-1px);
+      }
 
-        .btn-secondary {
-            background: var(--secondary-purple);
-            color: var(--text-inverse);
-        }
+      .btn-secondary {
+        background: var(--secondary-purple);
+        color: var(--text-inverse);
+      }
 
-        .btn-secondary:hover {
-            background: var(--secondary-purple-hover);
-            transform: translateY(-1px);
-        }
+      .btn-secondary:hover {
+        background: var(--secondary-purple-hover);
+        transform: translateY(-1px);
+      }
 
-        .conversation-list {
-            background: var(--background-primary);
-            border-radius: 6px;
-            overflow: hidden;
-        }
+      .conversation-list {
+        background: var(--background-primary);
+        border-radius: 6px;
+        overflow: hidden;
+      }
 
-        .conversation-item {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background 0.2s ease;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+      .conversation-item {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: background 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-        .conversation-item:hover {
-            background: var(--background-tertiary);
-        }
+      .conversation-item:hover {
+        background: var(--background-tertiary);
+      }
 
-        .conversation-item:last-child {
-            border-bottom: none;
-        }
+      .conversation-item:last-child {
+        border-bottom: none;
+      }
 
-        .conversation-title {
-            color: var(--text-primary);
-            font-weight: 500;
-        }
+      .conversation-title {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
 
-        .conversation-date {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
+      .conversation-date {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
 
-        .message-container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
+      .message-container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
 
-        .message {
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: flex-start;
-        }
+      .message {
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+      }
 
-        .message.user {
-            justify-content: flex-end;
-        }
+      .message.user {
+        justify-content: flex-end;
+      }
 
-        .message-bubble {
-            max-width: 70%;
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            font-size: 0.95rem;
-        }
+      .message-bubble {
+        max-width: 70%;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        font-size: 0.95rem;
+      }
 
-        .message.user .message-bubble {
-            background: var(--message-user-bg);
-            color: var(--message-user-text);
-            border-bottom-right-radius: 4px;
-        }
+      .message.user .message-bubble {
+        background: var(--message-user-bg);
+        color: var(--message-user-text);
+        border-bottom-right-radius: 4px;
+      }
 
-        .message.assistant .message-bubble {
-            background: var(--message-assistant-bg);
-            color: var(--message-assistant-text);
-            border-bottom-left-radius: 4px;
-            border: 1px solid var(--border);
-        }
+      .message.assistant .message-bubble {
+        background: var(--message-assistant-bg);
+        color: var(--message-assistant-text);
+        border-bottom-left-radius: 4px;
+        border: 1px solid var(--border);
+      }
 
-        .message.system .message-bubble {
-            background: var(--message-system-bg);
-            color: var(--message-system-text);
-            text-align: center;
-            font-style: italic;
-            font-size: 0.9rem;
-        }
+      .message.system .message-bubble {
+        background: var(--message-system-bg);
+        color: var(--message-system-text);
+        text-align: center;
+        font-style: italic;
+        font-size: 0.9rem;
+      }
 
-        .search-box {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-size: 1rem;
-            margin-bottom: 1.5rem;
-        }
+      .search-box {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-primary);
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+      }
 
-        .search-box:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px var(--focus-ring);
-        }
+      .search-box:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px var(--focus-ring);
+      }
 
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
+      .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
 
-        .status-success {
-            background: var(--accent-green);
-        }
+      .status-success {
+        background: var(--accent-green);
+      }
 
-        .status-warning {
-            background: var(--accent-orange);
-        }
+      .status-warning {
+        background: var(--accent-orange);
+      }
 
-        .status-error {
-            background: var(--accent-red);
-        }
+      .status-error {
+        background: var(--accent-red);
+      }
 
-        .chart-demo {
-            height: 200px;
-            background: var(--background-primary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
+      .chart-demo {
+        height: 200px;
+        background: var(--background-primary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
 
-        .chart-line {
-            position: absolute;
-            height: 2px;
-            background: var(--accent-cyan);
-            width: 80%;
-            top: 50%;
-            left: 10%;
-            transform: translateY(-50%);
-        }
+      .chart-line {
+        position: absolute;
+        height: 2px;
+        background: var(--accent-cyan);
+        width: 80%;
+        top: 50%;
+        left: 10%;
+        transform: translateY(-50%);
+      }
 
-        .chart-point {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: var(--accent-cyan);
-            border-radius: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
+      .chart-point {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: var(--accent-cyan);
+        border-radius: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <header class="header">
-            <h1>Data Dumpster Diver</h1>
-            <p>Dark Mode Color Palette & UI Demo</p>
-        </header>
+      <header class="header">
+        <h1>Data Dumpster Diver</h1>
+        <p>Dark Mode Color Palette & UI Demo</p>
+      </header>
 
-        <section class="section">
-            <h2>Color Palette</h2>
-            <div class="color-grid">
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--primary-blue); color: white;">Primary</div>
-                    <div class="color-info">
-                        <div class="color-hex">#3B82F6</div>
-                        <div class="color-name">Primary Blue</div>
-                        <div class="color-usage">Main actions, navigation, links</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--secondary-purple); color: white;">Secondary</div>
-                    <div class="color-info">
-                        <div class="color-hex">#8B5CF6</div>
-                        <div class="color-name">Secondary Purple</div>
-                        <div class="color-usage">Secondary actions, highlights</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--accent-cyan); color: white;">Cyan</div>
-                    <div class="color-info">
-                        <div class="color-hex">#06B6D4</div>
-                        <div class="color-name">Accent Cyan</div>
-                        <div class="color-usage">Data visualization, charts</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--accent-green); color: white;">Success</div>
-                    <div class="color-info">
-                        <div class="color-hex">#10B981</div>
-                        <div class="color-name">Accent Green</div>
-                        <div class="color-usage">Success states, positive indicators</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--accent-orange); color: white;">Warning</div>
-                    <div class="color-info">
-                        <div class="color-hex">#F59E0B</div>
-                        <div class="color-name">Accent Orange</div>
-                        <div class="color-usage">Warnings, attention elements</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--accent-red); color: white;">Error</div>
-                    <div class="color-info">
-                        <div class="color-hex">#EF4444</div>
-                        <div class="color-name">Accent Red</div>
-                        <div class="color-usage">Error states, destructive actions</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--background-primary); color: var(--text-primary);">BG Primary</div>
-                    <div class="color-info">
-                        <div class="color-hex">#0F172A</div>
-                        <div class="color-name">Background Primary</div>
-                        <div class="color-usage">Main application background</div>
-                    </div>
-                </div>
-
-                <div class="color-card">
-                    <div class="color-swatch" style="background: var(--background-secondary); color: var(--text-primary);">BG Secondary</div>
-                    <div class="color-info">
-                        <div class="color-hex">#1E293B</div>
-                        <div class="color-name">Background Secondary</div>
-                        <div class="color-usage">Cards, panels, content areas</div>
-                    </div>
-                </div>
+      <section class="section">
+        <h2>Color Palette</h2>
+        <div class="color-grid">
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--primary-blue); color: white"
+            >
+              Primary
             </div>
-        </section>
-
-        <section class="section">
-            <h2>UI Component Examples</h2>
-            
-            <div class="demo-section">
-                <h3>Upload Page</h3>
-                <div class="demo-upload">
-                    <div class="upload-icon">📁</div>
-                    <h3>Upload ChatGPT Conversations</h3>
-                    <p style="color: var(--text-secondary); margin: 1rem 0;">Drag and drop your JSON files here, or click to browse</p>
-                    <button class="btn btn-primary">Choose Files</button>
-                    <button class="btn btn-secondary">Start Upload</button>
-                </div>
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <span class="status-indicator status-success"></span>
-                    <span style="color: var(--text-secondary);">Upload completed successfully</span>
-                </div>
+            <div class="color-info">
+              <div class="color-hex">#3B82F6</div>
+              <div class="color-name">Primary Blue</div>
+              <div class="color-usage">Main actions, navigation, links</div>
             </div>
+          </div>
 
-            <div class="demo-section">
-                <h3>Conversations List</h3>
-                <input type="text" class="search-box" placeholder="Search conversations...">
-                <div class="conversation-list">
-                    <div class="conversation-item">
-                        <div>
-                            <div class="conversation-title">Python Data Analysis Discussion</div>
-                            <div class="conversation-date">March 15, 2024</div>
-                        </div>
-                        <span class="status-indicator status-success"></span>
-                    </div>
-                    <div class="conversation-item">
-                        <div>
-                            <div class="conversation-title">Machine Learning Project Planning</div>
-                            <div class="conversation-date">March 14, 2024</div>
-                        </div>
-                        <span class="status-indicator status-warning"></span>
-                    </div>
-                    <div class="conversation-item">
-                        <div>
-                            <div class="conversation-title">Web Development Best Practices</div>
-                            <div class="conversation-date">March 13, 2024</div>
-                        </div>
-                        <span class="status-indicator status-success"></span>
-                    </div>
-                </div>
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--secondary-purple); color: white"
+            >
+              Secondary
             </div>
+            <div class="color-info">
+              <div class="color-hex">#8B5CF6</div>
+              <div class="color-name">Secondary Purple</div>
+              <div class="color-usage">Secondary actions, highlights</div>
+            </div>
+          </div>
 
-            <div class="demo-section">
-                <h3>Conversation View</h3>
-                <div class="message-container">
-                    <div class="message system">
-                        <div class="message-bubble">Conversation started on March 15, 2024</div>
-                    </div>
-                    <div class="message user">
-                        <div class="message-bubble">Can you help me analyze this dataset using Python?</div>
-                    </div>
-                    <div class="message assistant">
-                        <div class="message-bubble">I'd be happy to help you analyze your dataset! Could you tell me more about the data you're working with and what kind of analysis you're looking to perform?</div>
-                    </div>
-                    <div class="message user">
-                        <div class="message-bubble">I have a CSV file with sales data and I want to identify trends and create visualizations.</div>
-                    </div>
-                </div>
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--accent-cyan); color: white"
+            >
+              Cyan
             </div>
+            <div class="color-info">
+              <div class="color-hex">#06B6D4</div>
+              <div class="color-name">Accent Cyan</div>
+              <div class="color-usage">Data visualization, charts</div>
+            </div>
+          </div>
 
-            <div class="demo-section">
-                <h3>Data Visualization</h3>
-                <div class="chart-demo">
-                    <div class="chart-line"></div>
-                    <div class="chart-point" style="left: 20%;"></div>
-                    <div class="chart-point" style="left: 40%;"></div>
-                    <div class="chart-point" style="left: 60%;"></div>
-                    <div class="chart-point" style="left: 80%;"></div>
-                </div>
-                <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary);">Sample chart using cyan accent color for data visualization</p>
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--accent-green); color: white"
+            >
+              Success
             </div>
-        </section>
+            <div class="color-info">
+              <div class="color-hex">#10B981</div>
+              <div class="color-name">Accent Green</div>
+              <div class="color-usage">Success states, positive indicators</div>
+            </div>
+          </div>
+
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--accent-orange); color: white"
+            >
+              Warning
+            </div>
+            <div class="color-info">
+              <div class="color-hex">#F59E0B</div>
+              <div class="color-name">Accent Orange</div>
+              <div class="color-usage">Warnings, attention elements</div>
+            </div>
+          </div>
+
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--accent-red); color: white"
+            >
+              Error
+            </div>
+            <div class="color-info">
+              <div class="color-hex">#EF4444</div>
+              <div class="color-name">Accent Red</div>
+              <div class="color-usage">Error states, destructive actions</div>
+            </div>
+          </div>
+
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="background: var(--background-primary); color: var(--text-primary)"
+            >
+              BG Primary
+            </div>
+            <div class="color-info">
+              <div class="color-hex">#0F172A</div>
+              <div class="color-name">Background Primary</div>
+              <div class="color-usage">Main application background</div>
+            </div>
+          </div>
+
+          <div class="color-card">
+            <div
+              class="color-swatch"
+              style="
+                background: var(--background-secondary);
+                color: var(--text-primary);
+              "
+            >
+              BG Secondary
+            </div>
+            <div class="color-info">
+              <div class="color-hex">#1E293B</div>
+              <div class="color-name">Background Secondary</div>
+              <div class="color-usage">Cards, panels, content areas</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>UI Component Examples</h2>
+
+        <div class="demo-section">
+          <h3>Upload Page</h3>
+          <div class="demo-upload">
+            <div class="upload-icon">📁</div>
+            <h3>Upload ChatGPT Conversations</h3>
+            <p style="color: var(--text-secondary); margin: 1rem 0">
+              Drag and drop your JSON files here, or click to browse
+            </p>
+            <button class="btn btn-primary">Choose Files</button>
+            <button class="btn btn-secondary">Start Upload</button>
+          </div>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <span class="status-indicator status-success"></span>
+            <span style="color: var(--text-secondary)"
+              >Upload completed successfully</span
+            >
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h3>Conversations List</h3>
+          <input type="text" class="search-box" placeholder="Search conversations..." />
+          <div class="conversation-list">
+            <div class="conversation-item">
+              <div>
+                <div class="conversation-title">Python Data Analysis Discussion</div>
+                <div class="conversation-date">March 15, 2024</div>
+              </div>
+              <span class="status-indicator status-success"></span>
+            </div>
+            <div class="conversation-item">
+              <div>
+                <div class="conversation-title">Machine Learning Project Planning</div>
+                <div class="conversation-date">March 14, 2024</div>
+              </div>
+              <span class="status-indicator status-warning"></span>
+            </div>
+            <div class="conversation-item">
+              <div>
+                <div class="conversation-title">Web Development Best Practices</div>
+                <div class="conversation-date">March 13, 2024</div>
+              </div>
+              <span class="status-indicator status-success"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h3>Conversation View</h3>
+          <div class="message-container">
+            <div class="message system">
+              <div class="message-bubble">Conversation started on March 15, 2024</div>
+            </div>
+            <div class="message user">
+              <div class="message-bubble">
+                Can you help me analyze this dataset using Python?
+              </div>
+            </div>
+            <div class="message assistant">
+              <div class="message-bubble">
+                I'd be happy to help you analyze your dataset! Could you tell me more
+                about the data you're working with and what kind of analysis you're
+                looking to perform?
+              </div>
+            </div>
+            <div class="message user">
+              <div class="message-bubble">
+                I have a CSV file with sales data and I want to identify trends and
+                create visualizations.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-section">
+          <h3>Data Visualization</h3>
+          <div class="chart-demo">
+            <div class="chart-line"></div>
+            <div class="chart-point" style="left: 20%"></div>
+            <div class="chart-point" style="left: 40%"></div>
+            <div class="chart-point" style="left: 60%"></div>
+            <div class="chart-point" style="left: 80%"></div>
+          </div>
+          <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary)">
+            Sample chart using cyan accent color for data visualization
+          </p>
+        </div>
+      </section>
     </div>
-</body>
+  </body>
 </html>

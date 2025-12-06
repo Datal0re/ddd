@@ -148,7 +148,7 @@ All security fixes have been validated through:
 ## Files Modified Summary
 
 1. `utils/fileUtils.js` - Path validation, zip bomb protection
-2. `utils/BackupManager.js` - Race condition protection, rollback mechanism  
+2. `utils/BackupManager.js` - Race condition protection, rollback mechanism
 3. `app.js` - API validation, response standardization
 
 ## Security Score Improvement

@@ -140,14 +140,14 @@ npm test
 
 ### API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Upload page |
-| POST | `/upload` | Process ChatGPT export zip file |
-| GET | `/conversations` | List conversations for a session |
-| GET | `/conversation/:id` | View specific conversation |
-| DELETE | `/sessions/:id` | Clean up specific session |
-| POST | `/cleanup` | Clean up all old sessions |
+| Method | Endpoint            | Description                      |
+| ------ | ------------------- | -------------------------------- |
+| GET    | `/`                 | Upload page                      |
+| POST   | `/upload`           | Process ChatGPT export zip file  |
+| GET    | `/conversations`    | List conversations for a session |
+| GET    | `/conversation/:id` | View specific conversation       |
+| DELETE | `/sessions/:id`     | Clean up specific session        |
+| POST   | `/cleanup`          | Clean up all old sessions        |
 
 ### Session Management
 

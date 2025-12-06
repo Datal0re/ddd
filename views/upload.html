@@ -1,267 +1,288 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Dumpster Diver – Upload</title>
-  <link rel="stylesheet" href="../color-palette.css">
-  <style>
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-    .page-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-    }
-    .centered-card {
-      max-width: 500px;
-      margin: 0 auto 2rem;
-    }
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .error {
-      background: var(--error-bg);
-      color: var(--error-text);
-      padding: 0.75rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-    .success {
-      background: var(--success-bg);
-      color: var(--success-text);
-      padding: 0.75rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    .actions {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-top: 2rem;
-    }
-    button {
-      background: var(--primary-color);
-      color: white;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    button.secondary {
-      background: var(--secondary-color);
-    }
-    button:hover {
-      opacity: 0.9;
-    }
-    input[type="file"] {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      background: var(--input-bg);
-      color: var(--text-primary);
-    }
-    .file-selection {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      border: 2px dashed var(--border-color);
-      border-radius: 8px;
-      background: var(--input-bg);
-      transition: border-color 0.2s ease;
-    }
-    .file-selection:hover {
-      border-color: var(--primary-color);
-    }
-    .file-selection.has-file {
-      border-color: var(--success-green);
-      border-style: solid;
-    }
-    #selected-file-name {
-      flex: 1;
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-    }
-    .upload-section {
-      max-width: 500px;
-      margin: 0 auto;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="page-header">
-      <div style="margin-bottom: 1rem;">
-        <a href="index.html" class="btn btn-outline" style="font-size: 0.9rem;">← Back to Home</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Dumpster Diver – Upload</title>
+    <link rel="stylesheet" href="../color-palette.css" />
+    <style>
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      .centered-card {
+        max-width: 500px;
+        margin: 0 auto 2rem;
+      }
+      .fade-in {
+        animation: fadeIn 0.3s ease-in;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .error {
+        background: var(--error-bg);
+        color: var(--error-text);
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+      .success {
+        background: var(--success-bg);
+        color: var(--success-text);
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      .actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+      }
+      button {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button.secondary {
+        background: var(--secondary-color);
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+      input[type='file'] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .file-selection {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        background: var(--input-bg);
+        transition: border-color 0.2s ease;
+      }
+      .file-selection:hover {
+        border-color: var(--primary-color);
+      }
+      .file-selection.has-file {
+        border-color: var(--success-green);
+        border-style: solid;
+      }
+      #selected-file-name {
+        flex: 1;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+      .upload-section {
+        max-width: 500px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="page-header">
+        <div style="margin-bottom: 1rem">
+          <a href="index.html" class="btn btn-outline" style="font-size: 0.9rem"
+            >← Back to Home</a
+          >
+        </div>
+        <h1>Data Dumpster Diver</h1>
+        <p>
+          Upload your ChatGPT export to explore and visualize your conversation data
+        </p>
       </div>
-      <h1>Data Dumpster Diver</h1>
-      <p>Upload your ChatGPT export to explore and visualize your conversation data</p>
-    </div>
-    
-    <div class="card centered-card fade-in">
-      <div id="error-message" class="error" style="display: none;"></div>
-      <div id="success-message" class="success" style="display: none;"></div>
-      
-      <div class="upload-section">
-        <div class="form-group">
-          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
-            Choose ChatGPT Export File
-          </label>
-          <div id="file-selection" class="file-selection">
-            <span id="selected-file-name">No file selected</span>
-            <button id="select-file-btn" class="btn btn-outline">
-              📁 Browse Files
+
+      <div class="card centered-card fade-in">
+        <div id="error-message" class="error" style="display: none"></div>
+        <div id="success-message" class="success" style="display: none"></div>
+
+        <div class="upload-section">
+          <div class="form-group">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500">
+              Choose ChatGPT Export File
+            </label>
+            <div id="file-selection" class="file-selection">
+              <span id="selected-file-name">No file selected</span>
+              <button id="select-file-btn" class="btn btn-outline">
+                📁 Browse Files
+              </button>
+            </div>
+            <p
+              style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted)"
+            >
+              Upload the zip file from your ChatGPT data export. The app will extract
+              media assets and process conversations automatically.
+            </p>
+          </div>
+
+          <div class="actions">
+            <button id="upload-btn" class="btn btn-primary" disabled>
+              📤 Upload and Process
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="cleanupSessions()">
+              🗑️ Clear All Sessions
             </button>
           </div>
-          <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
-            Upload the zip file from your ChatGPT data export. The app will extract media assets and process conversations automatically.
-          </p>
-        </div>
-        
-        <div class="actions">
-          <button id="upload-btn" class="btn btn-primary" disabled>
-            📤 Upload and Process
-          </button>
-          <button type="button" class="btn btn-secondary" onclick="cleanupSessions()">
-            🗑️ Clear All Sessions
-          </button>
         </div>
       </div>
+
+      <div class="card">
+        <h3 style="margin-bottom: 1rem">How it works</h3>
+        <ol style="color: var(--text-secondary); line-height: 1.8">
+          <li>Export your data from ChatGPT (Settings → Data controls → Export)</li>
+          <li>Upload the resulting zip file using the form above</li>
+          <li>Browse through your conversations in an organized interface</li>
+          <li>View media assets and conversation details</li>
+        </ol>
+      </div>
     </div>
-    
-    <div class="card">
-      <h3 style="margin-bottom: 1rem;">How it works</h3>
-      <ol style="color: var(--text-secondary); line-height: 1.8;">
-        <li>Export your data from ChatGPT (Settings → Data controls → Export)</li>
-        <li>Upload the resulting zip file using the form above</li>
-        <li>Browse through your conversations in an organized interface</li>
-        <li>View media assets and conversation details</li>
-      </ol>
-    </div>
-  </div>
-  
-  <script>
-    async function cleanupSessions() {
-      if (confirm('Clear all sessions and their data? This cannot be undone.')) {
-        try {
-          const result = await window.electronAPI.cleanupSessions();
-          if (result.success) {
-            showMessage('Sessions cleared successfully.', 'success');
-            setTimeout(() => {
-              window.location.reload();
-            }, 1500);
-          } else {
-            throw new Error(result.error || 'Failed to clear sessions');
+
+    <script>
+      async function cleanupSessions() {
+        if (confirm('Clear all sessions and their data? This cannot be undone.')) {
+          try {
+            const result = await window.electronAPI.cleanupSessions();
+            if (result.success) {
+              showMessage('Sessions cleared successfully.', 'success');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            } else {
+              throw new Error(result.error || 'Failed to clear sessions');
+            }
+          } catch (err) {
+            console.error('Cleanup error:', err);
+            showMessage('Error clearing sessions. Please try again.', 'error');
           }
-        } catch (err) {
-          console.error('Cleanup error:', err);
-          showMessage('Error clearing sessions. Please try again.', 'error');
         }
       }
-    }
-    
-    function showMessage(message, type) {
-      const errorDiv = document.getElementById('error-message');
-      const successDiv = document.getElementById('success-message');
-      
-      // Hide both messages
-      errorDiv.style.display = 'none';
-      successDiv.style.display = 'none';
-      
-      // Show the appropriate message
-      if (type === 'error') {
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-      } else {
-        successDiv.textContent = message;
-        successDiv.style.display = 'block';
-      }
-    }
-    
-    let selectedFilePath = null;
 
-    // Handle file selection
-    document.getElementById('select-file-btn').addEventListener('click', async function() {
-      try {
-        const result = await window.electronAPI.selectFile();
-        
-        if (!result.success) {
-          showMessage(result.error || 'File selection cancelled.', 'error');
-          return;
-        }
-        
-        selectedFilePath = result.filePath;
-        const fileName = result.filePath.split('/').pop();
-        
-        // Update UI
-        const fileSelection = document.getElementById('file-selection');
-        const selectedFileName = document.getElementById('selected-file-name');
-        const uploadBtn = document.getElementById('upload-btn');
-        
-        selectedFileName.textContent = fileName;
-        fileSelection.classList.add('has-file');
-        uploadBtn.disabled = false;
-        
-        showMessage(`Selected: ${fileName}`, 'success');
-      } catch (err) {
-        console.error('File selection error:', err);
-        showMessage('File selection failed. Please try again.', 'error');
-      }
-    });
+      function showMessage(message, type) {
+        const errorDiv = document.getElementById('error-message');
+        const successDiv = document.getElementById('success-message');
 
-    // Handle upload button click
-    document.getElementById('upload-btn').addEventListener('click', async function() {
-      if (!selectedFilePath) {
-        showMessage('Please select a file first.', 'error');
-        return;
-      }
-      
-      // Show loading state
-      const originalText = this.textContent;
-      this.textContent = '⏳ Uploading...';
-      this.disabled = true;
-      
-      try {
-        // Process the upload
-        const processResult = await window.electronAPI.processUpload(selectedFilePath);
-        
-        if (processResult.success) {
-          showMessage('Upload successful! Redirecting...', 'success');
-          // Redirect to conversations page after a short delay
-          setTimeout(() => {
-            window.location.href = `conversations.html?session=${processResult.sessionId}`;
-          }, 1500);
+        // Hide both messages
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+
+        // Show the appropriate message
+        if (type === 'error') {
+          errorDiv.textContent = message;
+          errorDiv.style.display = 'block';
         } else {
-          showMessage(processResult.error || 'Upload failed. Please try again.', 'error');
+          successDiv.textContent = message;
+          successDiv.style.display = 'block';
         }
-      } catch (err) {
-        console.error('Upload error:', err);
-        showMessage('Upload failed. Please try again.', 'error');
-      } finally {
-        // Restore button state
-        this.textContent = originalText;
-        this.disabled = false;
       }
-    });
-  </script>
-</body>
+
+      let selectedFilePath = null;
+
+      // Handle file selection
+      document
+        .getElementById('select-file-btn')
+        .addEventListener('click', async function () {
+          try {
+            const result = await window.electronAPI.selectFile();
+
+            if (!result.success) {
+              showMessage(result.error || 'File selection cancelled.', 'error');
+              return;
+            }
+
+            selectedFilePath = result.filePath;
+            const fileName = result.filePath.split('/').pop();
+
+            // Update UI
+            const fileSelection = document.getElementById('file-selection');
+            const selectedFileName = document.getElementById('selected-file-name');
+            const uploadBtn = document.getElementById('upload-btn');
+
+            selectedFileName.textContent = fileName;
+            fileSelection.classList.add('has-file');
+            uploadBtn.disabled = false;
+
+            showMessage(`Selected: ${fileName}`, 'success');
+          } catch (err) {
+            console.error('File selection error:', err);
+            showMessage('File selection failed. Please try again.', 'error');
+          }
+        });
+
+      // Handle upload button click
+      document
+        .getElementById('upload-btn')
+        .addEventListener('click', async function () {
+          if (!selectedFilePath) {
+            showMessage('Please select a file first.', 'error');
+            return;
+          }
+
+          // Show loading state
+          const originalText = this.textContent;
+          this.textContent = '⏳ Uploading...';
+          this.disabled = true;
+
+          try {
+            // Process the upload
+            const processResult =
+              await window.electronAPI.processUpload(selectedFilePath);
+
+            if (processResult.success) {
+              showMessage('Upload successful! Redirecting...', 'success');
+              // Redirect to conversations page after a short delay
+              setTimeout(() => {
+                window.location.href = `conversations.html?session=${processResult.sessionId}`;
+              }, 1500);
+            } else {
+              showMessage(
+                processResult.error || 'Upload failed. Please try again.',
+                'error'
+              );
+            }
+          } catch (err) {
+            console.error('Upload error:', err);
+            showMessage('Upload failed. Please try again.', 'error');
+          } finally {
+            // Restore button state
+            this.textContent = originalText;
+            this.disabled = false;
+          }
+        });
+    </script>
+  </body>
 </html>
