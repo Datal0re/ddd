@@ -2,6 +2,82 @@
 
 All notable changes to Data Dumpster Diver will be documented in this file.
 
+## [1.0.2] - 2025-12-06
+
+### 🔒 Critical Security Fixes
+
+#### Path Traversal Vulnerability (FIXED ✅)
+- **Issue**: `moveFilesToFinalLocations()` function didn't validate file paths, allowing malicious zip files to write files outside intended directories using `../` sequences
+- **Fix**: Added `validatePath()` function with path normalization and validation for all file operations
+- **Files Modified**: `utils/fileUtils.js`
+
+#### Zip Bomb Protection (FIXED ✅)
+- **Issue**: Only basic ZIP signature validation was performed, with no protection against compression ratio attacks
+- **Fix**: Added `validateZipStructure()` function with compression ratio checks (max 100:1 ratio) and file count limits (max 10,000 files)
+- **Files Modified**: `utils/fileUtils.js`
+
+#### API Endpoint Validation (FIXED ✅)
+- **Issue**: Backup API endpoints didn't validate session existence before processing requests
+- **Fix**: Added session existence checks using `sessionManager.hasSession()` and proper HTTP status codes
+- **Files Modified**: `app.js`
+
+#### Backup Restore Cleanup (FIXED ✅)
+- **Issue**: Failed backup restores didn't clean up partial changes, potentially leaving data in inconsistent state
+- **Fix**: Implemented rollback mechanism with automatic file restoration on backup failure
+- **Files Modified**: `utils/BackupManager.js`
+
+#### Race Condition Protection (FIXED ✅)
+- **Issue**: Multiple simultaneous backup calls could create conflicting files
+- **Fix**: Implemented locking mechanism using `backupLocks` Map with timestamp collision detection
+- **Files Modified**: `utils/BackupManager.js`
+
+### 🏗️ Architecture Improvements
+
+#### Hybrid Electron + Express Architecture
+- **Change**: Transformed from web application to sophisticated desktop application
+- **Implementation**: 
+  - Electron frontend with secure IPC communication
+  - Express backend API server on port 3001
+  - Main process acts as API client to its own Express server
+- **Files Added**: `renderer.js` (preload script), updated `main.js` (Electron main process)
+
+#### Enhanced Session Management
+- **Improvement**: Centralized session lifecycle management with disk-based persistence
+- **Features**: Session rehydration on startup, integration with backup system
+- **Files Modified**: `utils/SessionManager.js`, added `data/sessions.json` metadata storage
+
+### 💾 Backup System Implementation
+
+#### Automated Backup Creation
+- **Feature**: `BackupManager` class for session backups with timestamps
+- **Capabilities**: JSON-based backups, automatic cleanup (max 10), pre-restore backup creation
+- **API Endpoints**: 
+  - `POST /api/sessions/:sessionId/backup`
+  - `GET /api/sessions/:sessionId/backups`
+  - `POST /api/sessions/:sessionId/restore`
+
+### 📈 Performance & UX Enhancements
+
+#### Progress Tracking
+- **Feature**: Real-time progress callbacks during upload processing
+- **Benefit**: Better UX for large files with processing feedback
+
+#### Enhanced Error Handling
+- **Improvement**: More specific error messages, better logging, graceful error recovery
+- **Benefit**: Improved debugging and user experience
+
+#### Resource Management
+- **Optimization**: Streaming processing for large files, memory-efficient operations
+- **Benefit**: Better performance with large exports
+
+### 🔧 Security Constants Added
+```javascript
+const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_EXTRACTED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+const MAX_COMPRESSION_RATIO = 100; // 100:1 ratio limit
+const MAX_FILES_IN_ZIP = 10000; // Max files per zip
+```
+
 ## [1.0.1] - 2025-11-30
 
 ### 🛠️ Session Persistence Fix
@@ -19,13 +95,13 @@ All notable changes to Data Dumpster Diver will be documented in this file.
 
 ### 🎉 MVP Release
 
-Initial release of Data Dumpster Diver - a web application for exploring and visualizing exported ChatGPT conversation data.
+Initial release of Data Dumpster Diver - a web application for exploring and visualizing exported ChatGPT conversation data. (Later evolved to hybrid Electron + Express desktop application)
 
 ### ✨ Features Added
 
 #### Core Web Application
 
-- **Express.js Server**: Full-featured web server with EJS templating
+- **Express.js Server**: Full-featured web server with HTML views
 - **File Upload System**: Secure zip file upload with multer middleware
 - **Session Management**: In-memory session handling with automatic cleanup
 - **Data Migration**: Automated processing of ChatGPT export files
@@ -58,16 +134,20 @@ Initial release of Data Dumpster Diver - a web application for exploring and vis
 
 #### Backend Components
 
-- `app.js`: Main Express server with routing and middleware
-- `main.js`: Conversation message processing and markdown rendering
+- `app.js`: Express API server with routing and middleware
+- `main.js`: Electron main process with IPC communication
+- `utils/SessionManager.js`: Session lifecycle management
+- `utils/BackupManager.js`: Backup system implementation
+- `utils/fileUtils.js`: Secure file operations
 - `data/migration.js`: Data migration script for processing exports
 
 #### Frontend Components
 
-- `views/upload.ejs`: File upload interface
-- `views/conversations.ejs`: Conversation listing with search
-- `views/conversation.ejs`: Individual conversation viewer
+- `views/upload.html`: File upload interface
+- `views/conversations.html`: Conversation listing with search
+- `views/conversation.html`: Individual conversation viewer
 - `public/styles.css`: Comprehensive dark mode CSS with custom properties
+- `renderer.js`: Electron preload script for IPC communication
 
 #### Data Structure
 
@@ -80,22 +160,25 @@ Initial release of Data Dumpster Diver - a web application for exploring and vis
 
 #### Dependencies
 
+- **Electron 35.7.5**: Desktop application framework
 - **Express 5.1.0**: Web framework and routing
-- **EJS 3.1.10**: Template engine for server-side rendering
 - **Multer 2.0.2**: File upload handling
-- **Decompress 4.2.1**: Zip file extraction
 - **Marked 17.0.0**: Markdown parsing and rendering
 - **Sanitize-html 2.17.0**: HTML content sanitization
 - **UUID 13.0.0**: Session identifier generation
+- **Axios 1.6.0**: HTTP client for API communication
+- **Pino 10.1.0**: Logging utility
+- **Electron-log 5.4.3**: Electron-specific logging
 
 #### API Endpoints
 
-- `GET /`: Upload page
-- `POST /upload`: File upload and processing
-- `GET /conversations`: Conversation listing
-- `GET /conversation/:id`: Individual conversation view
-- `DELETE /sessions/:id`: Session cleanup
-- `POST /cleanup`: Bulk session cleanup
+- `GET /api/health`: Health check
+- `POST /api/upload`: File upload and processing
+- `GET /api/sessions`: Session listing
+- `GET /api/sessions/:sessionId/conversations`: Conversation listing for session
+- `GET /api/sessions/:sessionId/conversations/:conversationId`: Individual conversation view
+- `DELETE /api/sessions/:sessionId`: Session cleanup
+- `POST /api/sessions/cleanup`: Bulk session cleanup
 
 #### Security Features
 
@@ -146,24 +229,35 @@ Initial release of Data Dumpster Diver - a web application for exploring and vis
 
 ```text
 data-dumpster-diver/
-├── app.js                 # Main Express server
-├── main.js               # Message processing utilities
-├── package.json          # Dependencies and scripts
-├── data/
-│   ├── migration.js      # Data migration script
-│   ├── conversations/    # Processed conversation files
-│   ├── sessions/         # Session-specific data
-│   └── assets.json       # Asset metadata
-├── views/
-│   ├── upload.ejs        # Upload interface
-│   ├── conversations.ejs # Conversation list
-│   └── conversation.ejs  # Conversation viewer
-├── public/
-│   ├── styles.css        # Dark mode styles
-│   └── media/           # Extracted media files
-├── COLOR_PALETTE.md     # Design system documentation
-├── AGENTS.md           # Development guidelines
-└── README.md           # Project documentation
+├── main.js                    # Electron main process
+├── app.js                     # Express API server
+├── renderer.js                # Electron preload script
+├── getConversationMessages.js # Message processing utilities
+├── package.json               # Dependencies and scripts
+├── utils/                     # Core utilities
+│   ├── SessionManager.js      # Session lifecycle management
+│   ├── BackupManager.js      # Backup system
+│   ├── fileUtils.js           # Secure file operations
+│   └── logger.js              # Logging utilities
+├── views/                     # Frontend HTML files
+│   ├── index.html             # Main dashboard
+│   ├── upload.html            # File upload interface
+│   ├── conversations.html     # Conversation list
+│   └── conversation.html      # Conversation viewer
+├── public/                    # Static assets
+│   ├── styles.css             # Application styles
+│   └── media/                 # Extracted media files
+├── data/                      # Data storage
+│   ├── sessions.json          # Session metadata
+│   ├── sessions/              # Session data directories
+│   └── migration.js           # Data migration script
+├── backups/                   # Session backups
+├── docs/                      # Documentation
+│   ├── CHANGELOG.md           # Version history
+│   └── COLOR_PALETTE.md       # Design system
+├── color-palette.css          # CSS custom properties
+├── AGENTS.md                  # Development guidelines
+└── README.md                  # Project documentation
 ```
 
 ### 🎯 MVP Scope
