@@ -54,7 +54,7 @@ let sessions;
 (async () => {
   try {
 
-const { deserializeSessions } = require("./utils/sessionUtils");
+const { deserializeSessions, serializeSessions } = require("./utils/sessionUtils");
 sessions = await deserializeSessions();
   } catch (err) {
     console.error('Failed to load existing sessions:', err);
@@ -65,34 +65,37 @@ sessions = await deserializeSessions();
 // Helper to clean up old sessions
 async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
   const now = Date.now();
+  const sessionsToDelete = [];
+  
+  // Find sessions to delete
   for (const [id, info] of sessions.entries()) {
     if (now - info.uploadedAt.getTime() > maxAgeMs) {
-    // Add new session to map
-    sessions.set(sessionId, { uploadedAt: new Date() });
-
-    // Serialize sessions to disk with error handling
-    try {
-      await serializeSessions(sessions);
-      console.log('Session serialized successfully');
-    } catch (error) {
-      console.error(`Serialization failed: ${error.message}`);
-      // Optionally send error response to client
-      // res.status(500).send('Failed to save session data');
+      sessionsToDelete.push(id);
     }
+  }
+  
+  // Delete old sessions
+  for (const id of sessionsToDelete) {
     const sessionDir = path.join(__dirname, 'data', 'sessions', id);
     const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
     
     try {
       await fs.rmdir(sessionDir, { recursive: true });
       await fs.rmdir(mediaDir, { recursive: true });
-    } catch {
-      // Ignore errors if directories don't exist
+      console.log(`Deleted old session: ${id}`);
+    } catch (error) {
+      console.warn(`Failed to delete session directories for ID ${id}:`, error.message);
     }
     
     sessions.delete(id);
+  }
+  
+  // Serialize updated sessions to disk
+  try {
     await serializeSessions(sessions);
-    await serializeSessions(sessions);
-    }
+    console.log('Sessions serialized after cleanup');
+  } catch (error) {
+    console.error(`Serialization failed after cleanup: ${error.message}`);
   }
 }
 
@@ -227,13 +230,13 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     if (conversationsPath && conversationsPath !== targetConversationsPath) {
       await fs.rename(conversationsPath, targetConversationsPath);
     }
-    // Delete any other top-level folders to avoid confusion
+  // Delete any other top-level folders to avoid confusion
     if (hasSingleTopLevel && topLevelFolder) {
       const nestedDir = path.join(sessionDir, topLevelFolder);
       try {
         await fs.rmdir(nestedDir, { recursive: true });
-      } catch {
-        // Ignore if already removed or not empty
+      } catch (error) {
+        console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
       }
     }
 
@@ -243,10 +246,9 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     // Run migration with session-scoped output directory
     await runMigration(sessionId, path.join(sessionDir, 'conversations'));
 
-  // Store session info
-  sessions.set(sessionId, { uploadedAt: new Date() });
-  await serializeSessions(sessions);
-  await serializeSessions(sessions);
+    // Store session info
+    sessions.set(sessionId, { uploadedAt: new Date() });
+    await serializeSessions(sessions);
 
     return { success: true, sessionId };
   } catch (err) {
@@ -312,15 +314,15 @@ ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
 // IPC handler for deleting a session
 ipcMain.handle('delete-session', async (_, sessionId) => {
   // Remove session folder and media folder
-  const sessionDir = path.join(__dirname, 'data', 'sessions', sessionId);
-  const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', sessionId);
-  
-  try {
-    await fs.rmdir(sessionDir, { recursive: true });
-    await fs.rmdir(mediaDir, { recursive: true });
-  } catch {
-    // Ignore errors if directories don't exist
-  }
+    const sessionDir = path.join(__dirname, 'data', 'sessions', sessionId);
+    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', sessionId);
+    
+    try {
+      await fs.rmdir(sessionDir, { recursive: true });
+      await fs.rmdir(mediaDir, { recursive: true });
+    } catch (error) {
+      console.warn(`Failed to delete session directories for ID ${sessionId}:`, error.message);
+    }
   
   sessions.delete(sessionId);
   return { success: true };

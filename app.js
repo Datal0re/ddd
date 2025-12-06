@@ -257,7 +257,7 @@ app.delete('/sessions/:id', async (req, res) => {
     }
     
     sessions.delete(id);
-    await serializeSessions(sessions);    await serializeSessions(sessions);
+    await serializeSessions(sessions);
   res.sendStatus(204);
 });
 

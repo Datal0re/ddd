@@ -2,7 +2,7 @@
   "name": "data-dumpster-diver",
   "version": "1.0.0",
   "description": "A desktop app to explore and visualize exported ChatGPT conversation data.",
-  "license": "ISC",
+  "license": "MIT",
   "author": "Ethan Thomason",
   "main": "main.js",
   "type": "commonjs",
