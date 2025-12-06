@@ -63,82 +63,108 @@ async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuff
   const decompress = await getDecompress();
   const path = require('path');
   
-  // Save or copy zip file
-  const tempZipPath = path.join(sessionDir, 'upload.zip');
-  if (isBuffer) {
-    await fs.writeFile(tempZipPath, zipData);
-  } else {
-    await fs.copyFile(zipData, tempZipPath);
-  }
-
-  // Extract zip
-  const files = await decompress(tempZipPath, sessionDir);
-  
-  // Find conversations.json and detect top-level folder structure
-  let conversationsPath = null;
-  const topLevelDirs = new Set();
-  
-  for (const file of files) {
-    const parts = file.path.split(path.sep);
-    if (parts.length > 1) {
-      topLevelDirs.add(parts[0]);
+  try {
+    console.log(`Processing zip upload: isBuffer=${isBuffer}, sessionId=${sessionId}`);
+    
+    // Save or copy zip file
+    const tempZipPath = path.join(sessionDir, 'upload.zip');
+    if (isBuffer) {
+      console.log('Writing buffer to temp file:', tempZipPath);
+      await fs.writeFile(tempZipPath, zipData);
+    } else {
+      console.log('Copying file to temp location:', tempZipPath);
+      await fs.copyFile(zipData, tempZipPath);
     }
-  }
-  
-  const hasSingleTopLevel = topLevelDirs.size === 1;
-  const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : null;
 
-  // Process each file
-  for (const file of files) {
-    // Find conversations.json
-    if (file.path.endsWith('conversations.json')) {
-      const candidatePath = path.join(sessionDir, file.path);
-      const stats = await fs.stat(candidatePath);
-      if (stats.isFile()) {
-        const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
-        if (sample && !sample.includes('\u0000')) {
-          conversationsPath = candidatePath;
-        }
+    console.log('Starting zip extraction...');
+    // Extract zip
+    const files = await decompress(tempZipPath, sessionDir);
+    
+    console.log(`Extracted ${files.length} files:`, files.map(f => ({ path: f.path, type: f.type })));
+    
+    if (!files || files.length === 0) {
+      console.error('No files extracted from zip archive');
+      throw new Error('No files found in zip archive or extraction failed');
+    }
+    
+    // Find conversations.json and detect top-level folder structure
+    let conversationsPath = null;
+    const topLevelDirs = new Set();
+    
+    for (const file of files) {
+      const parts = file.path.split(path.sep);
+      if (parts.length > 1) {
+        topLevelDirs.add(parts[0]);
       }
     }
     
-    // Copy media assets
-    if ((file.path.startsWith('file-') || file.path.includes('audio/') || file.path.includes('dalle-generations/')) && !file.path.endsWith('/')) {
-      const src = path.join(sessionDir, file.path);
-      const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-        ? file.path.slice((topLevelFolder + path.sep).length)
-        : file.path;
-      const destPath = path.join(mediaDir, relativePath);
-      await ensureDir(path.dirname(destPath));
-      await fs.copyFile(src, destPath);
+    console.log('Top-level directories found:', [...topLevelDirs]);
+    
+    const hasSingleTopLevel = topLevelDirs.size === 1;
+    const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : '';
+    
+    console.log('Has single top level:', hasSingleTopLevel);
+    console.log('Top level folder:', topLevelFolder);
+    
+    // Process each file
+    for (const file of files) {
+      // Find conversations.json
+      if (file.path.endsWith('conversations.json')) {
+        const candidatePath = path.join(sessionDir, file.path);
+        const stats = await fs.stat(candidatePath);
+        if (stats.isFile()) {
+          const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
+          if (sample && !sample.includes('\u0000')) {
+            conversationsPath = candidatePath;
+          }
+        }
+      }
+      
+      // Copy media assets
+      if ((file.path.startsWith('file-') || file.path.includes('audio/') || file.path.includes('dalle-generations/')) && !file.path.endsWith('/')) {
+        const src = path.join(sessionDir, file.path);
+        const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
+          ? file.path.slice((topLevelFolder + path.sep).length)
+          : file.path;
+        const destPath = path.join(mediaDir, relativePath);
+        await ensureDir(path.dirname(destPath));
+        await fs.copyFile(src, destPath);
+      }
     }
-  }
-
-  if (!conversationsPath) {
-    throw new Error('conversations.json not found in uploaded zip.');
-  }
-
-  // Ensure conversations.json is at session root
-  const targetConversationsPath = path.join(sessionDir, 'conversations.json');
-  if (conversationsPath !== targetConversationsPath) {
-    await fs.rename(conversationsPath, targetConversationsPath);
-    conversationsPath = targetConversationsPath;
-  }
-
-  // Clean up nested directory if present
-  if (hasSingleTopLevel && topLevelFolder) {
-    const nestedDir = path.join(sessionDir, topLevelFolder);
-    try {
-      await fs.rmdir(nestedDir, { recursive: true });
-    } catch (error) {
-      console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
+    
+    if (!conversationsPath) {
+      throw new Error('conversations.json not found in uploaded zip.');
     }
+    
+    // Ensure conversations.json is at session root
+    const targetConversationsPath = path.join(sessionDir, 'conversations.json');
+    if (conversationsPath !== targetConversationsPath) {
+      await fs.rename(conversationsPath, targetConversationsPath);
+      conversationsPath = targetConversationsPath;
+    }
+    
+    // Clean up nested directory if present
+    if (hasSingleTopLevel && topLevelFolder) {
+      const nestedDir = path.join(sessionDir, topLevelFolder);
+      try {
+        await fs.rmdir(nestedDir, { recursive: true });
+      } catch (error) {
+        console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
+      }
+    }
+    
+    // Clean up temporary zip
+    await fs.unlink(tempZipPath);
+    
+    return conversationsPath;
+  } catch (error) {
+    console.error('Zip upload processing failed:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code
+    });
+    throw error;
   }
-
-  // Clean up temporary zip
-  await fs.unlink(tempZipPath);
-
-  return conversationsPath;
 }
 
 /**
@@ -148,7 +174,7 @@ async function processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuff
 async function removeDirectories(...dirs) {
   for (const dir of dirs) {
     try {
-      await fs.rm(dir, { recursive: true, force: true });
+      await fs.rmdir(dir, { recursive: true });
     } catch (error) {
       // Ignore errors if directories don't exist
       if (error.code !== 'ENOENT') {

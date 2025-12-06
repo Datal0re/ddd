@@ -15,6 +15,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deleteSession: (sessionId) => ipcRenderer.invoke("delete-session", sessionId),
   getAllSessions: () => ipcRenderer.invoke("get-all-sessions"),
 
+  // AI Integration methods
+  aiAnalyzeConversation: (sessionId, conversationId, analysisType) => 
+    ipcRenderer.invoke("ai-analyze-conversation", sessionId, conversationId, analysisType),
+  aiSearchConversations: (sessionId, query, searchType) => 
+    ipcRenderer.invoke("ai-search-conversations", sessionId, query, searchType),
+  aiSummarizeSession: (sessionId, summaryType) => 
+    ipcRenderer.invoke("ai-summarize-session", sessionId, summaryType),
+
   // Navigation helpers
   navigateTo: (page) => {
     window.location.href = page;

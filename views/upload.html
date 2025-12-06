@@ -79,6 +79,32 @@
       background: var(--input-bg);
       color: var(--text-primary);
     }
+    .file-selection {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      background: var(--input-bg);
+      transition: border-color 0.2s ease;
+    }
+    .file-selection:hover {
+      border-color: var(--primary-color);
+    }
+    .file-selection.has-file {
+      border-color: var(--success-green);
+      border-style: solid;
+    }
+    #selected-file-name {
+      flex: 1;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .upload-section {
+      max-width: 500px;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body>
@@ -95,26 +121,31 @@
       <div id="error-message" class="error" style="display: none;"></div>
       <div id="success-message" class="success" style="display: none;"></div>
       
-      <form id="upload-form">
+      <div class="upload-section">
         <div class="form-group">
-          <label for="chatgpt-export" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
             Choose ChatGPT Export File
           </label>
-          <input type="file" id="chatgpt-export" accept=".zip" required>
+          <div id="file-selection" class="file-selection">
+            <span id="selected-file-name">No file selected</span>
+            <button id="select-file-btn" class="btn btn-outline">
+              📁 Browse Files
+            </button>
+          </div>
           <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">
             Upload the zip file from your ChatGPT data export. The app will extract media assets and process conversations automatically.
           </p>
         </div>
         
         <div class="actions">
-          <button type="submit">
+          <button id="upload-btn" class="btn btn-primary" disabled>
             📤 Upload and Process
           </button>
-          <button type="button" class="secondary" onclick="cleanupSessions()">
+          <button type="button" class="btn btn-secondary" onclick="cleanupSessions()">
             🗑️ Clear All Sessions
           </button>
         </div>
-      </form>
+      </div>
     </div>
     
     <div class="card">
@@ -166,20 +197,11 @@
       }
     }
     
-    // Handle form submission
-    document.getElementById('upload-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const fileInput = document.getElementById('chatgpt-export');
-      const file = fileInput.files[0];
-      
-      if (!file) {
-        showMessage('Please select a file to upload.', 'error');
-        return;
-      }
-      
+    let selectedFilePath = null;
+
+    // Handle file selection
+    document.getElementById('select-file-btn').addEventListener('click', async function() {
       try {
-        // Show file selection dialog and get file path
         const result = await window.electronAPI.selectFile();
         
         if (!result.success) {
@@ -187,29 +209,57 @@
           return;
         }
         
+        selectedFilePath = result.filePath;
+        const fileName = result.filePath.split('/').pop();
+        
+        // Update UI
+        const fileSelection = document.getElementById('file-selection');
+        const selectedFileName = document.getElementById('selected-file-name');
+        const uploadBtn = document.getElementById('upload-btn');
+        
+        selectedFileName.textContent = fileName;
+        fileSelection.classList.add('has-file');
+        uploadBtn.disabled = false;
+        
+        showMessage(`Selected: ${fileName}`, 'success');
+      } catch (err) {
+        console.error('File selection error:', err);
+        showMessage('File selection failed. Please try again.', 'error');
+      }
+    });
+
+    // Handle upload button click
+    document.getElementById('upload-btn').addEventListener('click', async function() {
+      if (!selectedFilePath) {
+        showMessage('Please select a file first.', 'error');
+        return;
+      }
+      
+      // Show loading state
+      const originalText = this.textContent;
+      this.textContent = '⏳ Uploading...';
+      this.disabled = true;
+      
+      try {
         // Process the upload
-        const processResult = await window.electronAPI.processUpload(result.filePath);
+        const processResult = await window.electronAPI.processUpload(selectedFilePath);
         
         if (processResult.success) {
-          // Redirect to conversations page
-          window.location.href = `conversations.html?session=${processResult.sessionId}`;
+          showMessage('Upload successful! Redirecting...', 'success');
+          // Redirect to conversations page after a short delay
+          setTimeout(() => {
+            window.location.href = `conversations.html?session=${processResult.sessionId}`;
+          }, 1500);
         } else {
           showMessage(processResult.error || 'Upload failed. Please try again.', 'error');
         }
       } catch (err) {
         console.error('Upload error:', err);
         showMessage('Upload failed. Please try again.', 'error');
-      }
-    });
-    
-    // Add file input feedback
-    document.getElementById('chatgpt-export').addEventListener('change', function(e) {
-      const fileName = e.target.files[0]?.name || 'No file selected';
-      const label = document.querySelector('label[for="chatgpt-export"]');
-      if (e.target.files[0]) {
-        label.style.color = 'var(--success-green)';
-      } else {
-        label.style.color = 'var(--text-primary)';
+      } finally {
+        // Restore button state
+        this.textContent = originalText;
+        this.disabled = false;
       }
     });
   </script>

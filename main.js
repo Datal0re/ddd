@@ -1,9 +1,32 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const { SessionManager } = require('./utils/SessionManager.js');
+const axios = require('axios');
 
 let mainWindow;
-let sessionManager;
+const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3000}/api`;
+
+console.log('Electron: API_BASE_URL =', API_BASE_URL);
+console.log('Electron: process.env.API_PORT =', process.env.API_PORT);
+
+// Add a small delay to ensure API server is ready
+setTimeout(async () => {
+  try {
+    // Test API connection
+    const response = await axios.get(`${API_BASE_URL}/health`);
+    console.log('API health check:', response.data);
+  } catch (err) {
+    console.error('API health check failed:', err.message);
+  }
+}, 1000);
+
+// Add error handling for API connection failures
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -24,11 +47,7 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(async () => {
-  // Initialize session manager
-  sessionManager = new SessionManager(__dirname);
-  await sessionManager.initialize();
-  
+app.whenReady().then(() => {
   createWindow();
 });
 
@@ -46,28 +65,35 @@ app.on('activate', () => {
 
 
 
-// Helper to ensure a directory exists
-async function ensureDir(dirPath) {
+// Helper function to make API calls
+async function apiCall(method, endpoint, data = null) {
   try {
-    await fs.access(dirPath);
-  } catch {
-    await fs.mkdir(dirPath, { recursive: true });
-  }
-}
+    const config = {
+      method,
+      url: `${API_BASE_URL}${endpoint}`,
+      timeout: 30000,
+    };
 
-// Helper to run migration script on a given conversations.json
-async function runMigration(sessionId, outputDir) {
-  const inputPath = path.join(__dirname, 'data', 'sessions', sessionId, 'conversations.json');
-  await ensureDir(outputDir);
-  return new Promise((resolve, reject) => {
-    const child = spawn('node', [path.join(__dirname, 'data', 'migration.js'), inputPath, outputDir], {
-      stdio: 'inherit',
-    });
-    child.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Migration exited with code ${code}`));
-    });
-  });
+    if (data) {
+      if (method === 'GET') {
+        config.params = data;
+      } else {
+        config.data = data;
+        config.headers = { 'Content-Type': 'application/json' };
+      }
+    }
+
+    console.log(`Making API call: ${method} ${config.url}`);
+    const response = await axios(config);
+    console.log(`API response: ${response.status} ${JSON.stringify(response.data).substring(0, 100)}...`);
+    return response.data;
+  } catch (error) {
+    console.error(`API call failed: ${method} ${endpoint}`, error.message);
+    if (error.code === 'ECONNREFUSED') {
+      console.error('Make sure the API server is running: npm run web');
+    }
+    throw error;
+  }
 }
 
 // IPC handlers for file operations
@@ -112,21 +138,70 @@ ipcMain.handle('select-file', async () => {
 // IPC handler for upload processing
 ipcMain.handle('process-upload', async (_, filePath) => {
   try {
-    const sessionId = await sessionManager.createSession(filePath, false); // false = path, not buffer
-    return { success: true, sessionId };
+    console.log('Upload request received for file path:', filePath);
+    
+    if (!filePath) {
+      throw new Error('File path is null or undefined');
+    }
+    
+    const fs = require('fs').promises;
+    const fileBuffer = await fs.readFile(filePath);
+    
+    console.log('File read successfully, buffer size:', fileBuffer.length);
+    
+    // Create FormData for file upload
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('chatgpt-export', fileBuffer, {
+      filename: 'chatgpt-export.zip',
+      contentType: 'application/zip'
+    });
+
+    console.log('Sending file to API...');
+    const response = await axios.post(`${API_BASE_URL}/upload`, form, {
+      headers: form.getHeaders(),
+      timeout: 60000 // 60 seconds for large files
+    });
+
+    console.log('API response:', response.data);
+    return { success: true, sessionId: response.data.sessionId };
   } catch (err) {
     console.error('Upload error:', err);
+    console.error('Error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
     return { success: false, error: err.message || 'Upload failed. Please try again.' };
+  }
+});
+
+// IPC handler for getting file path from input (for browser file inputs)
+ipcMain.handle('get-file-path', async (_, fileObject) => {
+  // In the browser context, we can't access the file path directly
+  // This handler is a fallback that returns an error to force using the file dialog
+  return { 
+    success: false, 
+    error: 'Cannot access file path from browser input. Please use the Browse button instead.' 
+  };
+});
+
+// IPC handler for getting all sessions
+ipcMain.handle('get-all-sessions', async () => {
+  try {
+    const response = await apiCall('GET', '/sessions');
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'Error getting sessions.' };
   }
 });
 
 // IPC handler for getting conversations
 ipcMain.handle('get-conversations', async (_, sessionId) => {
   try {
-    const conversations = await sessionManager.getConversations(sessionId);
-    return { success: true, conversations };
+    const response = await apiCall('GET', `/sessions/${sessionId}/conversations`);
+    return response;
   } catch (err) {
-    console.error('Error loading conversations:', err);
     return { success: false, error: err.message || 'Error loading conversations.' };
   }
 });
@@ -134,47 +209,72 @@ ipcMain.handle('get-conversations', async (_, sessionId) => {
 // IPC handler for getting conversation details
 ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
   try {
-    const conversation = await sessionManager.getConversation(sessionId, conversationId);
-    return { success: true, ...conversation };
+    const response = await apiCall('GET', `/sessions/${sessionId}/conversations/${conversationId}`);
+    return response;
   } catch (err) {
-    console.error('Error loading conversation:', err);
     return { success: false, error: err.message || 'Error loading conversation.' };
-  }
-});
-
-// IPC handler for session cleanup
-ipcMain.handle('cleanup-sessions', async () => {
-  try {
-    const deletedCount = await sessionManager.cleanupOldSessions();
-    return { success: true, deletedCount };
-  } catch (err) {
-    console.error('Error cleaning up sessions:', err);
-    return { success: false, error: err.message || 'Error cleaning up sessions.' };
   }
 });
 
 // IPC handler for deleting a session
 ipcMain.handle('delete-session', async (_, sessionId) => {
   try {
-    const deleted = await sessionManager.deleteSession(sessionId);
-    return { success: true, deleted };
+    const response = await apiCall('DELETE', `/sessions/${sessionId}`);
+    return response;
   } catch (err) {
-    console.error('Error deleting session:', err);
     return { success: false, error: err.message || 'Error deleting session.' };
   }
 });
 
-// IPC handler for getting all sessions
-ipcMain.handle('get-all-sessions', async () => {
+// IPC handler for session cleanup
+ipcMain.handle('cleanup-sessions', async () => {
   try {
-    const sessions = sessionManager.getAllSessions();
-    const sessionArray = Array.from(sessions.entries()).map(([id, info]) => ({
-      id,
-      uploadedAt: info.uploadedAt
-    }));
-    return { success: true, sessions: sessionArray };
+    const response = await apiCall('POST', '/sessions/cleanup');
+    return response;
   } catch (err) {
-    console.error('Error getting sessions:', err);
-    return { success: false, error: err.message || 'Error getting sessions.' };
+    return { success: false, error: err.message || 'Error cleaning up sessions.' };
+  }
+});
+
+// ===== AI INTEGRATION IPC HANDLERS =====
+
+// IPC handler for AI conversation analysis
+ipcMain.handle('ai-analyze-conversation', async (_, sessionId, conversationId, analysisType) => {
+  try {
+    const response = await apiCall('POST', '/ai/analyze-conversation', {
+      sessionId,
+      conversationId,
+      analysisType
+    });
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'AI analysis failed.' };
+  }
+});
+
+// IPC handler for AI conversation search
+ipcMain.handle('ai-search-conversations', async (_, sessionId, query, searchType) => {
+  try {
+    const response = await apiCall('POST', '/ai/search-conversations', {
+      sessionId,
+      query,
+      searchType
+    });
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'AI search failed.' };
+  }
+});
+
+// IPC handler for AI session summarization
+ipcMain.handle('ai-summarize-session', async (_, sessionId, summaryType) => {
+  try {
+    const response = await apiCall('POST', '/ai/summarize-session', {
+      sessionId,
+      summaryType
+    });
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'AI summarization failed.' };
   }
 });

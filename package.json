@@ -11,17 +11,20 @@
     "test-run": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "dev": "electron .",
-    "web": "node app.js",
+    "web": "API_PORT=3001 node app.js",
     "lint": "echo \"No JavaScript linting configured\"",
     "lint-and-fix": "echo \"No JavaScript linting configured\"",
-    "migrate": "node data/migration.js data/conversations.json"
+    "migrate": "node data/migration.js data/conversations.json",
+    "dev-full": "API_PORT=3001 npm run web & electron ."
   },
   "dependencies": {
+    "axios": "^1.6.0",
     "decompress": "^4.2.1",
     "ejs": "^3.1.10",
     "electron": "^33.0.0",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
+    "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
     "marked": "^17.0.0",
     "multer": "^2.0.2",

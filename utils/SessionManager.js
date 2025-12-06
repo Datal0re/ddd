@@ -48,26 +48,45 @@ class SessionManager {
     const sessionDir = path.join(this.dataDir, sessionId);
     const mediaDir = path.join(this.mediaDir, sessionId);
     
+    console.log(`Creating session ${sessionId} with isBuffer=${isBuffer}`);
+    
     // Ensure directories exist
     await ensureDir(sessionDir);
     await ensureDir(mediaDir);
 
     try {
       // Process zip upload
+      console.log('Starting zip upload processing...');
       await processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuffer);
+      console.log('Zip upload completed successfully');
 
       // Run migration
+      console.log('Starting migration process...');
       await runMigration(sessionId, path.join(sessionDir, 'conversations'), this.baseDir);
+      console.log('Migration completed successfully');
 
       // Store session info
       this.sessions.set(sessionId, { uploadedAt: new Date() });
       await this.saveSessions();
 
-      console.log(`Created session: ${sessionId}`);
+      console.log(`Session created successfully: ${sessionId}`);
       return sessionId;
     } catch (error) {
+      console.error('Session creation failed:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        name: error.name
+      });
+      
       // Clean up on failure
-      await removeDirectories(sessionDir, mediaDir);
+      try {
+        await removeDirectories(sessionDir, mediaDir);
+        console.log('Cleanup completed after failure');
+      } catch (cleanupError) {
+        console.error('Cleanup failed:', cleanupError);
+      }
+      
       throw error;
     }
   }
