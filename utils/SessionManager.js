@@ -6,6 +6,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { ensureDir, runMigration, processZipUpload, removeDirectories } = require('./fileUtils.js');
+const BackupManager = require('./BackupManager.js');
 
 // Dynamic import for uuid (ES module)
 let uuidv4;
@@ -24,6 +25,7 @@ class SessionManager {
     this.sessionsFile = path.join(baseDir, 'data', 'sessions.json');
     this.dataDir = path.join(baseDir, 'data', 'sessions');
     this.mediaDir = path.join(baseDir, 'public', 'media', 'sessions');
+    this.backupManager = new BackupManager(baseDir);
   }
 
   /**
@@ -55,9 +57,20 @@ class SessionManager {
     await ensureDir(mediaDir);
 
     try {
-      // Process zip upload
-      console.log('Starting zip upload processing...');
-      await processZipUpload(zipData, sessionId, sessionDir, mediaDir, isBuffer);
+      // Process zip upload with enhanced security and progress tracking
+      console.log('Starting enhanced zip upload processing...');
+      
+      const conversationsPath = await processZipUpload(
+        zipData, 
+        sessionId, 
+        sessionDir, 
+        mediaDir, 
+        isBuffer,
+        (progress) => {
+          console.log(`Upload progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`);
+        }
+      );
+      
       console.log('Zip upload completed successfully');
 
       // Run migration
@@ -65,8 +78,12 @@ class SessionManager {
       await runMigration(sessionId, path.join(sessionDir, 'conversations'), this.baseDir);
       console.log('Migration completed successfully');
 
-      // Store session info
-      this.sessions.set(sessionId, { uploadedAt: new Date() });
+      // Store session info with enhanced metadata
+      this.sessions.set(sessionId, { 
+        uploadedAt: new Date(),
+        size: Buffer.isBuffer(zipData) ? zipData.length : 0,
+        status: 'completed'
+      });
       await this.saveSessions();
 
       console.log(`Session created successfully: ${sessionId}`);
@@ -139,6 +156,59 @@ class SessionManager {
 
     console.log(`Deleted session: ${sessionId}`);
     return true;
+  }
+
+  /**
+   * Creates backup of a session
+   * @param {string} sessionId - Session ID to backup
+   * @returns {Promise<string>} Backup path
+   */
+  async createBackup(sessionId) {
+    try {
+      const backupPath = await this.backupManager.createBackup(sessionId);
+      console.log(`Backup created for session ${sessionId}: ${backupPath}`);
+      return backupPath;
+    } catch (error) {
+      console.error(`Backup failed for session ${sessionId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lists available backups for a session
+   * @param {string} sessionId - Session ID
+   * @returns {Promise<Array>} List of backup info
+   */
+  async listBackups(sessionId) {
+    try {
+      const backups = await this.backupManager.listBackups(sessionId);
+      console.log(`Found ${backups.length} backups for session ${sessionId}`);
+      return backups;
+    } catch (error) {
+      console.error(`Failed to list backups for session ${sessionId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Restores session from backup
+   * @param {string} sessionId - Session ID
+   * @param {string} backupFile - Backup filename
+   * @returns {Promise<boolean>} Success status
+   */
+  async restoreBackup(sessionId, backupFile) {
+    try {
+      const success = await this.backupManager.restoreBackup(sessionId, backupFile);
+      if (success) {
+        // Reload sessions after restore
+        await this.loadSessions();
+        console.log(`Session ${sessionId} restored from ${backupFile}`);
+      }
+      return success;
+    } catch (error) {
+      console.error(`Restore failed for session ${sessionId}:`, error);
+      return false;
+    }
   }
 
   /**

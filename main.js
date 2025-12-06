@@ -300,3 +300,35 @@ ipcMain.handle('ai-summarize-session', async (_, sessionId, summaryType) => {
     return { success: false, error: err.message || 'AI summarization failed.' };
   }
 });
+
+// ===== BACKUP MANAGEMENT IPC HANDLERS =====
+
+// IPC handler for creating session backup
+ipcMain.handle('create-backup', async (_, sessionId) => {
+  try {
+    const response = await apiCall('POST', `/sessions/${sessionId}/backup`);
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'Backup creation failed.' };
+  }
+});
+
+// IPC handler for listing session backups
+ipcMain.handle('list-backups', async (_, sessionId) => {
+  try {
+    const response = await apiCall('GET', `/sessions/${sessionId}/backups`);
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'Failed to list backups.' };
+  }
+});
+
+// IPC handler for restoring session backup
+ipcMain.handle('restore-backup', async (_, sessionId, backupFile) => {
+  try {
+    const response = await apiCall('POST', `/sessions/${sessionId}/restore`, { backupFile });
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'Backup restore failed.' };
+  }
+});

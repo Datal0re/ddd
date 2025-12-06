@@ -112,6 +112,64 @@ app.post('/api/sessions/cleanup', async (req, res) => {
   }
 });
 
+// Backup Management APIs
+app.post('/api/sessions/:sessionId/backup', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    
+    const backupPath = await sessionManager.createBackup(sessionId);
+    res.json({ success: true, data: { backupPath } });
+  } catch (err) {
+    console.error('Error creating backup:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sessions/:sessionId/backups', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    
+    const backups = await sessionManager.listBackups(sessionId);
+    res.json({ success: true, data: { backups } });
+  } catch (err) {
+    console.error('Error listing backups:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sessions/:sessionId/restore', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { backupFile } = req.body;
+    
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    
+    // Validate backupFile parameter
+    if (!backupFile || typeof backupFile !== 'string') {
+      return res.status(400).json({ success: false, error: 'Backup file is required' });
+    }
+    
+    const success = await sessionManager.restoreBackup(sessionId, backupFile);
+    res.json({ success: true, data: { restored: success } });
+  } catch (err) {
+    console.error('Error restoring backup:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // File Upload API
 app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
   try {

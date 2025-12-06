@@ -23,6 +23,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   aiSummarizeSession: (sessionId, summaryType) => 
     ipcRenderer.invoke("ai-summarize-session", sessionId, summaryType),
 
+  // Backup management methods
+  createBackup: (sessionId) => 
+    ipcRenderer.invoke("create-backup", sessionId),
+  listBackups: (sessionId) => 
+    ipcRenderer.invoke("list-backups", sessionId),
+  restoreBackup: (sessionId, backupFile) => 
+    ipcRenderer.invoke("restore-backup", sessionId, backupFile),
+
   // Navigation helpers
   navigateTo: (page) => {
     window.location.href = page;
