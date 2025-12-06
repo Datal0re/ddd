@@ -7,6 +7,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   writeFile: (filePath, data) =>
     ipcRenderer.invoke("write-file", filePath, data),
   getAppPath: (pathName) => ipcRenderer.invoke("get-app-path", pathName),
+  selectFile: () => ipcRenderer.invoke("select-file"),
+  processUpload: (filePath) => ipcRenderer.invoke("process-upload", filePath),
+  getConversations: (sessionId) => ipcRenderer.invoke("get-conversations", sessionId),
+  getConversation: (sessionId, conversationId) => ipcRenderer.invoke("get-conversation", sessionId, conversationId),
+  cleanupSessions: () => ipcRenderer.invoke("cleanup-sessions"),
+  deleteSession: (sessionId) => ipcRenderer.invoke("delete-session", sessionId),
+  getAllSessions: () => ipcRenderer.invoke("get-all-sessions"),
 
   // Navigation helpers
   navigateTo: (page) => {

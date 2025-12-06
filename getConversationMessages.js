@@ -1,8 +1,8 @@
 
-import { marked } from 'marked';
-import sanitizeHtml from 'sanitize-html';
+const { marked } = require('marked');
+const sanitizeHtml = require('sanitize-html');
 
-export function getConversationMessages(conversation) {
+function getConversationMessages(conversation) {
   const messages = [];
   const nodes = conversation && (conversation.nodes || conversation.mapping) ? Object.values(conversation.nodes || conversation.mapping) : [];
   nodes.forEach((node, idx) => {
@@ -56,3 +56,5 @@ export function getConversationMessages(conversation) {
   messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return messages;
 }
+
+module.exports = { getConversationMessages };

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Dumpster Diver</title>
+  <link rel="stylesheet" href="../color-palette.css">
+  <style>
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .page-header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+    }
+    .page-header p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .status-indicator.has-data {
+      background: var(--success-bg);
+      color: var(--success-text);
+    }
+    .status-indicator.no-data {
+      background: var(--secondary-color);
+      color: white;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .action-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .action-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    .action-card.primary {
+      border-color: var(--primary-color);
+      background: linear-gradient(135deg, var(--card-bg) 0%, rgba(var(--primary-color-rgb), 0.05) 100%);
+    }
+    .action-card h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.3rem;
+      color: var(--text-primary);
+    }
+    .action-card p {
+      margin: 0 0 1.5rem 0;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .action-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-color-dark);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: var(--secondary-color-dark);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--primary-color);
+      border: 2px solid var(--primary-color);
+    }
+    .btn-outline:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+    }
+    .loading.show {
+      display: block;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .sessions-info {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>Data Dumpster Diver</h1>
+      <p>Explore and visualize your ChatGPT conversation data</p>
+      <div id="status-indicator" class="status-indicator">
+        <span class="status-dot"></span>
+        <span id="status-text">Checking for existing data...</span>
+      </div>
+    </div>
+
+    <div id="loading" class="loading show">
+      <div class="spinner"></div>
+      <p>Loading your data...</p>
+    </div>
+
+    <div id="content" class="hidden">
+      <div id="sessions-info" class="sessions-info hidden">
+        <span id="sessions-count"></span>
+      </div>
+
+      <div id="actions-grid" class="actions-grid">
+        <!-- Actions will be dynamically inserted here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let hasExistingData = false;
+    let sessionsCount = 0;
+
+    // Check for existing sessions
+    async function checkExistingData() {
+      try {
+        // For Electron, we need to check via IPC
+        if (window.electronAPI) {
+          // This will be implemented in main.js
+          const result = await window.electronAPI.getAllSessions();
+          if (result.success) {
+            sessionsCount = result.sessions.length;
+            hasExistingData = sessionsCount > 0;
+          }
+        } else {
+          // For Express, we'll get this from the server-side rendering
+          // The data will be embedded in the page
+          hasExistingData = window.hasExistingData || false;
+          sessionsCount = window.sessionsCount || 0;
+        }
+      } catch (error) {
+        console.error('Error checking for existing data:', error);
+        hasExistingData = false;
+      }
+    }
+
+    // Update status indicator
+    function updateStatusIndicator() {
+      const indicator = document.getElementById('status-indicator');
+      const statusText = document.getElementById('status-text');
+      
+      if (hasExistingData) {
+        indicator.className = 'status-indicator has-data';
+        statusText.textContent = `Data available (${sessionsCount} session${sessionsCount !== 1 ? 's' : ''})`;
+      } else {
+        indicator.className = 'status-indicator no-data';
+        statusText.textContent = 'No data found';
+      }
+    }
+
+    // Update sessions info
+    function updateSessionsInfo() {
+      const sessionsInfo = document.getElementById('sessions-info');
+      const sessionsCount = document.getElementById('sessions-count');
+      
+      if (hasExistingData) {
+        sessionsInfo.classList.remove('hidden');
+        sessionsCount.textContent = `You have ${sessionsCount} session${sessionsCount !== 1 ? 's' : ''} of conversation data ready to explore`;
+      } else {
+        sessionsInfo.classList.add('hidden');
+      }
+    }
+
+    // Render action cards
+    function renderActions() {
+      const actionsGrid = document.getElementById('actions-grid');
+      actionsGrid.innerHTML = '';
+
+      if (hasExistingData) {
+        // Explore conversations card (primary when data exists)
+        const exploreCard = document.createElement('div');
+        exploreCard.className = 'action-card primary fade-in';
+        exploreCard.innerHTML = `
+          <span class="action-icon">🔍</span>
+          <h3>Explore Conversations</h3>
+          <p>Browse through your existing ChatGPT conversations and media assets</p>
+          <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
+        `;
+        actionsGrid.appendChild(exploreCard);
+
+        // Upload new data card (secondary)
+        const uploadCard = document.createElement('div');
+        uploadCard.className = 'action-card fade-in';
+        uploadCard.innerHTML = `
+          <span class="action-icon">📤</span>
+          <h3>Upload New Data</h3>
+          <p>Add a new ChatGPT export to your collection</p>
+          <a href="upload.html" class="btn btn-outline">Upload ZIP File</a>
+        `;
+        actionsGrid.appendChild(uploadCard);
+      } else {
+        // Upload card (primary when no data exists)
+        const uploadCard = document.createElement('div');
+        uploadCard.className = 'action-card primary fade-in';
+        uploadCard.innerHTML = `
+          <span class="action-icon">📤</span>
+          <h3>Upload Your First Data</h3>
+          <p>Get started by uploading your ChatGPT export file</p>
+          <a href="upload.html" class="btn btn-primary">Upload ZIP File</a>
+        `;
+        actionsGrid.appendChild(uploadCard);
+
+        // Info card about how it works
+        const infoCard = document.createElement('div');
+        infoCard.className = 'action-card fade-in';
+        infoCard.innerHTML = `
+          <span class="action-icon">ℹ️</span>
+          <h3>How It Works</h3>
+          <p>Export your data from ChatGPT (Settings → Data controls → Export), then upload the resulting zip file to explore your conversations in an organized interface.</p>
+        `;
+        actionsGrid.appendChild(infoCard);
+      }
+    }
+
+    // Initialize the page
+    async function initializePage() {
+      await checkExistingData();
+      updateStatusIndicator();
+      updateSessionsInfo();
+      renderActions();
+
+      // Hide loading and show content
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('content').classList.remove('hidden');
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initializePage);
+  </script>
+</body>
+</html>

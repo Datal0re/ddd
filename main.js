@@ -17,7 +17,7 @@ function createWindow() {
   });
 
   // Load the initial view
-  mainWindow.loadFile('views/upload.html');
+  mainWindow.loadFile('views/index.html');
   
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
@@ -161,5 +161,20 @@ ipcMain.handle('delete-session', async (_, sessionId) => {
   } catch (err) {
     console.error('Error deleting session:', err);
     return { success: false, error: err.message || 'Error deleting session.' };
+  }
+});
+
+// IPC handler for getting all sessions
+ipcMain.handle('get-all-sessions', async () => {
+  try {
+    const sessions = sessionManager.getAllSessions();
+    const sessionArray = Array.from(sessions.entries()).map(([id, info]) => ({
+      id,
+      uploadedAt: info.uploadedAt
+    }));
+    return { success: true, sessions: sessionArray };
+  } catch (err) {
+    console.error('Error getting sessions:', err);
+    return { success: false, error: err.message || 'Error getting sessions.' };
   }
 });

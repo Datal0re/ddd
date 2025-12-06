@@ -1,52 +1,40 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { SessionManager } from './utils/SessionManager.mjs';
-import { dirname } from 'path';
-import fs from 'fs/promises';
-import multer from 'multer';
-import { getConversationMessages } from './getConversationMessages.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const express = require('express');
+const path = require('path');
+const { SessionManager } = require('./utils/SessionManager.js');
+const fs = require('fs').promises;
+const multer = require('multer');
+const { getConversationMessages } = require('./getConversationMessages.js');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize session manager
 const sessionManager = new SessionManager(__dirname);
-await sessionManager.initialize();
+
+// Async initialization function
+async function initializeApp() {
+  await sessionManager.initialize();
+  
+  // Periodically clean up old sessions
+  setInterval(() => sessionManager.cleanupOldSessions(), 24 * 60 * 60 * 1000); // Daily cleanup
+
+  // Start server
+  app.listen(port, () => {
+    console.log(`Data Dumpster Diver listening on port ${port}`);
+  });
+}
+
+// Initialize the app
+initializeApp().catch(console.error);
 
 // Middleware
 app.use(express.static('public'));
 app.use(express.json());
 app.set('view engine', 'ejs');
 
-// Periodically clean up old sessions
-setInterval(() => sessionManager.cleanupOldSessions(), 24 * 60 * 60 * 1000); // Daily cleanup
+
 
 // Multer config for memory storage (we'll handle zip extraction manually)
-const upload = multer({ storage: multer.memoryStorage() });
-  
-  const now = Date.now();
-
-  // Iterate through disk-persisted sessions
-  for (const [id, info] of diskSessions) {
-    if (now - info.uploadedAt.getTime() > maxAgeMs) {
-      const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-      const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-      try {
-        await fs.rmdir(sessionDir, { recursive: true });
-        await fs.rmdir(mediaDir, { recursive: true });
-      } catch (err) {
-        console.error(`Failed to delete session ${id}:`, err);
-      }
-      sessions.delete(id); // Remove from in-memory map
-    }
-  }
-}
-
-// Multer config for memory storage (we’ll handle zip extraction manually)
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper to ensure a directory exists
@@ -76,7 +64,18 @@ async function runMigration(sessionId, outputDir) {
 
 // Routes
 app.get('/', (req, res) => {
-  res.render('upload', { error: null });
+  const sessions = sessionManager.getAllSessions();
+  const hasExistingData = sessions.size > 0;
+  const sessionsCount = sessions.size;
+  
+  // Get the first session ID for direct navigation
+  const firstSessionId = hasExistingData ? sessions.keys().next().value : null;
+  
+  res.render('index', { 
+    hasExistingData, 
+    sessionsCount, 
+    firstSessionId 
+  });
 });
 
 app.post('/upload', upload.single('chatgpt-export'), async (req, res) => {
@@ -148,6 +147,3 @@ app.post('/cleanup', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Data Dumpster Diver listening on port ${port}`);
-});
