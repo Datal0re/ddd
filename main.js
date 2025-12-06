@@ -1,19 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
-// const fsSync = require('fs');
-// const multer = require('multer');
-const decompress = require('decompress');
-const { spawn } = require('child_process');
-
-// Dynamic import for uuid (ES module)
-let uuidv4;
-(async () => {
-  const { v4 } = await import('uuid');
-  uuidv4 = v4;
-})();
+const { SessionManager } = require('./utils/SessionManager.js');
 
 let mainWindow;
+let sessionManager;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -34,7 +24,13 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // Initialize session manager
+  sessionManager = new SessionManager(__dirname);
+  await sessionManager.initialize();
+  
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -48,56 +44,7 @@ app.on('activate', () => {
   }
 });
 
-// Session storage (in-memory for now)
-let sessions;
 
-(async () => {
-  try {
-
-const { deserializeSessions, serializeSessions } = require("./utils/sessionUtils");
-sessions = await deserializeSessions();
-  } catch (err) {
-    console.error('Failed to load existing sessions:', err);
-    sessions = new Map();
-  }
-})();
-
-// Helper to clean up old sessions
-async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
-  const now = Date.now();
-  const sessionsToDelete = [];
-  
-  // Find sessions to delete
-  for (const [id, info] of sessions.entries()) {
-    if (now - info.uploadedAt.getTime() > maxAgeMs) {
-      sessionsToDelete.push(id);
-    }
-  }
-  
-  // Delete old sessions
-  for (const id of sessionsToDelete) {
-    const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-    
-    try {
-      await fs.rmdir(sessionDir, { recursive: true });
-      await fs.rmdir(mediaDir, { recursive: true });
-      console.log(`Deleted old session: ${id}`);
-    } catch (error) {
-      console.warn(`Failed to delete session directories for ID ${id}:`, error.message);
-    }
-    
-    sessions.delete(id);
-  }
-  
-  // Serialize updated sessions to disk
-  try {
-    await serializeSessions(sessions);
-    console.log('Sessions serialized after cleanup');
-  } catch (error) {
-    console.error(`Serialization failed after cleanup: ${error.message}`);
-  }
-}
 
 // Helper to ensure a directory exists
 async function ensureDir(dirPath) {
@@ -165,165 +112,54 @@ ipcMain.handle('select-file', async () => {
 // IPC handler for upload processing
 ipcMain.handle('process-upload', async (_, filePath) => {
   try {
-    if (!uuidv4) {
-      const { v4 } = await import('uuid');
-      uuidv4 = v4;
-    }
-    const sessionId = uuidv4();
-    const sessionDir = path.join(__dirname, 'data', 'sessions', sessionId);
-    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', sessionId);
-    await ensureDir(sessionDir);
-    await ensureDir(mediaDir);
-
-    // Copy uploaded file to session directory
-    const tempZipPath = path.join(sessionDir, 'upload.zip');
-    await fs.copyFile(filePath, tempZipPath);
-
-    // Extract zip
-    const files = await decompress(tempZipPath, sessionDir);
-    
-    // Find conversations.json and media assets
-    let conversationsPath = null;
-    // Detect if there is a single top-level folder (common in macOS exports)
-    const topLevelDirs = new Set();
-    for (const file of files) {
-      const parts = file.path.split(path.sep);
-      if (parts.length > 1) {
-        topLevelDirs.add(parts[0]);
-      }
-    }
-    const hasSingleTopLevel = topLevelDirs.size === 1;
-    const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : null;
-
-    for (const file of files) {
-      if (file.path.endsWith('conversations.json')) {
-        const candidatePath = path.join(sessionDir, file.path);
-        // Validate it's a text file (UTF-8) and not binary
-        const stats = await fs.stat(candidatePath);
-        if (stats.isFile()) {
-          const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
-          if (sample && !sample.includes('\u0000')) {
-            conversationsPath = candidatePath;
-          }
-        }
-      }
-      // Copy media assets to public/media/sessions/<sessionId>/ preserving relative structure
-      // Only copy files, skip directories
-      if ((file.path.startsWith('file-') || file.path.includes('audio/') || file.path.includes('dalle-generations/')) && !file.path.endsWith('/')) {
-        const src = path.join(sessionDir, file.path);
-        // Strip top-level folder if present to keep media paths clean
-        const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-          ? file.path.slice((topLevelFolder + path.sep).length)
-          : file.path;
-        const destPath = path.join(mediaDir, relativePath);
-        await ensureDir(path.dirname(destPath));
-        await fs.copyFile(src, destPath);
-      }
-    }
-
-    if (!conversationsPath) {
-      return { success: false, error: 'conversations.json not found in uploaded zip.' };
-    }
-
-    // Ensure conversations.json is at session root for migration
-    const targetConversationsPath = path.join(sessionDir, 'conversations.json');
-    if (conversationsPath && conversationsPath !== targetConversationsPath) {
-      await fs.rename(conversationsPath, targetConversationsPath);
-    }
-  // Delete any other top-level folders to avoid confusion
-    if (hasSingleTopLevel && topLevelFolder) {
-      const nestedDir = path.join(sessionDir, topLevelFolder);
-      try {
-        await fs.rmdir(nestedDir, { recursive: true });
-      } catch (error) {
-        console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
-      }
-    }
-
-    // Clean up temporary zip
-    await fs.unlink(tempZipPath);
-
-    // Run migration with session-scoped output directory
-    await runMigration(sessionId, path.join(sessionDir, 'conversations'));
-
-    // Store session info
-    sessions.set(sessionId, { uploadedAt: new Date() });
-    await serializeSessions(sessions);
-
+    const sessionId = await sessionManager.createSession(filePath, false); // false = path, not buffer
     return { success: true, sessionId };
   } catch (err) {
     console.error('Upload error:', err);
-    return { success: false, error: 'Upload failed. Please try again.' };
+    return { success: false, error: err.message || 'Upload failed. Please try again.' };
   }
 });
 
 // IPC handler for getting conversations
 ipcMain.handle('get-conversations', async (_, sessionId) => {
-  if (!sessionId || !sessions.has(sessionId)) {
-    return { success: false, error: 'Invalid or missing session ID.' };
-  }
-  
-  const conversationsDir = path.join(__dirname, 'data', 'sessions', sessionId, 'conversations');
   try {
-    const files = await fs.readdir(conversationsDir);
-    const conversations = [];
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const filePath = path.join(conversationsDir, file);
-        const content = await fs.readFile(filePath, 'utf8');
-        const conv = JSON.parse(content);
-        conversations.push({ id: file, title: conv.title || 'Untitled', date: file.split('_')[0] });
-      }
-    }
+    const conversations = await sessionManager.getConversations(sessionId);
     return { success: true, conversations };
   } catch (err) {
     console.error('Error loading conversations:', err);
-    return { success: false, error: 'Error loading conversations.' };
+    return { success: false, error: err.message || 'Error loading conversations.' };
   }
 });
 
 // IPC handler for getting conversation details
 ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
-  if (!sessionId || !sessions.has(sessionId)) {
-    return { success: false, error: 'Invalid or missing session ID.' };
-  }
-  
-  const filePath = path.join(__dirname, 'data', 'sessions', sessionId, 'conversations', conversationId);
   try {
-    const content = await fs.readFile(filePath, 'utf8');
-    const conv = JSON.parse(content);
-    
-    // Import getConversationMessages function
-    const { getConversationMessages } = require('./getConversationMessages.js');
-    const messages = getConversationMessages(conv);
-    
-    return { success: true, title: conv.title || 'Untitled', messages };
+    const conversation = await sessionManager.getConversation(sessionId, conversationId);
+    return { success: true, ...conversation };
   } catch (err) {
     console.error('Error loading conversation:', err);
-    return { success: false, error: 'Error loading conversation.' };
+    return { success: false, error: err.message || 'Error loading conversation.' };
   }
 });
 
-  // IPC handler for session cleanup
-  ipcMain.handle('cleanup-sessions', async () => {
-    await cleanupOldSessions();
-    await serializeSessions(sessions);
-    return { success: true };
-  });
+// IPC handler for session cleanup
+ipcMain.handle('cleanup-sessions', async () => {
+  try {
+    const deletedCount = await sessionManager.cleanupOldSessions();
+    return { success: true, deletedCount };
+  } catch (err) {
+    console.error('Error cleaning up sessions:', err);
+    return { success: false, error: err.message || 'Error cleaning up sessions.' };
+  }
+});
 
 // IPC handler for deleting a session
 ipcMain.handle('delete-session', async (_, sessionId) => {
-  // Remove session folder and media folder
-    const sessionDir = path.join(__dirname, 'data', 'sessions', sessionId);
-    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', sessionId);
-    
-    try {
-      await fs.rmdir(sessionDir, { recursive: true });
-      await fs.rmdir(mediaDir, { recursive: true });
-    } catch (error) {
-      console.warn(`Failed to delete session directories for ID ${sessionId}:`, error.message);
-    }
-  
-  sessions.delete(sessionId);
-  return { success: true };
+  try {
+    const deleted = await sessionManager.deleteSession(sessionId);
+    return { success: true, deleted };
+  } catch (err) {
+    console.error('Error deleting session:', err);
+    return { success: false, error: err.message || 'Error deleting session.' };
+  }
 });

@@ -12,7 +12,7 @@ const path = require("path");
  */
 async function serializeSessions(sessions) {
   try {
-    const filePath = path.join(__dirname, "data", "sessions.json");
+    const filePath = path.join(__dirname, "..", "data", "sessions.json");
     const data = JSON.stringify([...sessions.entries()], null, 2);
 
     await fs.writeFile(filePath, data);
@@ -34,23 +34,30 @@ async function deserializeSessions() {
     const filePath = path.join(__dirname, "..", "data", "sessions.json");
     let data;
     try {
-      data = await fs.readFile(filePath, "utf-8");
+      data = await fs.readFile(filePath, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") {
-        throw new Error("Sessions file not found");
+        // File doesn't exist yet - return empty sessions map
+        console.log("Sessions file not found - starting with empty sessions");
+        return new Map();
       }
       throw err;
     }
 
     if (!data || data.trim() === "") {
-      throw new Error("Empty or missing sessions file");
+      console.log("Sessions file is empty - starting with empty sessions");
+      return new Map();
     }
 
     const parsedData = JSON.parse(data);
     const sessions = new Map(
-      Object.entries(
-        typeof parsedData === "object" && parsedData !== null ? parsedData : {},
-      ),
+      parsedData.map(([id, info]) => [
+        id,
+        {
+          ...info,
+          uploadedAt: new Date(info.uploadedAt)
+        }
+      ])
     );
     console.log("Sessions deserialized successfully");
     return sessions;
@@ -58,7 +65,8 @@ async function deserializeSessions() {
     console.error(
       `Deserialization failed: ${error.message} (Code: ${error.code || "N/A"})`,
     );
-    throw error;
+    // Return empty map instead of throwing to allow app to start
+    return new Map();
   }
 }
 
