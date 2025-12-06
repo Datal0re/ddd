@@ -4,42 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Data Dumpster Diver – Conversations</title>
-    <link rel="stylesheet" href="../color-palette.css" />
+    <link rel="stylesheet" href="../public/styles.css" />
     <style>
-      .container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 2rem;
-      }
-      .page-header {
-        text-align: center;
-        margin-bottom: 2rem;
-      }
+      /* Unique styles for conversations.html - everything else is in public/styles.css */
       .search-container {
         margin-bottom: 2rem;
-      }
-      .search-input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        background: var(--input-bg);
-        color: var(--text-primary);
-        font-size: 1rem;
-      }
-      .conversation-item {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        overflow: hidden;
-        transition:
-          transform 0.2s ease,
-          box-shadow 0.2s ease;
-      }
-      .conversation-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       }
       .conversation-item a {
         display: block;
@@ -50,43 +19,6 @@
       .conversation-date {
         color: var(--text-muted);
         font-size: 0.875rem;
-      }
-      .fade-in {
-        animation: fadeIn 0.3s ease-in;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-      }
-      .empty-state {
-        text-align: center;
-        padding: 3rem;
-      }
-      button {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 4px;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-block;
-      }
-      button.secondary {
-        background: var(--secondary-color);
       }
     </style>
   </head>

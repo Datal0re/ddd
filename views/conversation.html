@@ -4,13 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title id="page-title">Conversation – Data Dumpster Diver</title>
-    <link rel="stylesheet" href="../color-palette.css" />
+    <link rel="stylesheet" href="../public/styles.css" />
     <style>
-      .container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 2rem;
-      }
+      /* Unique styles for conversation.html - everything else is in public/styles.css */
       .conversation-header {
         background: var(--bg-secondary);
         border: 1px solid var(--border-color);
@@ -143,49 +139,11 @@
         background: #2563eb;
         transform: translateY(-2px);
       }
-      .fade-in {
-        animation: fadeIn 0.3s ease-in;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-      }
-      .empty-state {
-        text-align: center;
-        padding: 3rem;
-      }
-      .message {
-        margin-bottom: 2rem;
-        transition: transform 0.2s ease;
-      }
-      .author {
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-      }
       .author.user {
         color: var(--primary-blue);
       }
       .author.assistant {
         color: var(--success-green);
-      }
-      .message-bubble {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 1rem;
       }
       @media (max-width: 768px) {
         .scroll-to-top {
