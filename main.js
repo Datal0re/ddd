@@ -1,23 +1,48 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const axios = require('axios');
+const fs = require('fs').promises;
 
 let mainWindow;
-const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3000}/api`;
+const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3001}/api`;
 
 console.log('Electron: API_BASE_URL =', API_BASE_URL);
 console.log('Electron: process.env.API_PORT =', process.env.API_PORT);
 
-// Add a small delay to ensure API server is ready
-setTimeout(async () => {
-  try {
-    // Test API connection
-    const response = await axios.get(`${API_BASE_URL}/health`);
-    console.log('API health check:', response.data);
-  } catch (err) {
-    console.error('API health check failed:', err.message);
+// Add retry mechanism for API connection
+async function waitForApiServer(maxRetries = 5, delay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/health`);
+      console.log(`API health check ${i + 1}:`, response.data);
+      if (response.data.success) {
+        console.log('API server is ready');
+        return true;
+      }
+    } catch (err) {
+      console.log(`API health check ${i + 1} failed:`, err.message);
+      if (i === maxRetries - 1) {
+        throw err;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
-}, 1000);
+}
+
+// Wait for API server to be ready before creating window
+app.whenReady().then(async () => {
+  console.log('Electron app ready, waiting for API server...');
+  
+  // Wait for API server with retry mechanism
+  const apiReady = await waitForApiServer();
+  if (apiReady) {
+    console.log('API server confirmed ready, creating window');
+    createWindow();
+  } else {
+    console.log('API server not ready after retries, exiting');
+    app.quit(1);
+  }
+});
 
 // Add error handling for API connection failures
 process.on('uncaughtException', (err) => {
@@ -47,9 +72,7 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
-});
+
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -144,7 +167,6 @@ ipcMain.handle('process-upload', async (_, filePath) => {
       throw new Error('File path is null or undefined');
     }
     
-    const fs = require('fs').promises;
     const fileBuffer = await fs.readFile(filePath);
     
     console.log('File read successfully, buffer size:', fileBuffer.length);

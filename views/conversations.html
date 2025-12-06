@@ -135,11 +135,24 @@
     // Load conversations on page load
     document.addEventListener('DOMContentLoaded', async function() {
       const urlParams = new URLSearchParams(window.location.search);
-      sessionId = '36333105-9da5-4de4-9f82-8deb4ed78260' || urlParams.get('session');
+      sessionId = urlParams.get('session');
       
+      // If no session ID provided, try to get the first available session
       if (!sessionId) {
-        showError('Missing session ID');
-        return;
+        try {
+          const sessionsResult = await window.electronAPI.getAllSessions();
+          if (sessionsResult.success && sessionsResult.sessions.length > 0) {
+            sessionId = sessionsResult.sessions[0].id;
+            // Update URL to include session ID
+            window.history.replaceState({}, '', `conversations.html?session=${sessionId}`);
+          } else {
+            showError('No sessions available. Please upload data first.');
+            return;
+          }
+        } catch (err) {
+          showError('Failed to load sessions');
+          return;
+        }
       }
       
       try {
@@ -152,7 +165,7 @@
         }
       } catch (err) {
         console.error('Error loading conversations:', err);
-        showError('Error loading conversations');
+        showError(`Error loading conversations: ${err.message || 'Unknown error'}`);
       }
     });
     

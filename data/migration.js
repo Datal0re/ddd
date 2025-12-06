@@ -1,12 +1,7 @@
 #!/usr/bin/env node
-// migration.js - ES Module style, async I/O
-import { promises as fs } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-// Resolve __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// migration.js - CommonJS style, async I/O
+const fs = require('fs').promises;
+const path = require('path');
 function sanitizeFilename(rawTitle) {
     // Remove characters not suitable for filenames, then replace spaces with underscores
     const noBad = rawTitle.replace(/[^\w\s-]/g, '');
@@ -81,7 +76,7 @@ async function main() {
     }
 }
 // Ensure the script runs only when executed directly, not when imported
-if (import.meta.url === `file://${__filename}`) {
+if (require.main === module) {
     main().catch(err => {
         console.error('Migration failed:', err);
         process.exit(1);

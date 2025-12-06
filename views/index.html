@@ -164,6 +164,48 @@
     .hidden {
       display: none;
     }
+    .session-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .session-modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .session-item {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .session-item:hover {
+      background: var(--primary-color);
+    }
+    .session-item-id {
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .session-item-date {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -196,6 +238,7 @@
   <script>
     let hasExistingData = false;
     let sessionsCount = 0;
+    let sessions = [];
 
     // Check for existing sessions
     async function checkExistingData() {
@@ -205,7 +248,8 @@
           // This will be implemented in main.js
           const result = await window.electronAPI.getAllSessions();
           if (result.success) {
-            sessionsCount = result.sessions.length;
+            sessions = result.sessions;
+            sessionsCount = sessions.length;
             hasExistingData = sessionsCount > 0;
           }
         } else {
@@ -256,12 +300,24 @@
         // Explore conversations card (primary when data exists)
         const exploreCard = document.createElement('div');
         exploreCard.className = 'action-card primary fade-in';
-        exploreCard.innerHTML = `
-          <span class="action-icon">🔍</span>
-          <h3>Explore Conversations</h3>
-          <p>Browse through your existing ChatGPT conversations and media assets</p>
-          <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
-        `;
+        
+        if (sessionsCount === 1) {
+          // Direct link if only one session
+          exploreCard.innerHTML = `
+            <span class="action-icon">🔍</span>
+            <h3>Explore Conversations</h3>
+            <p>Browse through your existing ChatGPT conversations and media assets</p>
+            <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
+          `;
+        } else {
+          // Session selection if multiple sessions
+          exploreCard.innerHTML = `
+            <span class="action-icon">🔍</span>
+            <h3>Explore Conversations</h3>
+            <p>Browse through your existing ChatGPT conversations and media assets</p>
+            <button onclick="selectSession()" class="btn btn-primary">Select Session</button>
+          `;
+        }
         actionsGrid.appendChild(exploreCard);
 
         // Upload new data card (secondary)
@@ -308,6 +364,52 @@
       // Hide loading and show content
       document.getElementById('loading').classList.remove('show');
       document.getElementById('content').classList.remove('hidden');
+    }
+
+    // Session selection function
+    async function selectSession() {
+      if (sessions.length === 0) {
+        alert('No sessions available');
+        return;
+      }
+      
+      if (sessions.length === 1) {
+        // Direct navigation if only one session
+        window.location.href = `conversations.html?session=${sessions[0].id}`;
+        return;
+      }
+      
+      // Create session selection modal
+      const modal = document.createElement('div');
+      modal.className = 'session-modal';
+      
+      const modalContent = document.createElement('div');
+      modalContent.className = 'session-modal-content';
+      
+      modalContent.innerHTML = `
+        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Select Session</h2>
+        <div style="margin-bottom: 1.5rem;">
+          ${sessions.filter(session => session && session.id && session.uploadedAt).map(session => `
+            <div class="session-item" onclick="window.location.href='conversations.html?session=${session.id}'">
+              <div class="session-item-id">Session ID: ${session.id.substring(0, 8)}...</div>
+              <div class="session-item-date">
+                Uploaded: ${new Date(session.uploadedAt).toLocaleString()}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary" style="width: 100%;">Cancel</button>
+      `;
+      
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+      
+      // Close modal when clicking outside
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
     }
 
     // Initialize when DOM is loaded
