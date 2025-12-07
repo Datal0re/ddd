@@ -2,13 +2,15 @@ const express = require('express');
 const path = require('path');
 const logger = require('./utils/logger').createLogger({ module: 'api-server' });
 const { SessionManager } = require('./utils/SessionManager.js');
+const { getProgressManager } = require('./utils/ProgressManager.js');
 const multer = require('multer');
 
 const app = express();
 const port = process.env.API_PORT || 3001;
 
-// Initialize session manager
+// Initialize session manager and progress manager
 const sessionManager = new SessionManager(__dirname);
+const progressManager = getProgressManager();
 
 // Async initialization function
 async function initializeApp() {
@@ -182,6 +184,7 @@ app.post('/api/sessions/:sessionId/restore', async (req, res) => {
 
 // File Upload API
 app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
+  let uploadId = null;
   try {
     logger.info('Upload request received:', {
       file: req.file
@@ -198,14 +201,37 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
+    // Generate upload ID and create progress entry
+    uploadId = progressManager.generateUploadId();
+    progressManager.createProgress(uploadId);
+
     logger.info(
       'Calling sessionManager.createSession with buffer size:',
       req.file.buffer.length
     );
-    const sessionId = await sessionManager.createSession(req.file.buffer, true); // true = buffer
+
+    const sessionId = await sessionManager.createSession(
+      req.file.buffer,
+      true, // true = buffer
+      progressUpdate => {
+        // Update progress manager with backend progress
+        progressManager.updateProgress(uploadId, {
+          stage: progressUpdate.stage,
+          progress: progressUpdate.progress,
+          message: progressUpdate.message,
+        });
+
+        logger.info(
+          `Upload progress: ${progressUpdate.stage} - ${progressUpdate.progress}% - ${progressUpdate.message}`
+        );
+      }
+    );
+
+    // Mark progress as completed
+    progressManager.completeProgress(uploadId, sessionId);
     logger.info('Session created successfully:', sessionId);
 
-    res.json({ success: true, sessionId });
+    res.json({ success: true, sessionId, uploadId });
   } catch (err) {
     logger.error('Upload error:', {
       message: err.message,
@@ -213,8 +239,65 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
       code: err.code,
       name: err.name,
     });
+
+    // Mark progress as failed if we had an upload ID
+    if (uploadId) {
+      progressManager.failProgress(uploadId, err.message || 'Upload failed');
+    }
+
     res.status(500).json({ success: false, error: err.message || 'Upload failed' });
   }
+});
+
+// Progress streaming endpoint
+app.get('/api/upload-progress/:uploadId', (req, res) => {
+  const { uploadId } = req.params;
+
+  logger.info(`Progress stream requested for upload: ${uploadId}`);
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control',
+  });
+
+  // Send initial progress
+  const initialProgress = progressManager.getProgress(uploadId);
+  if (initialProgress) {
+    res.write(`data: ${JSON.stringify(initialProgress)}\n\n`);
+  } else {
+    res.write(`data: ${JSON.stringify({ error: 'Upload not found' })}\n\n`);
+  }
+
+  // Set up progress tracking interval
+  const progressInterval = setInterval(() => {
+    const progress = progressManager.getProgress(uploadId);
+
+    if (!progress) {
+      clearInterval(progressInterval);
+      res.write(`data: ${JSON.stringify({ error: 'Upload not found' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.write(`data: ${JSON.stringify(progress)}\n\n`);
+
+    // End stream if completed, error, or cancelled
+    if (['completed', 'error', 'cancelled'].includes(progress.status)) {
+      clearInterval(progressInterval);
+      res.end();
+      logger.info(`Progress stream ended for upload: ${uploadId} (${progress.status})`);
+    }
+  }, 500); // Update every 500ms
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    clearInterval(progressInterval);
+    logger.info(`Progress stream closed by client for upload: ${uploadId}`);
+  });
 });
 
 // ===== AI INTEGRATION ENDPOINTS (PLACEHOLDERS) =====

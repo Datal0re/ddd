@@ -1,0 +1,50 @@
+{
+  "upload_1765094538089_zvuepfo7z": {
+    "uploadId": "upload_1765094538089_zvuepfo7z",
+    "stage": "completed",
+    "progress": 100,
+    "message": "Upload processing complete!",
+    "sessionId": "bbe91c26-6678-46eb-bfac-a7a5cdfcc8da",
+    "status": "completed",
+    "error": null,
+    "startTime": 1765094538089,
+    "estimatedTimeRemaining": 0,
+    "lastUpdated": 1765094546736
+  },
+  "upload_1765094935542_vsxsqmi23": {
+    "uploadId": "upload_1765094935542_vsxsqmi23",
+    "stage": "completed",
+    "progress": 100,
+    "message": "Upload processing complete!",
+    "sessionId": "1b8a4d55-ba47-46d0-afac-8ffd47863b25",
+    "status": "completed",
+    "error": null,
+    "startTime": 1765094935542,
+    "estimatedTimeRemaining": 0,
+    "lastUpdated": 1765094942578
+  },
+  "upload_1765095552338_3ru6eypuk": {
+    "uploadId": "upload_1765095552338_3ru6eypuk",
+    "stage": "completed",
+    "progress": 100,
+    "message": "Upload processing complete!",
+    "sessionId": "76c3df48-362b-4682-bd5d-b916da5037e9",
+    "status": "completed",
+    "error": null,
+    "startTime": 1765095552338,
+    "estimatedTimeRemaining": 0,
+    "lastUpdated": 1765095560417
+  },
+  "upload_1765096137537_goga923q3": {
+    "uploadId": "upload_1765096137537_goga923q3",
+    "stage": "completed",
+    "progress": 100,
+    "message": "Upload processing complete!",
+    "sessionId": "f95b847a-4364-4c0e-81cc-9a8720639be2",
+    "status": "completed",
+    "error": null,
+    "startTime": 1765096137537,
+    "estimatedTimeRemaining": 0,
+    "lastUpdated": 1765096145887
+  }
+}

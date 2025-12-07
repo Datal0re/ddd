@@ -9,6 +9,7 @@ const logger = require('../utils/logger').createLogger({ module: 'SessionManager
 const {
   ensureDir,
   runMigration,
+  runAssetExtraction,
   processZipUpload,
   removeDirectories,
 } = require('./fileUtils.js');
@@ -48,9 +49,10 @@ class SessionManager {
    * Create a new session from uploaded zip data
    * @param {Buffer|string} zipData - Zip file buffer or path
    * @param {boolean} isBuffer - True if zipData is buffer, false if path
+   * @param {Function} onProgress - Optional progress callback
    * @returns {Promise<string>} Session ID
    */
-  async createSession(zipData, isBuffer = true) {
+  async createSession(zipData, isBuffer = true, onProgress = null) {
     const uuidv4 = await getUuid();
     const sessionId = uuidv4();
     const sessionDir = path.join(this.dataDir, sessionId);
@@ -76,12 +78,19 @@ class SessionManager {
           logger.info(
             `Upload progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`
           );
+          // Forward progress to caller
+          onProgress?.(progress);
         }
       );
 
       logger.info('Zip upload completed successfully');
 
       // Run migration
+      onProgress?.({
+        stage: 'migrating',
+        progress: 85,
+        message: 'Migrating conversation data...',
+      });
       logger.info('Starting migration process...');
       await runMigration(
         sessionId,
@@ -89,6 +98,22 @@ class SessionManager {
         this.baseDir
       );
       logger.info('Migration completed successfully');
+
+      // Run asset extraction
+      onProgress?.({
+        stage: 'extracting-assets',
+        progress: 90,
+        message: 'Extracting media assets...',
+      });
+      logger.info('Starting asset extraction process...');
+      await runAssetExtraction(sessionId, this.baseDir);
+      logger.info('Asset extraction completed successfully');
+
+      onProgress?.({
+        stage: 'completed',
+        progress: 100,
+        message: 'Upload processing complete!',
+      });
 
       // Store session info with enhanced metadata
       this.sessions.set(sessionId, {

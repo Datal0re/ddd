@@ -215,6 +215,47 @@ async function runMigration(sessionId, outputDir, baseDir) {
 }
 
 /**
+ * Runs asset extraction for a session
+ * @param {string} sessionId - Session ID
+ * @param {string} baseDir - Base directory of the application
+ * @returns {Promise<void>}
+ */
+async function runAssetExtraction(sessionId, baseDir) {
+  return new Promise((resolve, _reject) => {
+    const child = spawn(
+      'node',
+      [path.join(baseDir, 'data', 'extract-assets-json.js'), sessionId],
+      {
+        stdio: 'pipe',
+      }
+    );
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', data => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', data => {
+      stderr += data.toString();
+    });
+
+    child.on('close', code => {
+      if (code === 0) {
+        logger.debug('Asset extraction stdout:', stdout);
+        resolve();
+      } else {
+        logger.warn('Asset extraction failed (non-critical):', stderr);
+        logger.debug('Asset extraction stdout:', stdout);
+        // Don't reject - asset extraction is non-critical
+        resolve();
+      }
+    });
+  });
+}
+
+/**
  * Processes uploaded zip file with enhanced security and validation
  * @param {Buffer|string} zipData - Zip file buffer or path
  * @param {string} sessionId - Session ID
@@ -518,6 +559,7 @@ async function removeDirectories(...dirs) {
 module.exports = {
   ensureDir,
   runMigration,
+  runAssetExtraction,
   processZipUpload,
   removeDirectories,
   createTempDir,

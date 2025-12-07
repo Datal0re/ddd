@@ -57,6 +57,35 @@
         <div id="error-message" class="error" style="display: none"></div>
         <div id="success-message" class="success" style="display: none"></div>
 
+        <!-- Progress Container (initially hidden) -->
+        <div id="progress-container" class="progress-container" style="display: none">
+          <div class="progress-header">
+            <h3>Processing Upload</h3>
+            <button id="minimize-progress" class="btn btn-outline btn-sm">−</button>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <div id="progress-percentage" class="progress-percentage">0%</div>
+          </div>
+
+          <!-- Stage Information -->
+          <div class="progress-details">
+            <div id="progress-stage" class="progress-stage">Initializing...</div>
+            <div id="progress-message" class="progress-message">
+              Preparing upload...
+            </div>
+          </div>
+
+          <!-- Progress Actions -->
+          <div class="progress-actions">
+            <button id="cancel-upload" class="btn btn-outline btn-sm">Cancel</button>
+          </div>
+        </div>
+
         <div class="upload-section">
           <div class="form-group">
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500">
@@ -99,34 +128,167 @@
     </div>
 
     <script>
-      async function cleanupSessions() {
-        if (confirm('Clear all sessions and their data? This cannot be undone.')) {
-          try {
-            const result = await window.electronAPI.cleanupSessions();
-            if (result.success) {
-              showMessage('Sessions cleared successfully.', 'success');
-              setTimeout(() => {
-                window.location.reload();
-              }, 1500);
-            } else {
-              throw new Error(result.error || 'Failed to clear sessions');
+      let selectedFilePath = null;
+      let currentUploadId = null;
+      let isMinimized = false;
+
+      // Initialize progress tracking
+      async function initializeProgress() {
+        try {
+          // Check for existing progress
+          const result = await window.electronAPI.getUploadProgress();
+          if (result.success && result.progress.length > 0) {
+            // Show most recent active progress
+            const activeProgress = result.progress.find(p => p.status === 'processing');
+            if (activeProgress) {
+              showProgressContainer();
+              updateProgressUI(activeProgress);
+              currentUploadId = activeProgress.uploadId;
             }
-          } catch (err) {
-            console.error('Cleanup error:', err);
-            showMessage('Error clearing sessions. Please try again.', 'error');
           }
+        } catch (err) {
+          console.error('Error initializing progress:', err);
         }
       }
 
+      // Show progress container
+      function showProgressContainer() {
+        const progressContainer = document.getElementById('progress-container');
+        const uploadSection = document.querySelector('.upload-section');
+
+        progressContainer.style.display = 'block';
+        uploadSection.style.display = 'none';
+      }
+
+      // Hide progress container
+      function hideProgressContainer() {
+        const progressContainer = document.getElementById('progress-container');
+        const uploadSection = document.querySelector('.upload-section');
+
+        progressContainer.style.display = 'none';
+        uploadSection.style.display = 'block';
+      }
+
+      // Update progress UI
+      function updateProgressUI(progress) {
+        const progressFill = document.getElementById('progress-fill');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const progressStage = document.getElementById('progress-stage');
+        const progressMessage = document.getElementById('progress-message');
+        const progressContainer = document.getElementById('progress-container');
+
+        // Update progress bar
+        progressFill.style.width = `${progress.progress}%`;
+        progressPercentage.textContent = `${Math.round(progress.progress)}%`;
+
+        // Update stage and message
+        progressStage.textContent = getStageDisplayName(progress.stage);
+        progressMessage.textContent = progress.message;
+
+        // Update container status class
+        progressContainer.className = `progress-container ${progress.status}`;
+
+        // Handle minimized state
+        if (isMinimized) {
+          progressStage.textContent = `${getStageDisplayName(progress.stage)} - ${Math.round(progress.progress)}%`;
+        }
+
+        // Handle completion
+        if (progress.status === 'completed') {
+          handleUploadComplete(progress);
+        } else if (progress.status === 'error') {
+          handleUploadError(progress);
+        } else if (progress.status === 'cancelled') {
+          handleUploadCancelled(progress);
+        }
+      }
+
+      // Get display name for stage
+      function getStageDisplayName(stage) {
+        const stageNames = {
+          initializing: 'Initializing',
+          validating: 'Validating',
+          extracting: 'Extracting',
+          organizing: 'Organizing',
+          migrating: 'Migrating',
+          'extracting-assets': 'Extracting Assets',
+          completed: 'Completed',
+          error: 'Error',
+          cancelled: 'Cancelled',
+        };
+        return stageNames[stage] || stage;
+      }
+
+      // Handle upload completion
+      function handleUploadComplete(progress) {
+        showMessage('Upload successful! Redirecting...', 'success');
+
+        setTimeout(() => {
+          if (progress.sessionId) {
+            window.location.href = `conversations.html?session=${progress.sessionId}`;
+          } else {
+            window.location.href = 'conversations.html';
+          }
+        }, 1500);
+      }
+
+      // Handle upload error
+      function handleUploadError(progress) {
+        showMessage(`Upload failed: ${progress.error}`, 'error');
+
+        // Show retry button
+        const progressActions = document.querySelector('.progress-actions');
+        progressActions.innerHTML = `
+          <button id="retry-upload" class="btn btn-primary btn-sm">Retry</button>
+          <button id="clear-error" class="btn btn-outline btn-sm">Clear</button>
+        `;
+
+        // Add event listeners
+        document.getElementById('retry-upload').addEventListener('click', () => {
+          clearProgressState();
+          hideProgressContainer();
+        });
+
+        document.getElementById('clear-error').addEventListener('click', () => {
+          clearProgressState();
+          hideProgressContainer();
+        });
+      }
+
+      // Handle upload cancellation
+      function handleUploadCancelled(progress) {
+        showMessage('Upload cancelled by user', 'error');
+
+        // Show restart button
+        const progressActions = document.querySelector('.progress-actions');
+        progressActions.innerHTML = `
+          <button id="restart-upload" class="btn btn-primary btn-sm">Start New Upload</button>
+        `;
+
+        document.getElementById('restart-upload').addEventListener('click', () => {
+          clearProgressState();
+          hideProgressContainer();
+        });
+      }
+
+      // Clear progress state
+      async function clearProgressState() {
+        try {
+          await window.electronAPI.clearUploadProgress();
+          currentUploadId = null;
+        } catch (err) {
+          console.error('Error clearing progress:', err);
+        }
+      }
+
+      // Show message (reused from original)
       function showMessage(message, type) {
         const errorDiv = document.getElementById('error-message');
         const successDiv = document.getElementById('success-message');
 
-        // Hide both messages
         errorDiv.style.display = 'none';
         successDiv.style.display = 'none';
 
-        // Show the appropriate message
         if (type === 'error') {
           errorDiv.textContent = message;
           errorDiv.style.display = 'block';
@@ -136,7 +298,55 @@
         }
       }
 
-      let selectedFilePath = null;
+      // Handle minimize/maximize
+      function toggleMinimize() {
+        const progressContainer = document.getElementById('progress-container');
+        const minimizeBtn = document.getElementById('minimize-progress');
+
+        isMinimized = !isMinimized;
+
+        if (isMinimized) {
+          progressContainer.classList.add('minimized');
+          minimizeBtn.textContent = '+';
+        } else {
+          progressContainer.classList.remove('minimized');
+          minimizeBtn.textContent = '−';
+        }
+      }
+
+      // Handle cancel upload
+      async function cancelUpload() {
+        if (currentUploadId) {
+          try {
+            await window.electronAPI.cancelUpload(currentUploadId);
+            showMessage('Cancelling upload...', 'success');
+          } catch (err) {
+            console.error('Error cancelling upload:', err);
+            showMessage('Error cancelling upload', 'error');
+          }
+        }
+      }
+
+      // Setup progress listeners
+      function setupProgressListeners() {
+        window.electronAPI.onUploadProgress(progress => {
+          updateProgressUI(progress);
+          currentUploadId = progress.uploadId;
+        });
+
+        window.electronAPI.onUploadCancelled(data => {
+          console.log('Upload cancelled:', data);
+          if (data.uploadId === currentUploadId) {
+            updateProgressUI({
+              uploadId: data.uploadId,
+              status: 'cancelled',
+              stage: 'cancelled',
+              message: 'Upload cancelled by user',
+              progress: 0,
+            });
+          }
+        });
+      }
 
       // Handle file selection
       document
@@ -178,37 +388,80 @@
             return;
           }
 
-          // Show loading state
-          const originalText = this.textContent;
-          this.textContent = '⏳ Uploading...';
-          this.disabled = true;
+          // Show progress container immediately
+          showProgressContainer();
+          updateProgressUI({
+            uploadId: 'pending',
+            stage: 'initializing',
+            progress: 0,
+            message: 'Starting upload...',
+            status: 'processing',
+          });
 
           try {
-            // Process the upload
+            // Process upload
             const processResult =
               await window.electronAPI.processUpload(selectedFilePath);
 
             if (processResult.success) {
-              showMessage('Upload successful! Redirecting...', 'success');
-              // Redirect to conversations page after a short delay
-              setTimeout(() => {
-                window.location.href = `conversations.html?session=${processResult.sessionId}`;
-              }, 1500);
+              // Progress will be updated via IPC events
+              console.log('Upload initiated successfully');
             } else {
-              showMessage(
-                processResult.error || 'Upload failed. Please try again.',
-                'error'
-              );
+              updateProgressUI({
+                uploadId: 'error',
+                status: 'error',
+                stage: 'error',
+                error: processResult.error || 'Upload failed',
+                message: `Upload failed: ${processResult.error || 'Unknown error'}`,
+                progress: 0,
+              });
             }
           } catch (err) {
             console.error('Upload error:', err);
-            showMessage('Upload failed. Please try again.', 'error');
-          } finally {
-            // Restore button state
-            this.textContent = originalText;
-            this.disabled = false;
+            updateProgressUI({
+              uploadId: 'error',
+              status: 'error',
+              stage: 'error',
+              error: err.message || 'Upload failed',
+              message: `Upload failed: ${err.message || 'Unknown error'}`,
+              progress: 0,
+            });
           }
         });
+
+      // Handle minimize button
+      document
+        .getElementById('minimize-progress')
+        .addEventListener('click', toggleMinimize);
+
+      // Handle cancel button
+      document.getElementById('cancel-upload').addEventListener('click', cancelUpload);
+
+      // Handle cleanup sessions
+      async function cleanupSessions() {
+        if (confirm('Clear all sessions and their data? This cannot be undone.')) {
+          try {
+            const result = await window.electronAPI.cleanupSessions();
+            if (result.success) {
+              showMessage('Sessions cleared successfully.', 'success');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            } else {
+              throw new Error(result.error || 'Failed to clear sessions');
+            }
+          } catch (err) {
+            console.error('Cleanup error:', err);
+            showMessage('Error clearing sessions. Please try again.', 'error');
+          }
+        }
+      }
+
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        setupProgressListeners();
+        initializeProgress();
+      });
     </script>
   </body>
 </html>

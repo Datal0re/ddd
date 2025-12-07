@@ -3,10 +3,12 @@ const path = require('path');
 const axios = require('axios');
 const fs = require('fs').promises;
 const { createLogger } = require('./utils/logger');
+const { getProgressManager } = require('./utils/ProgressManager');
 const logger = createLogger({ module: path.basename(__filename, '.js') });
 
 let mainWindow;
 const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3001}/api`;
+const progressManager = getProgressManager();
 
 logger.info('Electron: API_BASE_URL =', API_BASE_URL);
 logger.info('Electron: process.env.API_PORT =', process.env.API_PORT);
@@ -158,6 +160,9 @@ ipcMain.handle('select-file', async () => {
 
 // IPC handler for upload processing
 ipcMain.handle('process-upload', async (_, filePath) => {
+  let uploadId = null;
+  const eventSource = null;
+
   try {
     logger.info('Upload request received for file path:', filePath);
 
@@ -166,7 +171,6 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     }
 
     const fileBuffer = await fs.readFile(filePath);
-
     logger.info('File read successfully, buffer size:', fileBuffer.length);
 
     // Create FormData for file upload
@@ -184,7 +188,99 @@ ipcMain.handle('process-upload', async (_, filePath) => {
     });
 
     logger.info('API response:', response.data);
-    return { success: true, sessionId: response.data.sessionId };
+    uploadId = response.data.uploadId;
+
+    // Start progress polling (EventSource is not available in Node.js main process)
+    let pollInterval = null;
+
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      let pollCount = 0;
+      const maxPolls = 240; // 2 minutes * 60 seconds / 500ms intervals
+
+      const pollProgress = async () => {
+        try {
+          pollCount++;
+
+          // Stop polling after max attempts
+          if (pollCount > maxPolls) {
+            clearInterval(pollInterval);
+            if (!resolved) {
+              resolved = true;
+              reject(new Error('Upload timeout'));
+            }
+            return;
+          }
+
+          const response = await axios.get(
+            `${API_BASE_URL}/upload-progress/${uploadId}`,
+            {
+              timeout: 5000,
+              headers: {
+                Accept: 'text/event-stream',
+                'Cache-Control': 'no-cache',
+              },
+            }
+          );
+
+          // Parse SSE data
+          const data = response.data;
+          const lines = data.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const progress = JSON.parse(line.slice(6));
+
+                // Send progress to renderer
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.webContents.send('upload-progress', progress);
+                }
+
+                // Handle completion
+                if (progress.status === 'completed') {
+                  if (!resolved) {
+                    resolved = true;
+                    clearInterval(pollInterval);
+                    resolve({ success: true, sessionId: progress.sessionId });
+                  }
+                } else if (progress.status === 'error') {
+                  if (!resolved) {
+                    resolved = true;
+                    clearInterval(pollInterval);
+                    reject(new Error(progress.error || 'Upload failed'));
+                  }
+                } else if (progress.status === 'cancelled') {
+                  if (!resolved) {
+                    resolved = true;
+                    clearInterval(pollInterval);
+                    reject(new Error('Upload cancelled'));
+                  }
+                }
+              } catch (err) {
+                logger.error('Error parsing progress event:', err);
+              }
+            }
+          }
+        } catch (err) {
+          logger.error('Progress poll error:', err);
+          if (pollCount > 10) {
+            // Allow some initial failures
+            clearInterval(pollInterval);
+            if (!resolved) {
+              resolved = true;
+              reject(new Error('Progress tracking failed'));
+            }
+          }
+        }
+      };
+
+      // Start polling
+      pollInterval = setInterval(pollProgress, 500);
+
+      // Initial poll
+      pollProgress();
+    });
   } catch (err) {
     logger.error('Upload error:', err);
     logger.error('Error details:', {
@@ -192,6 +288,17 @@ ipcMain.handle('process-upload', async (_, filePath) => {
       stack: err.stack,
       code: err.code,
     });
+
+    // Clean up event source if it exists
+    if (eventSource) {
+      eventSource.close();
+    }
+
+    // Mark progress as failed if we had an upload ID
+    if (uploadId) {
+      progressManager.failProgress(uploadId, err.message || 'Upload failed');
+    }
+
     return { success: false, error: err.message || 'Upload failed. Please try again.' };
   }
 });
@@ -260,6 +367,60 @@ ipcMain.handle('cleanup-sessions', async () => {
     return response;
   } catch (err) {
     return { success: false, error: err.message || 'Error cleaning up sessions.' };
+  }
+});
+
+// ===== PROGRESS MANAGEMENT IPC HANDLERS =====
+
+// IPC handler for getting upload progress
+ipcMain.handle('get-upload-progress', async () => {
+  try {
+    const allProgress = progressManager.getAllProgress();
+    return { success: true, progress: allProgress };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC handler for setting upload progress (for persistence)
+ipcMain.handle('set-upload-progress', async (_, progressData) => {
+  try {
+    if (progressData.uploadId) {
+      progressManager.updateProgress(progressData.uploadId, progressData);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC handler for cancelling upload
+ipcMain.handle('cancel-upload', async (_, uploadId) => {
+  try {
+    if (uploadId) {
+      progressManager.cancelProgress(uploadId);
+
+      // Send cancellation to renderer
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('upload-cancelled', { uploadId });
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// IPC handler for clearing upload progress
+ipcMain.handle('clear-upload-progress', async () => {
+  try {
+    const allProgress = progressManager.getAllProgress();
+    for (const progress of allProgress) {
+      progressManager.removeProgress(progress.uploadId);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });
 

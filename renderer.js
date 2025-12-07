@@ -34,6 +34,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restoreBackup: (sessionId, backupFile) =>
     ipcRenderer.invoke('restore-backup', sessionId, backupFile),
 
+  // Progress management methods
+  onUploadProgress: callback => {
+    ipcRenderer.on('upload-progress', (_, progress) => {
+      callback(progress);
+    });
+  },
+
+  removeUploadProgressListener: () => {
+    ipcRenderer.removeAllListeners('upload-progress');
+  },
+
+  onUploadCancelled: callback => {
+    ipcRenderer.on('upload-cancelled', (_, data) => {
+      callback(data);
+    });
+  },
+
+  removeUploadCancelledListener: () => {
+    ipcRenderer.removeAllListeners('upload-cancelled');
+  },
+
+  getUploadProgress: () => ipcRenderer.invoke('get-upload-progress'),
+  setUploadProgress: progressData =>
+    ipcRenderer.invoke('set-upload-progress', progressData),
+  cancelUpload: uploadId => ipcRenderer.invoke('cancel-upload', uploadId),
+  clearUploadProgress: () => ipcRenderer.invoke('clear-upload-progress'),
+
   // Navigation helpers
   navigateTo: page => {
     window.location.href = page;

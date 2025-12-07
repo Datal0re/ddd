@@ -13,7 +13,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('./utils/logger');
+const { createLogger } = require('../utils/logger');
 
 const logger = createLogger({ module: 'extract-assets-json' });
 
@@ -163,7 +163,7 @@ if (require.main === module) {
   if (args.length > 0) {
     // Process specific session ID
     const sessionId = args[0];
-    const baseDir = path.resolve(__dirname);
+    const baseDir = path.resolve(__dirname, '..');
 
     logger.info(`Processing specific session: ${sessionId}`);
     extractAssetsJson(sessionId, baseDir)
