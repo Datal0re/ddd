@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
       return template;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error loading template:', error);
       return '';
     }

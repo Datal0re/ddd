@@ -9,6 +9,8 @@
     />
     <title id="page-title">Conversation – Data Dumpster Diver</title>
     <link rel="stylesheet" href="../public/styles.css" />
+    <script src="../public/navigation.js"></script>
+    <script src="../public/loading-system.js"></script>
     <style>
       /* Unique styles for conversation.html - everything else is in public/styles.css */
       .conversation-header {
@@ -44,18 +46,7 @@
       .message-container {
         scroll-margin-top: 2rem;
       }
-      .message-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.75rem;
-      }
-      .message-timestamp {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
+
       .content pre {
         background: var(--bg-tertiary);
         border: 1px solid var(--border-color);
@@ -225,6 +216,17 @@
 
       // Load conversation on page load
       document.addEventListener('DOMContentLoaded', async function () {
+        // Check if electronAPI is available
+        if (!window.electronAPI) {
+          console.error('electronAPI is not available!');
+          showError(
+            "Electron API is not available. Make sure you're running this in the Electron app."
+          );
+          return;
+        }
+
+        console.log('electronAPI available:', Object.keys(window.electronAPI));
+
         const urlParams = new URLSearchParams(window.location.search);
         sessionId = urlParams.get('session');
         conversationId = urlParams.get('id');
@@ -243,15 +245,25 @@
           }
         });
 
+        // Initialize loading system
+        console.log('Initializing loading system...');
+        window.loadingSystem = new LoadingSystem();
+        console.log('Loading system initialized:', !!window.loadingSystem);
+
         try {
+          console.log('Attempting to load conversation...');
+
           const result = await window.electronAPI.getConversation(
             sessionId,
             conversationId
           );
+          console.log('API call result:', result);
+
           if (result.success) {
             conversationData = result;
             renderConversation();
           } else {
+            console.error('API call failed:', result.error);
             showError(result.error || 'Failed to load conversation');
           }
         } catch (err) {
@@ -283,6 +295,7 @@
 
         emptyState.style.display = 'none';
 
+        // Render messages
         conversationData.messages.forEach((msg, index) => {
           const messageDiv = document.createElement('div');
           messageDiv.className = `message ${msg.author.toLowerCase()} message-container fade-in`;
@@ -292,15 +305,8 @@
           let contentHtml = '';
           msg.parts.forEach(part => {
             if (part.html) {
-              // Convert relative URLs to absolute URLs for Electron
-              let processedHtml = part.html;
-              if (processedHtml.includes('src="/media/')) {
-                processedHtml = processedHtml.replace(
-                  /src="\/media\//g,
-                  'src="http://localhost:3001/media/'
-                );
-              }
-              contentHtml += processedHtml;
+              // Use HTML as-is - backend already generates correct URLs
+              contentHtml += part.html;
             } else if (part.transcript) {
               contentHtml += `
               <div class="transcript-info">
@@ -309,65 +315,30 @@
             `;
             } else if (part.asset) {
               // This should not happen if backend processing worked correctly
-              contentHtml += `
-              <div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem; color: #856404;">
-                🖼️ <strong>Asset Processing Failed</strong><br>
-                <small style="color: #856404;">Asset pointer: ${part.asset.asset_pointer || 'Unknown'}</small>
-              </div>
-            `;
+              console.warn('Unexpected asset part found:', part.asset);
+            } else if (part.text) {
+              contentHtml += `<p>${part.text}</p>`;
             }
           });
 
           messageDiv.innerHTML = `
-          <div class="author ${msg.author.toLowerCase()}">
-            ${msg.author}
-          </div>
-          <div class="message-bubble">
-            <div class="content">
-              ${contentHtml}
+            <div class="message-bubble">
+              <div class="author">${msg.author}</div>
+              <div class="content">${contentHtml}</div>
             </div>
-          </div>
-          <div class="message-timestamp">
-            Message ${index + 1}
-          </div>
-        `;
+          `;
 
           messagesContainer.appendChild(messageDiv);
         });
 
-        // Add message hover effects
-        addMessageEffects();
-      }
-
-      function addMessageEffects() {
-        const messages = document.querySelectorAll('.message');
-        messages.forEach(message => {
-          message.addEventListener('mouseenter', function () {
-            this.style.transform = 'translateX(4px)';
-          });
-
-          message.addEventListener('mouseleave', function () {
-            this.style.transform = 'translateX(0)';
-          });
-
-          // Copy message content on double-click
-          message.addEventListener('dblclick', function () {
-            const content = this.querySelector('.content').textContent;
-            navigator.clipboard
-              .writeText(content)
-              .then(() => {
-                // Show a subtle feedback
-                const originalBg = this.style.backgroundColor;
-                this.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-                setTimeout(() => {
-                  this.style.backgroundColor = originalBg;
-                }, 200);
-              })
-              .catch(err => {
-                console.error('Failed to copy text: ', err);
-              });
-          });
-        });
+        // Lazy loading is automatically initialized by MediaOptimizationSystem
+        // Images will be processed automatically when they enter the viewport
+        console.log('Checking lazy loading system...');
+        console.log('MediaOptimizer available:', !!window.mediaOptimizer);
+        // Scroll to top after rendering (start of conversation)
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 100);
       }
 
       function showError(message) {

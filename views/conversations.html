@@ -9,32 +9,35 @@
     />
     <title>Data Dumpster Diver – Conversations</title>
     <link rel="stylesheet" href="../public/styles.css" />
+    <script src="../public/navigation.js"></script>
+    <script src="../public/pagination.js"></script>
+    <script src="../public/loading-system.js"></script>
     <style>
       /* Unique styles for conversations.html - everything else is in public/styles.css */
       .search-container {
         margin-bottom: 2rem;
       }
+
       .conversation-item a {
         display: block;
         padding: 1.5rem;
         text-decoration: none;
         color: var(--text-primary);
       }
+
       .conversation-date {
         color: var(--text-muted);
         font-size: 0.875rem;
       }
     </style>
   </head>
+
   <body>
     <div class="container">
-      <div class="page-header">
+      <div class="page-header page-header-with-nav">
         <div
           style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center"
         >
-          <a href="index.html" class="btn btn-outline" style="font-size: 0.9rem"
-            >← Back to Home</a
-          >
           <button
             onclick="deleteCurrentSession()"
             class="btn btn-danger"
@@ -67,8 +70,12 @@
         </div>
       </div>
 
-      <div id="conversation-list">
+      <div id="conversation-list" class="conversation-list-optimized">
         <!-- Conversations will be loaded here -->
+      </div>
+
+      <div id="pagination-controls">
+        <!-- Pagination controls will be rendered here -->
       </div>
 
       <div id="empty-state" class="card empty-state" style="display: none">
@@ -96,10 +103,21 @@
 
       // Load conversations on page load
       document.addEventListener('DOMContentLoaded', async function () {
+        // Check if electronAPI is available
+        if (!window.electronAPI) {
+          console.error('electronAPI is not available!');
+          showError(
+            "Electron API is not available. Make sure you're running this in the Electron app."
+          );
+          return;
+        }
+
+        console.log('electronAPI available:', Object.keys(window.electronAPI));
+
         const urlParams = new URLSearchParams(window.location.search);
         sessionId = urlParams.get('session');
 
-        // If no session ID provided, try to get the first available session
+        // If no session ID provided, try to get first available session
         if (!sessionId) {
           try {
             const sessionsResult = await window.electronAPI.getAllSessions();
@@ -116,16 +134,38 @@
               return;
             }
           } catch (err) {
-            showError('Failed to load sessions');
+            console.error('Failed to load sessions:', err);
+            showError(`Failed to load sessions: ${err.message || 'Unknown error'}`);
             return;
           }
         }
+
+        // Initialize pagination system
+        paginationSystem = new PaginationSystem({
+          pageSize: 20,
+          sortBy: 'date',
+          sortOrder: 'desc',
+          onPageChange: (page, items) => {
+            renderConversations(items);
+            updateResultCount();
+          },
+        });
+
+        // Make pagination system globally accessible
+        window.paginationSystem = paginationSystem;
+
+        // Show loading skeletons
+        paginationSystem.renderSkeletons('conversation-list');
 
         try {
           const result = await window.electronAPI.getConversations(sessionId);
           if (result.success) {
             conversations = result.conversations;
+            paginationSystem.setItems(conversations);
+            paginationSystem.renderControls('pagination-controls');
+            // Clear skeletons and render actual conversations
             renderConversations();
+            updateResultCount();
           } else {
             showError(result.error || 'Failed to load conversations');
           }
@@ -135,95 +175,74 @@
         }
       });
 
-      function renderConversations() {
+      function renderConversations(itemsToRender = null) {
         const listContainer = document.getElementById('conversation-list');
         const emptyState = document.getElementById('empty-state');
-        const resultCount = document.getElementById('result-count');
+
+        // Use provided items or get current page items
+        const items =
+          itemsToRender ||
+          (paginationSystem ? paginationSystem.getCurrentPageItems() : []);
 
         // Clear existing content
         listContainer.innerHTML = '';
 
-        // Update result count
-        resultCount.textContent = conversations.length;
-
-        if (conversations.length === 0) {
+        if (items.length === 0) {
           emptyState.style.display = 'block';
           return;
         }
 
         emptyState.style.display = 'none';
 
-        conversations.forEach((conv, index) => {
+        items.forEach((conv, index) => {
           const item = document.createElement('div');
-          item.className = 'conversation-item fade-in';
+          item.className = 'conversation-item conversation-item-optimized fade-in';
           item.style.animationDelay = `${index * 50}ms`;
 
           item.innerHTML = `
-          <a href="conversation.html?id=${conv.id}&session=${sessionId}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 500; margin-bottom: 0.25rem; word-break: break-word;">
-                  ${conv.title || 'Untitled Conversation'}
+            <a href="conversation.html?id=${conv.id}&session=${sessionId}">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 500; margin-bottom: 0.25rem; word-break: break-word;">
+                    ${conv.title || 'Untitled Conversation'}
+                  </div>
+                  <div class="conversation-date">
+                    ${conv.date}
+                  </div>
                 </div>
-                <div class="conversation-date">
-                  ${conv.date}
+                <div style="color: var(--primary-blue); font-size: 1.25rem; flex-shrink: 0;">
+                  →
                 </div>
               </div>
-              <div style="color: var(--primary-blue); font-size: 1.25rem; flex-shrink: 0;">
-                →
-              </div>
-            </div>
-          </a>
-        `;
-
+            </a>
+          `;
           listContainer.appendChild(item);
         });
       }
 
-      function filter() {
-        const searchTerm = document.getElementById('search').value.toLowerCase();
-        const items = document.querySelectorAll('.conversation-item');
-        let visibleCount = 0;
-
-        items.forEach(item => {
-          const text = item.textContent.toLowerCase();
-          const isVisible = text.includes(searchTerm);
-          item.style.display = isVisible ? 'block' : 'none';
-
-          if (isVisible) {
-            visibleCount++;
-          }
-        });
-
-        // Update result count
+      function updateResultCount() {
         const resultCount = document.getElementById('result-count');
-        const totalItems = conversations.length;
-        if (searchTerm) {
-          resultCount.textContent = `${visibleCount} of ${totalItems}`;
-        } else {
-          resultCount.textContent = totalItems;
+        if (paginationSystem && resultCount) {
+          const info = paginationSystem.getInfo();
+          resultCount.textContent = `${info.totalItems}`;
         }
+      }
 
-        // Show/hide "no results" message
-        const noResults = document.getElementById('no-results');
-        if (visibleCount === 0 && searchTerm) {
-          if (!noResults) {
-            const noResultsDiv = document.createElement('div');
-            noResultsDiv.id = 'no-results';
-            noResultsDiv.className = 'card fade-in';
-            noResultsDiv.style.textAlign = 'center';
-            noResultsDiv.style.padding = '2rem';
-            noResultsDiv.innerHTML = `
-            <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
-            <h3>No conversations found</h3>
-            <p style="color: var(--text-secondary);">
-              No conversations match "${searchTerm}". Try a different search term.
-            </p>
-          `;
-            document.getElementById('conversation-list').appendChild(noResultsDiv);
-          }
-        } else if (noResults) {
-          noResults.remove();
+      // Get search input element and add event listener
+      const searchInput = document.getElementById('search');
+      searchInput.addEventListener('keyup', function (event) {
+        const searchTerm = event.target.value;
+        if (paginationSystem) {
+          paginationSystem.setSearchTerm(searchTerm);
+          paginationSystem.renderControls('pagination-controls');
+        }
+      });
+
+      function filter() {
+        if (paginationSystem) {
+          const searchTerm = searchInput.value;
+          paginationSystem.setSearchTerm(searchTerm);
+          paginationSystem.renderControls('pagination-controls');
         }
       }
 

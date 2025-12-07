@@ -122,7 +122,9 @@ function buildAssetUrl(filePath, baseDir) {
   validateNonEmptyString(baseDir, 'baseDir');
 
   const relativePath = path.relative(path.join(baseDir, 'public'), filePath);
-  return '/' + relativePath.replace(/\\/g, '/');
+  // Return absolute URL to ensure proper loading through the web server
+  const port = process.env.API_PORT || 3001;
+  return `http://localhost:${port}/` + relativePath.replace(/\\/g, '/');
 }
 
 /**
@@ -265,6 +267,36 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
         }
       } catch (error) {
         handleFileError(error, 'finding mapped asset file', assetKey);
+      }
+    }
+  }
+
+  // If mapping fails, try to extract base filename from asset pointer and search for files with similar names
+  // This handles cases where the asset mapping is incorrect or missing
+  const baseAssetId = assetPointer.replace(/^(file-service:\/\/|sediment:\/\/)/, '');
+  const possibleNames = [
+    baseAssetId, // Exact match
+    baseAssetId + '.jpeg', // With extension
+    baseAssetId + '.jpg', // With extension
+    baseAssetId + '.png', // With extension
+  ];
+
+  // Search in both main media directory and Test-Chat-Combine subdirectory
+  const searchDirs = [mediaDir, path.join(mediaDir, 'Test-Chat-Combine')];
+
+  for (const searchDir of searchDirs) {
+    for (const name of possibleNames) {
+      try {
+        const files = await cachedRecursivelyFindFiles(searchDir, name);
+        if (files.length > 0) {
+          logger.debug(
+            `Found asset by pattern search: ${assetPointer} -> ${name} in ${searchDir}`
+          );
+          return buildAssetUrl(files[0], baseDir);
+        }
+      } catch {
+        // Continue to next pattern
+        continue;
       }
     }
   }
