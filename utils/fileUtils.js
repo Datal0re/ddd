@@ -443,6 +443,7 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
       const destPath = path.join(mediaDir, relativePath);
       await ensureDir(path.dirname(destPath));
       await fs.copyFile(src, destPath);
+      logger.debug(`Copied media file: ${file.path} -> ${relativePath}`);
     }
 
     // Move other files to session directory

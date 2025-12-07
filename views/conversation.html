@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data:; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3001; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data: http://localhost:3001; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';">
     <title id="page-title">Conversation – Data Dumpster Diver</title>
     <link rel="stylesheet" href="../public/styles.css" />
     <style>
@@ -111,6 +111,14 @@
         margin: 1rem 0;
         color: var(--accent-cyan);
         font-style: italic;
+      }
+      .asset-missing {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid #ffc107;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #856404;
       }
       .scroll-to-top {
         position: fixed;
@@ -279,7 +287,12 @@
           let contentHtml = '';
           msg.parts.forEach(part => {
             if (part.html) {
-              contentHtml += part.html;
+              // Convert relative URLs to absolute URLs for Electron
+              let processedHtml = part.html;
+              if (processedHtml.includes('src="/media/')) {
+                processedHtml = processedHtml.replace(/src="\/media\//g, 'src="http://localhost:3001/media/');
+              }
+              contentHtml += processedHtml;
             } else if (part.transcript) {
               contentHtml += `
               <div class="transcript-info">
@@ -287,9 +300,11 @@
               </div>
             `;
             } else if (part.asset) {
+              // This should not happen if backend processing worked correctly
               contentHtml += `
-              <div class="asset-info">
-                📎 Asset: ${JSON.stringify(part.asset, null, 2)}
+              <div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem; color: #856404;">
+                🖼️ <strong>Asset Processing Failed</strong><br>
+                <small style="color: #856404;">Asset pointer: ${part.asset.asset_pointer || 'Unknown'}</small>
               </div>
             `;
             }

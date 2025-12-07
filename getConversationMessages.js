@@ -259,6 +259,7 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
     assetMapping
   );
   if (!assetUrl) {
+    logger.debug(`Asset URL not found for: ${assetPointer}`);
     // File not found - show helpful message
     return {
       html: `<div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem; color: #856404;">
@@ -268,6 +269,8 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
       type: 'missing',
     };
   }
+  
+  logger.debug(`Generated asset URL: ${assetPointer} -> ${assetUrl}`);
 
   // Generate HTML based on content type
   switch (contentType) {
@@ -398,8 +401,10 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
       ) {
         const assetHtml = await generateAssetHtml(p, sessionId, baseDir, assetMapping);
         if (assetHtml) {
+          logger.debug(`Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`);
           parts.push(assetHtml);
         } else {
+          logger.warn(`Failed to process asset: ${p.asset_pointer}`);
           parts.push({ asset: p }); // Fallback to original behavior
         }
       } else if (p && p.content_type === 'real_time_user_audio_video_asset_pointer') {
