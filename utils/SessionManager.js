@@ -333,7 +333,7 @@ class SessionManager {
       const conv = JSON.parse(content);
 
       // Import getConversationMessages function
-      const { getConversationMessages } = require('../getConversationMessages.js');
+      const { getConversationMessages } = require('./getConversationMessages.js');
       const messages = await getConversationMessages(conv, sessionId, this.baseDir);
 
       return {

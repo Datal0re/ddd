@@ -2,7 +2,7 @@ const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('./utils/logger');
+const { createLogger } = require('./logger');
 const logger = createLogger({ module: 'getConversationMessages' });
 
 /**

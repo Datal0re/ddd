@@ -164,12 +164,12 @@ data-dumpster-diver/
 ├── main.js                    # Electron main process
 ├── app.js                     # Express API server
 ├── renderer.js                # Electron preload script
-├── getConversationMessages.js # Message processing utilities
 ├── package.json               # Dependencies and scripts
 ├── utils/                     # Core utilities
 │   ├── SessionManager.js      # Session lifecycle management
 │   ├── BackupManager.js      # Backup system
 │   ├── fileUtils.js           # Secure file operations
+│   ├── getConversationMessages.js # Message processing utilities
 │   └── logger.js              # Logging utilities
 ├── views/                     # Frontend HTML files
 │   ├── index.html             # Main dashboard
