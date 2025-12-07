@@ -1,4 +1,6 @@
 const express = require('express');
+const path = require('path');
+const logger = require('./utils/logger').createLogger({ module: 'api-server' });
 const { SessionManager } = require('./utils/SessionManager.js');
 const multer = require('multer');
 
@@ -17,16 +19,19 @@ async function initializeApp() {
 
   // Start server
   app.listen(port, () => {
-    console.log(`Data Dumpster Diver API server listening on port ${port}`);
+    logger.info('Data Dumpster Diver API server listening on port ${port}');
   });
 }
 
 // Initialize the app
-initializeApp().catch(console.error);
+initializeApp().catch(logger.error);
 
 // Middleware
 app.use(express.json({ limit: '50mb' })); // Support large conversation data
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static media files
+app.use('/media', express.static(path.join(__dirname, 'public', 'media')));
 
 // Enable CORS for Electron app
 app.use((req, res, next) => {
@@ -58,7 +63,7 @@ app.get('/api/sessions', async (req, res) => {
     }));
     res.json({ success: true, sessions: sessionArray });
   } catch (err) {
-    console.error('Error getting sessions:', err);
+    logger.error('Error getting sessions:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -73,7 +78,7 @@ app.get('/api/sessions/:sessionId/conversations', async (req, res) => {
     const conversations = await sessionManager.getConversations(sessionId);
     res.json({ success: true, conversations });
   } catch (err) {
-    console.error('Error getting conversations:', err);
+    logger.error('Error getting conversations:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -91,7 +96,7 @@ app.get('/api/sessions/:sessionId/conversations/:conversationId', async (req, re
     );
     res.json({ success: true, ...conversation });
   } catch (err) {
-    console.error('Error getting conversation:', err);
+    logger.error('Error getting conversation:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -102,7 +107,7 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
     const deleted = await sessionManager.deleteSession(sessionId);
     res.json({ success: true, deleted });
   } catch (err) {
-    console.error('Error deleting session:', err);
+    logger.error('Error deleting session:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -112,7 +117,7 @@ app.post('/api/sessions/cleanup', async (req, res) => {
     const deletedCount = await sessionManager.cleanupOldSessions();
     res.json({ success: true, deletedCount });
   } catch (err) {
-    console.error('Error cleaning up sessions:', err);
+    logger.error('Error cleaning up sessions:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -130,7 +135,7 @@ app.post('/api/sessions/:sessionId/backup', async (req, res) => {
     const backupPath = await sessionManager.createBackup(sessionId);
     res.json({ success: true, data: { backupPath } });
   } catch (err) {
-    console.error('Error creating backup:', err);
+    logger.error('Error creating backup:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -147,7 +152,7 @@ app.get('/api/sessions/:sessionId/backups', async (req, res) => {
     const backups = await sessionManager.listBackups(sessionId);
     res.json({ success: true, data: { backups } });
   } catch (err) {
-    console.error('Error listing backups:', err);
+    logger.error('Error listing backups:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -170,7 +175,7 @@ app.post('/api/sessions/:sessionId/restore', async (req, res) => {
     const success = await sessionManager.restoreBackup(sessionId, backupFile);
     res.json({ success: true, data: { restored: success } });
   } catch (err) {
-    console.error('Error restoring backup:', err);
+    logger.error('Error restoring backup:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -178,7 +183,7 @@ app.post('/api/sessions/:sessionId/restore', async (req, res) => {
 // File Upload API
 app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
   try {
-    console.log('Upload request received:', {
+    logger.info('Upload request received:', {
       file: req.file
         ? {
           originalname: req.file.originalname,
@@ -193,16 +198,16 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    console.log(
+    logger.info(
       'Calling sessionManager.createSession with buffer size:',
       req.file.buffer.length
     );
     const sessionId = await sessionManager.createSession(req.file.buffer, true); // true = buffer
-    console.log('Session created successfully:', sessionId);
+    logger.info('Session created successfully:', sessionId);
 
     res.json({ success: true, sessionId });
   } catch (err) {
-    console.error('Upload error:', {
+    logger.error('Upload error:', {
       message: err.message,
       stack: err.stack,
       code: err.code,
@@ -219,10 +224,10 @@ app.post('/api/ai/analyze-conversation', async (req, res) => {
     const { sessionId, conversationId, analysisType } = req.body;
 
     // Placeholder: Simulate AI analysis
-    console.log(
+    logger.debug(
       `AI Analysis requested for conversation ${conversationId} in session ${sessionId}`
     );
-    console.log(`Analysis type: ${analysisType}`);
+    logger.info(`Analysis type: ${analysisType}`);
 
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -246,7 +251,7 @@ app.post('/api/ai/analyze-conversation', async (req, res) => {
       message: 'Analysis completed (placeholder implementation)',
     });
   } catch (err) {
-    console.error('AI analysis error:', err);
+    logger.error('AI analysis error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -256,8 +261,8 @@ app.post('/api/ai/search-conversations', async (req, res) => {
     const { sessionId, query, searchType } = req.body;
 
     // Placeholder: Simulate AI-powered semantic search
-    console.log(`AI Search requested in session ${sessionId}`);
-    console.log(`Query: ${query}, Search type: ${searchType}`);
+    logger.info(`AI Search requested in session ${sessionId}`);
+    logger.info(`Query: ${query}, Search type: ${searchType}`);
 
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -283,7 +288,7 @@ app.post('/api/ai/search-conversations', async (req, res) => {
       message: 'Search completed (placeholder implementation)',
     });
   } catch (err) {
-    console.error('AI search error:', err);
+    logger.error('AI search error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -293,8 +298,8 @@ app.post('/api/ai/summarize-session', async (req, res) => {
     const { sessionId, summaryType } = req.body;
 
     // Placeholder: Simulate AI session summarization
-    console.log(`AI Summary requested for session ${sessionId}`);
-    console.log(`Summary type: ${summaryType}`);
+    logger.info(`AI Summary requested for session ${sessionId}`);
+    logger.info(`Summary type: ${summaryType}`);
 
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -319,7 +324,7 @@ app.post('/api/ai/summarize-session', async (req, res) => {
       message: 'Summary completed (placeholder implementation)',
     });
   } catch (err) {
-    console.error('AI summary error:', err);
+    logger.error('AI summary error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

@@ -5,6 +5,7 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('../utils/logger').createLogger({ module: 'SessionManager' });
 const {
   ensureDir,
   runMigration,
@@ -40,7 +41,7 @@ class SessionManager {
   async initialize() {
     await this.loadSessions();
     await this.ensureDataDirectories();
-    console.log('SessionManager initialized');
+    logger.info('SessionManager initialized');
   }
 
   /**
@@ -55,7 +56,7 @@ class SessionManager {
     const sessionDir = path.join(this.dataDir, sessionId);
     const mediaDir = path.join(this.mediaDir, sessionId);
 
-    console.log(`Creating session ${sessionId} with isBuffer=${isBuffer}`);
+    logger.info('Creating session ${sessionId} with isBuffer=${isBuffer}');
 
     // Ensure directories exist
     await ensureDir(sessionDir);
@@ -63,7 +64,7 @@ class SessionManager {
 
     try {
       // Process zip upload with enhanced security and progress tracking
-      console.log('Starting enhanced zip upload processing...');
+      logger.info('Starting enhanced zip upload processing...');
 
       await processZipUpload(
         zipData,
@@ -72,22 +73,22 @@ class SessionManager {
         mediaDir,
         isBuffer,
         progress => {
-          console.log(
+          logger.info(
             `Upload progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`
           );
         }
       );
 
-      console.log('Zip upload completed successfully');
+      logger.info('Zip upload completed successfully');
 
       // Run migration
-      console.log('Starting migration process...');
+      logger.info('Starting migration process...');
       await runMigration(
         sessionId,
         path.join(sessionDir, 'conversations'),
         this.baseDir
       );
-      console.log('Migration completed successfully');
+      logger.info('Migration completed successfully');
 
       // Store session info with enhanced metadata
       this.sessions.set(sessionId, {
@@ -97,10 +98,10 @@ class SessionManager {
       });
       await this.saveSessions();
 
-      console.log(`Session created successfully: ${sessionId}`);
+      logger.info('Session created successfully: ${sessionId}');
       return sessionId;
     } catch (error) {
-      console.error('Session creation failed:', {
+      logger.error('Session creation failed:', {
         message: error.message,
         stack: error.stack,
         code: error.code,
@@ -110,9 +111,9 @@ class SessionManager {
       // Clean up on failure
       try {
         await removeDirectories(sessionDir, mediaDir);
-        console.log('Cleanup completed after failure');
+        logger.info('Cleanup completed after failure');
       } catch (cleanupError) {
-        console.error('Cleanup failed:', cleanupError);
+        logger.error('Cleanup failed:', cleanupError);
       }
 
       throw error;
@@ -165,7 +166,7 @@ class SessionManager {
     this.sessions.delete(sessionId);
     await this.saveSessions();
 
-    console.log(`Deleted session: ${sessionId}`);
+    logger.info('Deleted session: ${sessionId}');
     return true;
   }
 
@@ -177,10 +178,10 @@ class SessionManager {
   async createBackup(sessionId) {
     try {
       const backupPath = await this.backupManager.createBackup(sessionId);
-      console.log(`Backup created for session ${sessionId}: ${backupPath}`);
+      logger.info('Backup created for session ${sessionId}: ${backupPath}');
       return backupPath;
     } catch (error) {
-      console.error(`Backup failed for session ${sessionId}:`, error);
+      logger.error(`Backup failed for session ${sessionId}:`, error);
       throw error;
     }
   }
@@ -193,10 +194,10 @@ class SessionManager {
   async listBackups(sessionId) {
     try {
       const backups = await this.backupManager.listBackups(sessionId);
-      console.log(`Found ${backups.length} backups for session ${sessionId}`);
+      logger.info('Found ${backups.length} backups for session ${sessionId}');
       return backups;
     } catch (error) {
-      console.error(`Failed to list backups for session ${sessionId}:`, error);
+      logger.error(`Failed to list backups for session ${sessionId}:`, error);
       return [];
     }
   }
@@ -213,11 +214,11 @@ class SessionManager {
       if (success) {
         // Reload sessions after restore
         await this.loadSessions();
-        console.log(`Session ${sessionId} restored from ${backupFile}`);
+        logger.info('Session ${sessionId} restored from ${backupFile}');
       }
       return success;
     } catch (error) {
-      console.error(`Restore failed for session ${sessionId}:`, error);
+      logger.error(`Restore failed for session ${sessionId}:`, error);
       return false;
     }
   }
@@ -244,7 +245,7 @@ class SessionManager {
     }
 
     if (sessionsToDelete.length > 0) {
-      console.log(`Cleaned up ${sessionsToDelete.length} old sessions`);
+      logger.info('Cleaned up ${sessionsToDelete.length} old sessions');
     }
 
     return sessionsToDelete.length;
@@ -280,7 +281,7 @@ class SessionManager {
 
       return conversations;
     } catch (error) {
-      console.error(`Error loading conversations for session ${sessionId}:`, error);
+      logger.error(`Error loading conversations for session ${sessionId}:`, error);
       throw new Error('Error loading conversations');
     }
   }
@@ -308,14 +309,14 @@ class SessionManager {
 
       // Import getConversationMessages function
       const { getConversationMessages } = require('../getConversationMessages.js');
-      const messages = getConversationMessages(conv);
+      const messages = await getConversationMessages(conv, sessionId, this.baseDir);
 
       return {
         title: conv.title || 'Untitled',
         messages,
       };
     } catch (error) {
-      console.error(`Error loading conversation ${conversationId}:`, error);
+      logger.error(`Error loading conversation ${conversationId}:`, error);
       throw new Error('Error loading conversation');
     }
   }
@@ -336,13 +337,13 @@ class SessionManager {
           },
         ])
       );
-      console.log(`Loaded ${this.sessions.size} sessions from disk`);
+      logger.info(`Loaded ${this.sessions.size} sessions from disk`);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.warn('Failed to load sessions:', error.message);
+        logger.warn('Failed to load sessions:', error.message);
       }
       this.sessions = new Map();
-      console.log('Starting with empty sessions');
+      logger.info('Starting with empty sessions');
     }
   }
 
@@ -354,7 +355,7 @@ class SessionManager {
       const data = JSON.stringify([...this.sessions.entries()], null, 2);
       await fs.writeFile(this.sessionsFile, data);
     } catch (error) {
-      console.error('Failed to save sessions:', error.message);
+      logger.error('Failed to save sessions:', error.message);
       throw error;
     }
   }

@@ -2,25 +2,27 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs').promises;
+const { createLogger } = require('./utils/logger');
+const logger = createLogger({ module: path.basename(__filename, '.js') });
 
 let mainWindow;
 const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3001}/api`;
 
-console.log('Electron: API_BASE_URL =', API_BASE_URL);
-console.log('Electron: process.env.API_PORT =', process.env.API_PORT);
+logger.info('Electron: API_BASE_URL =', API_BASE_URL);
+logger.info('Electron: process.env.API_PORT =', process.env.API_PORT);
 
 // Add retry mechanism for API connection
 async function waitForApiServer(maxRetries = 5, delay = 1000) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await axios.get(`${API_BASE_URL}/health`);
-      console.log(`API health check ${i + 1}:`, response.data);
+      logger.info(`API health check ${i + 1}:`, response.data);
       if (response.data.success) {
-        console.log('API server is ready');
+        logger.info('API server is ready');
         return true;
       }
     } catch (err) {
-      console.log(`API health check ${i + 1} failed:`, err.message);
+      logger.info(`API health check ${i + 1} failed:`, err.message);
       if (i === maxRetries - 1) {
         throw err;
       }
@@ -31,26 +33,26 @@ async function waitForApiServer(maxRetries = 5, delay = 1000) {
 
 // Wait for API server to be ready before creating window
 app.whenReady().then(async () => {
-  console.log('Electron app ready, waiting for API server...');
+  logger.info('Electron app ready, waiting for API server...');
 
   // Wait for API server with retry mechanism
   const apiReady = await waitForApiServer();
   if (apiReady) {
-    console.log('API server confirmed ready, creating window');
+    logger.info('API server confirmed ready, creating window');
     createWindow();
   } else {
-    console.log('API server not ready after retries, exiting');
+    logger.info('API server not ready after retries, exiting');
     app.quit(1);
   }
 });
 
 // Add error handling for API connection failures
 process.on('uncaughtException', err => {
-  console.error('Uncaught exception:', err);
+  logger.error('Uncaught exception:', err);
 });
 
 process.on('unhandledRejection', reason => {
-  console.error('Unhandled rejection:', reason);
+  logger.error('Unhandled rejection:', reason);
 });
 
 function createWindow() {
@@ -102,16 +104,16 @@ async function apiCall(method, endpoint, data = null) {
       }
     }
 
-    console.log(`Making API call: ${method} ${config.url}`);
+    logger.info(`Making API call: ${method} ${config.url}`);
     const response = await axios(config);
-    console.log(
+    logger.info(
       `API response: ${response.status} ${JSON.stringify(response.data).substring(0, 100)}...`
     );
     return response.data;
   } catch (error) {
-    console.error(`API call failed: ${method} ${endpoint}`, error.message);
+    logger.error(`API call failed: ${method} ${endpoint}`, error.message);
     if (error.code === 'ECONNREFUSED') {
-      console.error('Make sure the API server is running: npm run web');
+      logger.error('Make sure the API server is running: npm run web');
     }
     throw error;
   }
@@ -157,7 +159,7 @@ ipcMain.handle('select-file', async () => {
 // IPC handler for upload processing
 ipcMain.handle('process-upload', async (_, filePath) => {
   try {
-    console.log('Upload request received for file path:', filePath);
+    logger.info('Upload request received for file path:', filePath);
 
     if (!filePath) {
       throw new Error('File path is null or undefined');
@@ -165,7 +167,7 @@ ipcMain.handle('process-upload', async (_, filePath) => {
 
     const fileBuffer = await fs.readFile(filePath);
 
-    console.log('File read successfully, buffer size:', fileBuffer.length);
+    logger.info('File read successfully, buffer size:', fileBuffer.length);
 
     // Create FormData for file upload
     const FormData = require('form-data');
@@ -175,17 +177,17 @@ ipcMain.handle('process-upload', async (_, filePath) => {
       contentType: 'application/zip',
     });
 
-    console.log('Sending file to API...');
+    logger.info('Sending file to API...');
     const response = await axios.post(`${API_BASE_URL}/upload`, form, {
       headers: form.getHeaders(),
       timeout: 60000, // 60 seconds for large files
     });
 
-    console.log('API response:', response.data);
+    logger.info('API response:', response.data);
     return { success: true, sessionId: response.data.sessionId };
   } catch (err) {
-    console.error('Upload error:', err);
-    console.error('Error details:', {
+    logger.error('Upload error:', err);
+    logger.error('Error details:', {
       message: err.message,
       stack: err.stack,
       code: err.code,
@@ -208,9 +210,12 @@ ipcMain.handle('get-file-path', async (_, _fileObject) => {
 // IPC handler for getting all sessions
 ipcMain.handle('get-all-sessions', async () => {
   try {
+    logger.debug('IPC: get-all-sessions called');
     const response = await apiCall('GET', '/sessions');
+    logger.debug('IPC: get-all-sessions response:', response);
     return response;
   } catch (err) {
+    logger.error('IPC: get-all-sessions error:', err);
     return { success: false, error: err.message || 'Error getting sessions.' };
   }
 });

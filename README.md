@@ -68,11 +68,13 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 ### Development Modes
 
 **Full Development (Recommended):**
+
 ```bash
 npm run dev-full  # Starts API server + Electron app
 ```
 
 **Web-Only Development:**
+
 ```bash
 npm run web       # Starts Express server only (API_PORT=3001)
 ```
@@ -103,7 +105,7 @@ Data Dumpster Diver uses a hybrid architecture combining:
 
 ### Data Flow
 
-```
+```text
 User Interface → IPC → Main Process → HTTP → Express API → SessionManager
 ```
 
@@ -118,7 +120,7 @@ data-dumpster-diver/
 ├── package.json               # Dependencies and scripts
 ├── utils/                     # Core utilities
 │   ├── SessionManager.js      # Session lifecycle management
-│   ├── BackupManager.js      # Backup system
+│   ├── BackupManager.js       # Backup system
 │   ├── fileUtils.js           # Secure file operations
 │   └── logger.js              # Logging utilities
 ├── views/                     # Frontend HTML files

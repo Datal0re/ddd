@@ -2,6 +2,8 @@
 // migration.js - CommonJS style, async I/O
 const fs = require('fs').promises;
 const path = require('path');
+const { createLogger } = require('../utils/logger');
+const logger = createLogger({ module: 'migration' });
 function sanitizeFilename(rawTitle) {
   // Remove characters not suitable for filenames, then replace spaces with underscores
   const noBad = rawTitle.replace(/[^\w\s-]/g, '');
@@ -40,19 +42,19 @@ async function main() {
   try {
     raw = await fs.readFile(inputPath, 'utf8');
   } catch (err) {
-    console.error(`Error reading input file ${inputPath}: ${err.message}`);
+    logger.error(`Error reading input file ${inputPath}: ${err.message}`);
     process.exit(1);
   }
   let conversations;
   try {
     conversations = JSON.parse(raw);
   } catch (err) {
-    console.error(`Invalid JSON in ${inputPath}: ${err.message}`);
+    logger.error(`Invalid JSON in ${inputPath}: ${err.message}`);
     process.exit(1);
   }
   // Validate it's an array
   if (!Array.isArray(conversations)) {
-    console.error(`Expected an array of conversations in ${inputPath}`);
+    logger.error(`Expected an array of conversations in ${inputPath}`);
     process.exit(1);
   }
   // Sort newest first
@@ -77,7 +79,7 @@ async function main() {
 // Ensure the script runs only when executed directly, not when imported
 if (require.main === module) {
   main().catch(err => {
-    console.error('Migration failed:', err);
+    logger.error('Migration failed:', err);
     process.exit(1);
   });
 }

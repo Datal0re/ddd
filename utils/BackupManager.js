@@ -4,6 +4,8 @@
  */
 const fsPromises = require('fs').promises;
 const path = require('path');
+const { createLogger } = require('./logger');
+const logger = createLogger({ module: 'BackupManager' });
 
 class BackupManager {
   constructor(baseDir) {
@@ -89,10 +91,10 @@ class BackupManager {
       // Clean up old backups
       await this.cleanupOldBackups(sessionId);
 
-      console.log(`Backup created: ${backupPath}`);
+      logger.info(`Backup created: ${backupPath}`);
       return backupPath;
     } catch (error) {
-      console.error(`Backup failed for session ${sessionId}:`, error);
+      logger.error(`Backup failed for session ${sessionId}:`, error);
       throw error;
     } finally {
       // Always release the lock
@@ -137,7 +139,7 @@ class BackupManager {
       const backups = await Promise.all(backupPromises);
       return backups.sort((a, b) => b.created - a.created); // Newest first
     } catch (error) {
-      console.error(`Failed to list backups for session ${sessionId}:`, error);
+      logger.error(`Failed to list backups for session ${sessionId}:`, error);
       return [];
     }
   }
@@ -159,11 +161,11 @@ class BackupManager {
 
         for (const backup of toDelete) {
           await fsPromises.unlink(backup.path);
-          console.log(`Deleted old backup: ${backup.filename}`);
+          logger.info(`Deleted old backup: ${backup.filename}`);
         }
       }
     } catch (error) {
-      console.warn('Backup cleanup failed:', error);
+      logger.warn('Backup cleanup failed:', error);
     }
   }
 
@@ -207,7 +209,7 @@ class BackupManager {
       ) {
         try {
           preRestoreBackup = await this.createBackup(sessionId);
-          console.log(`Created pre-restore backup: ${preRestoreBackup}`);
+          logger.info(`Created pre-restore backup: ${preRestoreBackup}`);
 
           // Store original files for potential rollback
           const files = await fsPromises.readdir(sessionDir);
@@ -220,7 +222,7 @@ class BackupManager {
             }
           }
         } catch (error) {
-          console.warn('Failed to create pre-restore backup:', error.message);
+          logger.warn('Failed to create pre-restore backup:', error.message);
         }
       }
 
@@ -246,25 +248,25 @@ class BackupManager {
         restoredFiles.push(filename);
       }
 
-      console.log(
+      logger.info(
         `Session ${sessionId} restored from ${backupFile} (${restoredFiles.length} files)`
       );
       return true;
     } catch (error) {
-      console.error(`Restore failed for session ${sessionId}:`, error);
+      logger.error(`Restore failed for session ${sessionId}:`, error);
 
       // Attempt rollback if we have original files
       if (originalFiles.size > 0) {
         try {
-          console.log('Attempting to restore original files...');
+          logger.info('Attempting to restore original files...');
           for (const [filename, content] of originalFiles.entries()) {
             const filePath = path.join(sessionDir, filename);
             await fsPromises.writeFile(filePath, content, 'utf8');
           }
-          console.log('Rollback completed successfully');
+          logger.info('Rollback completed successfully');
         } catch (rollbackError) {
-          console.error('Rollback failed:', rollbackError);
-          console.error(
+          logger.error('Rollback failed:', rollbackError);
+          logger.error(
             `Manual recovery may be needed. Pre-restore backup: ${preRestoreBackup}`
           );
         }

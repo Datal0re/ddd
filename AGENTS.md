@@ -34,6 +34,14 @@ This is a sophisticated desktop application that combines:
 - Waits for API server health before creating window
 - Handles application lifecycle
 
+**Content Security Policy (CSP):**
+- All HTML files include comprehensive CSP meta tags
+- Policy: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data:; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';`
+- Allows inline scripts and styles for current functionality
+- Restricts external resources to localhost API server
+- Prevents dangerous content types (objects, frames, workers)
+- Supports data: and blob: URLs for media assets
+
 **API Server (`app.js`):**
 - Independent Express server on port 3001
 - CORS-enabled for Electron communication
