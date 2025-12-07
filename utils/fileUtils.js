@@ -186,12 +186,30 @@ async function runMigration(sessionId, outputDir, baseDir) {
       'node',
       [path.join(baseDir, 'data', 'migration.js'), inputPath, outputDir],
       {
-        stdio: 'inherit',
+        stdio: 'pipe',
       }
     );
+    
+    let stdout = '';
+    let stderr = '';
+    
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
     child.on('close', code => {
-      if (code === 0) resolve();
-      else reject(new Error(`Migration exited with code ${code}`));
+      if (code === 0) {
+        logger.debug('Migration stdout:', stdout);
+        resolve();
+      } else {
+        logger.error('Migration stderr:', stderr);
+        logger.error('Migration stdout:', stdout);
+        reject(new Error(`Migration exited with code ${code}: ${stderr}`));
+      }
     });
   });
 }
@@ -272,85 +290,28 @@ async function processZipUpload(
 
     onProgress?.({ stage: 'organizing', progress: 50, message: 'Organizing files...' });
 
-    // Find conversations.json and detect top-level folder structure
-    let conversationsPath = null;
-    const topLevelDirs = new Set();
-
-    for (const file of files) {
-      const parts = file.path.split(path.sep);
-      if (parts.length > 1) {
-        topLevelDirs.add(parts[0]);
-      }
-    }
-
-    logger.debug('Top-level directories found:', [...topLevelDirs]);
-
-    const hasSingleTopLevel = topLevelDirs.size === 1;
-    const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : '';
-
-    logger.debug('Has single top level:', hasSingleTopLevel);
-    logger.debug('Top level folder:', topLevelFolder);
-
-    // Process each file
-    for (const file of files) {
-      // Find conversations.json
-      if (file.path.endsWith('conversations.json')) {
-        const candidatePath = path.join(sessionDir, file.path);
-        const stats = await fs.stat(candidatePath);
-        if (stats.isFile()) {
-          const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
-          if (sample && !sample.includes('\u0000')) {
-            conversationsPath = candidatePath;
-          }
-        }
-      }
-
-      // Copy media assets
-      if (
-        (file.path.startsWith('file-') ||
-          file.path.includes('audio/') ||
-          file.path.includes('dalle-generations/')) &&
-        !file.path.endsWith('/')
-      ) {
-        const src = path.join(sessionDir, file.path);
-        const relativePath =
-          hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-            ? file.path.slice((topLevelFolder + path.sep).length)
-            : file.path;
-        const destPath = path.join(mediaDir, relativePath);
-        await ensureDir(path.dirname(destPath));
-        await fs.copyFile(src, destPath);
-      }
-    }
-
-    if (!conversationsPath) {
-      throw new Error('conversations.json not found in uploaded zip.');
-    }
-
-    // Ensure conversations.json is at session root
-    const targetConversationsPath = path.join(sessionDir, 'conversations.json');
-    if (conversationsPath !== targetConversationsPath) {
-      await fs.rename(conversationsPath, targetConversationsPath);
-      conversationsPath = targetConversationsPath;
-    }
-
-    // Clean up nested directory if present
-    if (hasSingleTopLevel && topLevelFolder) {
-      const nestedDir = path.join(sessionDir, topLevelFolder);
-      try {
-        await fs.rmdir(nestedDir, { recursive: true });
-      } catch (error) {
-        logger.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
-      }
-    }
-
     // Move files from temp to final locations
     onProgress?.({
       stage: 'finalizing',
       progress: 80,
       message: 'Finalizing organization...',
     });
-    await moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files);
+    const conversationsPath = await moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files);
+
+    logger.info('Files moved, conversationsPath:', conversationsPath);
+
+    if (!conversationsPath) {
+      throw new Error('conversations.json not found in uploaded zip.');
+    }
+
+    // Verify conversations.json exists
+    try {
+      await fs.access(conversationsPath);
+      logger.info('conversations.json verified at:', conversationsPath);
+    } catch (error) {
+      logger.error('conversations.json not found at expected path:', conversationsPath);
+      throw new Error('conversations.json not found at expected path: ' + conversationsPath);
+    }
 
     onProgress?.({
       stage: 'completed',

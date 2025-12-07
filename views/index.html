@@ -11,6 +11,78 @@
       .container {
         padding: 2rem;
       }
+
+      /* Session modal styles */
+      .session-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .session-modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .session-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+      }
+
+      .session-item:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-1px);
+      }
+
+      .session-item-id {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        font-family: monospace;
+        font-size: 0.875rem;
+      }
+
+      .session-item-date {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+      }
+
+      .session-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .backup-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+      }
+
+      .backup-item:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-1px);
+      }
     </style>
   </head>
   <body>
@@ -125,7 +197,10 @@
             <span class="action-icon">🔍</span>
             <h3>Explore Conversations</h3>
             <p>Browse through your existing ChatGPT conversations and media assets</p>
-            <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+              <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
+              <button onclick="deleteSession('${sessions[0].id}')" class="btn btn-danger" style="font-size: 0.875rem;">🗑️ Delete Session</button>
+            </div>
           `;
           } else {
             // Session selection if multiple sessions
@@ -148,6 +223,19 @@
           <a href="upload.html" class="btn btn-outline">Upload ZIP File</a>
         `;
           actionsGrid.appendChild(uploadCard);
+
+          // Add session management card if multiple sessions
+          if (sessionsCount > 1) {
+            const manageCard = document.createElement('div');
+            manageCard.className = 'action-card fade-in';
+            manageCard.innerHTML = `
+            <span class="action-icon">⚙️</span>
+            <h3>Manage Sessions</h3>
+            <p>Delete or manage your existing conversation sessions</p>
+            <button onclick="selectSession()" class="btn btn-outline">Manage Sessions</button>
+          `;
+            actionsGrid.appendChild(manageCard);
+          }
         } else {
           // Upload card (primary when no data exists)
           const uploadCard = document.createElement('div');
@@ -202,6 +290,142 @@
         }
       }
 
+      // Create backup function
+      async function createBackup(sessionId) {
+        try {
+          const result = await window.electronAPI.createBackup(sessionId);
+          if (result.success) {
+            alert(`Backup created successfully!\n\nLocation: ${result.data.backupPath}`);
+          } else {
+            alert(`Failed to create backup: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error creating backup:', error);
+          alert(`Error creating backup: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // View backups function
+      async function viewBackups(sessionId) {
+        try {
+          const result = await window.electronAPI.listBackups(sessionId);
+          if (result.success) {
+            const backups = result.data.backups;
+            if (backups.length === 0) {
+              alert('No backups found for this session.');
+              return;
+            }
+
+            // Create backup selection modal
+            const backupModal = document.createElement('div');
+            backupModal.className = 'session-modal';
+            
+            const backupContent = document.createElement('div');
+            backupContent.className = 'session-modal-content';
+            
+            backupContent.innerHTML = `
+            <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Available Backups</h3>
+            <div style="margin-bottom: 1.5rem;">
+              ${backups.map(backup => `
+              <div class="backup-item" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 1rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${backup.filename}</div>
+                    <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+                      ${new Date(backup.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                  <button onclick="restoreFromBackup('${sessionId}', '${backup.filename}')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    🔄 Restore
+                  </button>
+                </div>
+              </div>
+              `).join('')}
+            </div>
+            <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary" style="width: 100%;">Close</button>
+          `;
+            
+            backupModal.appendChild(backupContent);
+            document.body.appendChild(backupModal);
+            
+            // Close modal when clicking outside
+            backupModal.addEventListener('click', e => {
+              if (e.target === backupModal) {
+                backupModal.remove();
+              }
+            });
+          } else {
+            alert(`Failed to list backups: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error listing backups:', error);
+          alert(`Error listing backups: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Restore from backup function
+      async function restoreFromBackup(sessionId, backupFile) {
+        if (!confirm(`Are you sure you want to restore from backup "${backupFile}"? This will replace all current data for this session.`)) {
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.restoreBackup(sessionId, backupFile);
+          if (result.success) {
+            alert('Session restored successfully! The page will refresh to show the restored data.');
+            // Close backup modal
+            const modal = document.querySelector('.session-modal');
+            if (modal) modal.remove();
+            // Close session modal too
+            const sessionModal = document.querySelector('.session-modal');
+            if (sessionModal) sessionModal.remove();
+          } else {
+            alert(`Failed to restore backup: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error restoring backup:', error);
+          alert(`Error restoring backup: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Delete session function
+      async function deleteSession(sessionId) {
+        if (!confirm('Are you sure you want to delete this session? This action cannot be undone and will permanently remove all conversation data and media files.')) {
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.deleteSession(sessionId);
+          if (result.success) {
+            // Remove session from local array
+            sessions = sessions.filter(s => s.id !== sessionId);
+            sessionsCount = sessions.length;
+            hasExistingData = sessionsCount > 0;
+
+            // Update UI
+            updateStatusIndicator();
+            updateSessionsInfo();
+            
+            // Close modal and refresh if no sessions left
+            const modal = document.querySelector('.session-modal');
+            if (modal) modal.remove();
+            
+            // If no sessions left, refresh page
+            if (sessionsCount === 0) {
+              initializePage();
+            } else {
+              // Refresh modal content
+              selectSession();
+            }
+          } else {
+            alert(`Failed to delete session: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error deleting session:', error);
+          alert(`Error deleting session: ${error.message || 'Unknown error'}`);
+        }
+      }
+
       // Session selection function
       async function selectSession() {
         if (sessions.length === 0) {
@@ -223,16 +447,29 @@
         modalContent.className = 'session-modal-content';
 
         modalContent.innerHTML = `
-        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Select Session</h2>
+        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Manage Sessions</h2>
         <div style="margin-bottom: 1.5rem;">
           ${sessions
             .filter(session => session && session.id && session.uploadedAt)
             .map(
               session => `
-            <div class="session-item" onclick="window.location.href='conversations.html?session=${session.id}'">
-              <div class="session-item-id">Session ID: ${session.id.substring(0, 8)}...</div>
-              <div class="session-item-date">
-                Uploaded: ${new Date(session.uploadedAt).toLocaleString()}
+            <div class="session-item" style="display: flex; justify-content: space-between; align-items: center;">
+              <div onclick="window.location.href='conversations.html?session=${session.id}'" style="flex: 1; cursor: pointer;">
+                <div class="session-item-id">Session ID: ${session.id.substring(0, 8)}...</div>
+                <div class="session-item-date">
+                  Uploaded: ${new Date(session.uploadedAt).toLocaleString()}
+                </div>
+              </div>
+              <div class="session-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                <button onclick="createBackup('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Create backup">
+                  💾 Backup
+                </button>
+                <button onclick="viewBackups('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="View backups">
+                  📁 Backups
+                </button>
+                <button onclick="deleteSession('${session.id}')" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Delete session">
+                  🗑️ Delete
+                </button>
               </div>
             </div>
           `

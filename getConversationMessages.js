@@ -6,12 +6,96 @@ const { createLogger } = require('./utils/logger');
 const logger = createLogger({ module: 'getConversationMessages' });
 
 /**
+ * Validate required parameters for a function
+ * @param {Array<{name: string, value: any}>} params - Array of parameter objects with name and value
+ * @param {string} functionName - Name of the function for error reporting
+ * @throws {Error} If any required parameters are missing or invalid
+ */
+function validateRequiredParams(params, functionName) {
+  const missing = params.filter(p => !p.value);
+  if (missing.length > 0) {
+    throw new Error(`${functionName}: Missing required parameters: ${missing.map(p => p.name).join(', ')}`);
+  }
+}
+
+/**
+ * Validate that a parameter is a non-empty string
+ * @param {any} param - Parameter to validate
+ * @param {string} paramName - Name of the parameter for error reporting
+ * @throws {Error} If parameter is not a non-empty string
+ */
+function validateNonEmptyString(param, paramName) {
+  if (typeof param !== 'string' || param.trim() === '') {
+    throw new Error(`${paramName} must be a non-empty string`);
+  }
+}
+
+// Content type constants
+const CONTENT_TYPES = {
+  IMAGE: 'image_asset_pointer',
+  AUDIO: 'audio_asset_pointer',
+  VIDEO: 'video_container_asset_pointer',
+  TRANSCRIPTION: 'audio_transcription'
+};
+
+// File extension constants
+const FILE_EXTENSIONS = {
+  AUDIO: ['.wav', '.mp3', '.m4a', '.dat'],
+  IMAGE: ['.webp', '.png', '.jpg', '.jpeg']
+};
+
+// Asset pointer prefixes
+const ASSET_PREFIXES = {
+  FILE_SERVICE: 'file-service://',
+  SEDIMENT: 'sediment://'
+};
+
+// Simple file cache to improve performance
+const fileCache = new Map();
+const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
+
+// Clear cache to ensure fresh results for testing
+fileCache.clear();
+
+/**
+ * Get cached file search results or perform new search
+ * @param {string} dir - Directory to search
+ * @param {string} filename - Filename to search for
+ * @returns {Promise<Array>} Array of matching file paths
+ */
+async function cachedRecursivelyFindFiles(dir, filename) {
+  const cacheKey = `${dir}:${filename}`;
+  
+  if (fileCache.has(cacheKey)) {
+    return fileCache.get(cacheKey);
+  }
+  
+  const results = await recursivelyFindFiles(dir, filename);
+  
+  // Implement simple LRU-like behavior
+  if (fileCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = fileCache.keys().next().value;
+    fileCache.delete(firstKey);
+  }
+  
+  fileCache.set(cacheKey, results);
+  return results;
+}
+
+/**
  * Get the media directory path for a session
  * @param {string} baseDir - Base directory of the application
  * @param {string} sessionId - The session ID
  * @returns {string} Media directory path
  */
 function getMediaDir(baseDir, sessionId) {
+  validateRequiredParams([
+    { name: 'baseDir', value: baseDir },
+    { name: 'sessionId', value: sessionId }
+  ], 'getMediaDir');
+  validateNonEmptyString(baseDir, 'baseDir');
+  validateNonEmptyString(sessionId, 'sessionId');
+  
   return path.join(baseDir, 'public', 'media', 'sessions', sessionId);
 }
 
@@ -22,6 +106,13 @@ function getMediaDir(baseDir, sessionId) {
  * @returns {string} Web URL path
  */
 function buildAssetUrl(filePath, baseDir) {
+  validateRequiredParams([
+    { name: 'filePath', value: filePath },
+    { name: 'baseDir', value: baseDir }
+  ], 'buildAssetUrl');
+  validateNonEmptyString(filePath, 'filePath');
+  validateNonEmptyString(baseDir, 'baseDir');
+  
   const relativePath = path.relative(path.join(baseDir, 'public'), filePath);
   return '/' + relativePath.replace(/\\/g, '/');
 }
@@ -44,8 +135,15 @@ function handleFileError(error, operation, context = '') {
  * @returns {Promise<Object>} Asset mapping object
  */
 async function loadAssetMapping(sessionId, baseDir) {
-  if (!sessionId || !baseDir) {
-    logger.warn('Invalid parameters for loadAssetMapping:', { sessionId, baseDir });
+  try {
+    validateRequiredParams([
+      { name: 'sessionId', value: sessionId },
+      { name: 'baseDir', value: baseDir }
+    ], 'loadAssetMapping');
+    validateNonEmptyString(sessionId, 'sessionId');
+    validateNonEmptyString(baseDir, 'baseDir');
+  } catch (error) {
+    logger.warn('Invalid parameters for loadAssetMapping:', { sessionId, baseDir, error: error.message });
     return {};
   }
 
@@ -126,10 +224,12 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
 
   // Extract filename from asset pointer (handle both file-service:// and sediment://)
   let assetKey = assetPointer;
-  if (assetPointer.startsWith('file-service://')) {
-    assetKey = assetPointer.replace('file-service://', '');
-  } else if (assetPointer.startsWith('sediment://')) {
-    assetKey = assetPointer.replace('sediment://', '');
+  if (assetPointer.startsWith(ASSET_PREFIXES.FILE_SERVICE)) {
+    assetKey = assetPointer.replace(ASSET_PREFIXES.FILE_SERVICE, '');
+  } else if (assetPointer.startsWith(ASSET_PREFIXES.SEDIMENT)) {
+    assetKey = assetPointer.replace(ASSET_PREFIXES.SEDIMENT, '');
+    // Remove file extension for sediment files since they're stored with .dat extension
+    assetKey = assetKey.replace(/\.(dat|wav|mp3|m4a)$/i, '');
   }
 
   const mediaDir = getMediaDir(baseDir, sessionId);
@@ -143,7 +243,7 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
 
     if (filename) {
       try {
-        const files = await recursivelyFindFiles(mediaDir, filename);
+        const files = await cachedRecursivelyFindFiles(mediaDir, filename);
         if (files.length > 0) {
           logger.debug(`Found mapped asset: ${assetPointer} -> ${filename}`);
           return buildAssetUrl(files[0], baseDir);
@@ -156,13 +256,21 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
 
   // Fallback to original search if mapping fails
   try {
-    const files = await recursivelyFindFiles(mediaDir, assetKey);
+    logger.debug(`Searching for asset: ${assetKey} in directory: ${mediaDir}`);
+    const files = await cachedRecursivelyFindFiles(mediaDir, assetKey);
+    logger.debug(`Found ${files.length} files matching ${assetKey}:`, files);
     if (files.length > 0) {
       logger.debug(`Found asset by filename search: ${assetKey}`);
       return buildAssetUrl(files[0], baseDir);
     }
   } catch (error) {
     handleFileError(error, 'finding asset file', assetKey);
+    logger.error(`Failed to find asset ${assetPointer}:`, {
+      error: error.message,
+      mediaDir,
+      assetKey,
+      searchFiles: 'cachedRecursivelyFindFiles'
+    });
   }
 
   logger.debug(`Asset not found: ${assetPointer}`);
@@ -180,6 +288,9 @@ async function recursivelyFindFiles(dir, filename) {
     logger.warn('Invalid parameters for recursivelyFindFiles:', { dir, filename });
     return [];
   }
+
+  validateNonEmptyString(dir, 'dir');
+  validateNonEmptyString(filename, 'filename');
 
   const results = [];
 
@@ -200,8 +311,8 @@ async function recursivelyFindFiles(dir, filename) {
     }
   } catch (error) {
     // Directory might not exist or be inaccessible
-    // Silently ignore as this is expected for non-existent directories
-    void error; // Mark as used to avoid ESLint warning
+    // Log at debug level as this is expected for non-existent directories
+    logger.debug(`Directory not accessible during file search: ${dir}`, error.message);
   }
 
   return results;
@@ -233,14 +344,24 @@ async function generateAssetUrl(assetPointer, sessionId, baseDir, assetMapping =
  * @param {Object} asset - The asset object
  * @param {string} sessionId - The session ID
  * @param {string} baseDir - Base directory of the application
+ * @param {Object} assetMapping - Asset mapping from assets.json or chat.html (optional)
  * @returns {Promise<Object|null>} Object with html property or null if asset can't be processed
  */
-async function generateAssetHtml(asset, sessionId, baseDir) {
-  if (!asset || !sessionId || !baseDir) {
+async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
+  try {
+    validateRequiredParams([
+      { name: 'asset', value: asset },
+      { name: 'sessionId', value: sessionId },
+      { name: 'baseDir', value: baseDir }
+    ], 'generateAssetHtml');
+    validateNonEmptyString(sessionId, 'sessionId');
+    validateNonEmptyString(baseDir, 'baseDir');
+  } catch (error) {
     logger.warn('Invalid parameters for generateAssetHtml:', {
-      asset,
+      asset: asset ? 'present' : 'missing',
       sessionId,
       baseDir,
+      error: error.message
     });
     return null;
   }
@@ -248,9 +369,7 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
   // Extract asset pointer and content type from asset object
   const assetPointer = asset.asset_pointer || asset.pointer || '';
   const contentType = asset.content_type || '';
-
-  // Load asset mapping from assets.json (preferred) or chat.html (fallback)
-  const assetMapping = await loadAssetMapping(sessionId, baseDir);
+  logger.debug(`Processing asset: ${assetPointer}, content type: ${contentType}`);
 
   const assetUrl = await generateAssetUrl(
     assetPointer,
@@ -274,13 +393,13 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
 
   // Generate HTML based on content type
   switch (contentType) {
-  case 'image_asset_pointer':
+  case CONTENT_TYPES.IMAGE:
     return {
       html: `<img src="${assetUrl}" alt="Image" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0;" loading="lazy">`,
       type: 'image',
     };
 
-  case 'audio_asset_pointer':
+  case CONTENT_TYPES.AUDIO:
     return {
       html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
           <p>Your browser does not support the audio element.</p>
@@ -288,7 +407,7 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
       type: 'audio',
     };
 
-  case 'video_container_asset_pointer':
+  case CONTENT_TYPES.VIDEO:
     return {
       html: `<video controls src="${assetUrl}" style="width: 100%; max-height: 400px; border-radius: 0.5rem; margin: 0.5rem 0;">
           <p>Your browser does not support the video element.</p>
@@ -299,23 +418,29 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
   default: {
     // For unknown types, try to determine from filename or asset pointer
     const assetLower = assetPointer.toLowerCase();
-    if (
-      assetLower.includes('.wav') ||
-        assetLower.includes('.mp3') ||
-        assetLower.includes('.m4a')
-    ) {
+    
+    // Special handling for sediment audio files (often stored as .dat files)
+    if (assetPointer.startsWith('sediment://file_') && contentType === CONTENT_TYPES.AUDIO) {
       return {
         html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
             <p>Your browser does not support the audio element.</p>
           </audio>`,
         type: 'audio',
       };
-    } else if (
-      assetLower.includes('.webp') ||
-        assetLower.includes('.png') ||
-        assetLower.includes('.jpg') ||
-        assetLower.includes('.jpeg')
-    ) {
+    }
+    
+    // Check file extensions for type detection
+    const isAudioFile = FILE_EXTENSIONS.AUDIO.some(ext => assetLower.includes(ext));
+    const isImageFile = FILE_EXTENSIONS.IMAGE.some(ext => assetLower.includes(ext));
+    
+    if (isAudioFile) {
+      return {
+        html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
+            <p>Your browser does not support the audio element.</p>
+          </audio>`,
+        type: 'audio',
+      };
+    } else if (isImageFile) {
       return {
         html: `<img src="${assetUrl}" alt="Image" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0;" loading="lazy">`,
         type: 'image',
@@ -335,6 +460,22 @@ async function generateAssetHtml(asset, sessionId, baseDir) {
 }
 
 async function getConversationMessages(conversation, sessionId = null, baseDir = null) {
+  try {
+    validateRequiredParams([
+      { name: 'conversation', value: conversation }
+    ], 'getConversationMessages');
+    
+    if (sessionId) {
+      validateNonEmptyString(sessionId, 'sessionId');
+    }
+    if (baseDir) {
+      validateNonEmptyString(baseDir, 'baseDir');
+    }
+  } catch (error) {
+    logger.warn('Invalid parameters for getConversationMessages:', error.message);
+    return [];
+  }
+
   const messages = [];
   const nodes =
     conversation && (conversation.nodes || conversation.mapping)
@@ -389,16 +530,17 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
           },
         });
         parts.push({ html: safeHtml, raw: p });
-      } else if (p && p.content_type === 'audio_transcription') {
+      } else if (p && p.content_type === CONTENT_TYPES.TRANSCRIPTION) {
         parts.push({ transcript: p.text || '' });
       } else if (
         p &&
         [
-          'audio_asset_pointer',
-          'image_asset_pointer',
-          'video_container_asset_pointer',
+          CONTENT_TYPES.AUDIO,
+          CONTENT_TYPES.IMAGE,
+          CONTENT_TYPES.VIDEO,
         ].includes(p.content_type)
       ) {
+        logger.debug(`Processing asset: ${p.asset_pointer}, content_type: ${p.content_type}`);
         const assetHtml = await generateAssetHtml(p, sessionId, baseDir, assetMapping);
         if (assetHtml) {
           logger.debug(`Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`);
@@ -407,46 +549,30 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
           logger.warn(`Failed to process asset: ${p.asset_pointer}`);
           parts.push({ asset: p }); // Fallback to original behavior
         }
-      } else if (p && p.content_type === 'real_time_user_audio_video_asset_pointer') {
-        if (p.audio_asset_pointer) {
-          const audioHtml = await generateAssetHtml(
-            p.audio_asset_pointer,
+      } else if (p.video_container_asset_pointer) {
+        const videoHtml = await generateAssetHtml(
+          p.video_container_asset_pointer,
+          sessionId,
+          baseDir,
+          assetMapping
+        );
+        if (videoHtml) {
+          parts.push(videoHtml);
+        } else {
+          parts.push({ asset: p.video_container_asset_pointer });
+        }
+      } else if (Array.isArray(p.frames_asset_pointers)) {
+        for (const f of p.frames_asset_pointers) {
+          const frameHtml = await generateAssetHtml(
+            f,
             sessionId,
             baseDir,
             assetMapping
           );
-          if (audioHtml) {
-            parts.push(audioHtml);
+          if (frameHtml) {
+            parts.push(frameHtml);
           } else {
-            parts.push({ asset: p.audio_asset_pointer });
-          }
-        }
-        if (p.video_container_asset_pointer) {
-          const videoHtml = await generateAssetHtml(
-            p.video_container_asset_pointer,
-            sessionId,
-            baseDir,
-            assetMapping
-          );
-          if (videoHtml) {
-            parts.push(videoHtml);
-          } else {
-            parts.push({ asset: p.video_container_asset_pointer });
-          }
-        }
-        if (Array.isArray(p.frames_asset_pointers)) {
-          for (const f of p.frames_asset_pointers) {
-            const frameHtml = await generateAssetHtml(
-              f,
-              sessionId,
-              baseDir,
-              assetMapping
-            );
-            if (frameHtml) {
-              parts.push(frameHtml);
-            } else {
-              parts.push({ asset: f });
-            }
+            parts.push({ asset: f });
           }
         }
       }
@@ -463,5 +589,4 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
   messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return messages;
 }
-
 module.exports = { getConversationMessages };

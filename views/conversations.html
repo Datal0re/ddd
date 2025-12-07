@@ -26,10 +26,13 @@
   <body>
     <div class="container">
       <div class="page-header">
-        <div style="margin-bottom: 1rem">
+        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
           <a href="index.html" class="btn btn-outline" style="font-size: 0.9rem"
             >← Back to Home</a
           >
+          <button onclick="deleteCurrentSession()" class="btn btn-danger" style="font-size: 0.9rem;" title="Delete this session and all its data">
+            🗑️ Delete Session
+          </button>
         </div>
         <h1>Your Conversations</h1>
         <p style="color: var(--text-secondary)">
@@ -211,6 +214,31 @@
           }
         } else if (noResults) {
           noResults.remove();
+        }
+      }
+
+      // Delete current session function
+      async function deleteCurrentSession() {
+        if (!sessionId) {
+          alert('No session to delete');
+          return;
+        }
+
+        if (!confirm('Are you sure you want to delete this session? This action cannot be undone and will permanently remove all conversation data and media files. You will be redirected to the home page.')) {
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.deleteSession(sessionId);
+          if (result.success) {
+            // Redirect to home page after successful deletion
+            window.location.href = 'index.html';
+          } else {
+            alert(`Failed to delete session: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error deleting session:', error);
+          alert(`Error deleting session: ${error.message || 'Unknown error'}`);
         }
       }
 
