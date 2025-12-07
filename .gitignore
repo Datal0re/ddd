@@ -65,6 +65,7 @@ uploads/
 sessions/
 backups/
 public/media/
+data/sessions.json
 
 # Database files
 *.db
