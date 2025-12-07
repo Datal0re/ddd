@@ -2,7 +2,7 @@
 
 A sophisticated desktop application for exploring and visualizing exported ChatGPT conversation data. Built with Electron and Express for secure, local data processing.
 
-![Data Dumpster Diver](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Data Dumpster Diver](https://img.shields.io/badge/version-1.0.4-blue.svg)
 ![Node.js](https://img.shields.io/badge/node.js-18%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-purple.svg)
 
@@ -209,6 +209,23 @@ The application uses a comprehensive dark mode color palette documented in [`doc
 - **Consistency**: CSS custom properties for maintainable theming
 - **Responsive**: Mobile-first design with fluid layouts
 - **Performance**: Optimized CSS with minimal reflows
+
+### Typography
+
+The application features **FiraCode Nerd Font** integration for enhanced Unicode character support and code readability:
+
+- **Font Files**: Self-hosted WOFF2 format with ~50% compression
+- **UI Elements**: Standard FiraCode Nerd Font for all interface text
+- **Code Blocks**: FiraCode Nerd Font Mono for technical content
+- **Performance**: `font-display: swap` for optimal loading with graceful fallbacks
+- **Unicode Support**: Extensive character and icon support for conversation data
+- **Offline Capability**: Self-hosted fonts work without internet connection
+
+Font variants included:
+
+- Regular and Bold weights for standard UI
+- Monospace variants for code and technical content
+- System font fallbacks for reliability
 
 ## 🔒 Security & Privacy
 

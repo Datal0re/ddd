@@ -2,6 +2,35 @@
 
 All notable changes to Data Dumpster Diver will be documented in this file.
 
+## [1.0.4] - 2025-12-07
+
+### 🎨 Typography & Unicode Support
+
+#### FiraCode Nerd Font Integration
+
+- **Feature**: Complete FiraCode Nerd Font integration for enhanced Unicode character support
+- **Implementation**: Self-hosted WOFF2 fonts with optimized loading strategy
+- **Files Added**:
+  - `public/fonts/FiraCodeNerdFont-Regular.woff2`
+  - `public/fonts/FiraCodeNerdFont-Bold.woff2`
+  - `public/fonts/FiraCodeNerdFontMono-Regular.woff2`
+  - `public/fonts/FiraCodeNerdFontMono-Bold.woff2`
+- **Files Modified**: `public/styles.css`, `views/conversation.html`, `views/index.html`
+- **Performance**: Used `font-display: swap` for optimal loading with graceful fallbacks
+- **User Benefits**:
+  - Enhanced Unicode character display for conversation data
+  - Improved code readability with monospace variant
+  - Consistent typography across entire application
+  - Better support for special characters and icons
+  - Offline-capable font loading (self-hosted)
+
+#### Font Strategy
+
+- **UI Elements**: Standard FiraCode Nerd Font for all interface text
+- **Code Blocks**: FiraCode Nerd Font Mono for technical content
+- **Fallbacks**: System fonts maintained as fallbacks for reliability
+- **Compression**: ~50% size reduction with WOFF2 format
+
 ## [1.0.3] - 2025-12-07
 
 ### 🎯 Session Management System
