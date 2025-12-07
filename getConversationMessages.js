@@ -14,7 +14,9 @@ const logger = createLogger({ module: 'getConversationMessages' });
 function validateRequiredParams(params, functionName) {
   const missing = params.filter(p => !p.value);
   if (missing.length > 0) {
-    throw new Error(`${functionName}: Missing required parameters: ${missing.map(p => p.name).join(', ')}`);
+    throw new Error(
+      `${functionName}: Missing required parameters: ${missing.map(p => p.name).join(', ')}`
+    );
   }
 }
 
@@ -35,19 +37,19 @@ const CONTENT_TYPES = {
   IMAGE: 'image_asset_pointer',
   AUDIO: 'audio_asset_pointer',
   VIDEO: 'video_container_asset_pointer',
-  TRANSCRIPTION: 'audio_transcription'
+  TRANSCRIPTION: 'audio_transcription',
 };
 
 // File extension constants
 const FILE_EXTENSIONS = {
   AUDIO: ['.wav', '.mp3', '.m4a', '.dat'],
-  IMAGE: ['.webp', '.png', '.jpg', '.jpeg']
+  IMAGE: ['.webp', '.png', '.jpg', '.jpeg'],
 };
 
 // Asset pointer prefixes
 const ASSET_PREFIXES = {
   FILE_SERVICE: 'file-service://',
-  SEDIMENT: 'sediment://'
+  SEDIMENT: 'sediment://',
 };
 
 // Simple file cache to improve performance
@@ -65,19 +67,19 @@ fileCache.clear();
  */
 async function cachedRecursivelyFindFiles(dir, filename) {
   const cacheKey = `${dir}:${filename}`;
-  
+
   if (fileCache.has(cacheKey)) {
     return fileCache.get(cacheKey);
   }
-  
+
   const results = await recursivelyFindFiles(dir, filename);
-  
+
   // Implement simple LRU-like behavior
   if (fileCache.size >= MAX_CACHE_SIZE) {
     const firstKey = fileCache.keys().next().value;
     fileCache.delete(firstKey);
   }
-  
+
   fileCache.set(cacheKey, results);
   return results;
 }
@@ -89,13 +91,16 @@ async function cachedRecursivelyFindFiles(dir, filename) {
  * @returns {string} Media directory path
  */
 function getMediaDir(baseDir, sessionId) {
-  validateRequiredParams([
-    { name: 'baseDir', value: baseDir },
-    { name: 'sessionId', value: sessionId }
-  ], 'getMediaDir');
+  validateRequiredParams(
+    [
+      { name: 'baseDir', value: baseDir },
+      { name: 'sessionId', value: sessionId },
+    ],
+    'getMediaDir'
+  );
   validateNonEmptyString(baseDir, 'baseDir');
   validateNonEmptyString(sessionId, 'sessionId');
-  
+
   return path.join(baseDir, 'public', 'media', 'sessions', sessionId);
 }
 
@@ -106,13 +111,16 @@ function getMediaDir(baseDir, sessionId) {
  * @returns {string} Web URL path
  */
 function buildAssetUrl(filePath, baseDir) {
-  validateRequiredParams([
-    { name: 'filePath', value: filePath },
-    { name: 'baseDir', value: baseDir }
-  ], 'buildAssetUrl');
+  validateRequiredParams(
+    [
+      { name: 'filePath', value: filePath },
+      { name: 'baseDir', value: baseDir },
+    ],
+    'buildAssetUrl'
+  );
   validateNonEmptyString(filePath, 'filePath');
   validateNonEmptyString(baseDir, 'baseDir');
-  
+
   const relativePath = path.relative(path.join(baseDir, 'public'), filePath);
   return '/' + relativePath.replace(/\\/g, '/');
 }
@@ -136,14 +144,21 @@ function handleFileError(error, operation, context = '') {
  */
 async function loadAssetMapping(sessionId, baseDir) {
   try {
-    validateRequiredParams([
-      { name: 'sessionId', value: sessionId },
-      { name: 'baseDir', value: baseDir }
-    ], 'loadAssetMapping');
+    validateRequiredParams(
+      [
+        { name: 'sessionId', value: sessionId },
+        { name: 'baseDir', value: baseDir },
+      ],
+      'loadAssetMapping'
+    );
     validateNonEmptyString(sessionId, 'sessionId');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
-    logger.warn('Invalid parameters for loadAssetMapping:', { sessionId, baseDir, error: error.message });
+    logger.warn('Invalid parameters for loadAssetMapping:', {
+      sessionId,
+      baseDir,
+      error: error.message,
+    });
     return {};
   }
 
@@ -269,7 +284,7 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
       error: error.message,
       mediaDir,
       assetKey,
-      searchFiles: 'cachedRecursivelyFindFiles'
+      searchFiles: 'cachedRecursivelyFindFiles',
     });
   }
 
@@ -349,11 +364,14 @@ async function generateAssetUrl(assetPointer, sessionId, baseDir, assetMapping =
  */
 async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
   try {
-    validateRequiredParams([
-      { name: 'asset', value: asset },
-      { name: 'sessionId', value: sessionId },
-      { name: 'baseDir', value: baseDir }
-    ], 'generateAssetHtml');
+    validateRequiredParams(
+      [
+        { name: 'asset', value: asset },
+        { name: 'sessionId', value: sessionId },
+        { name: 'baseDir', value: baseDir },
+      ],
+      'generateAssetHtml'
+    );
     validateNonEmptyString(sessionId, 'sessionId');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
@@ -361,7 +379,7 @@ async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
       asset: asset ? 'present' : 'missing',
       sessionId,
       baseDir,
-      error: error.message
+      error: error.message,
     });
     return null;
   }
@@ -388,83 +406,87 @@ async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
       type: 'missing',
     };
   }
-  
+
   logger.debug(`Generated asset URL: ${assetPointer} -> ${assetUrl}`);
 
   // Generate HTML based on content type
   switch (contentType) {
-  case CONTENT_TYPES.IMAGE:
-    return {
-      html: `<img src="${assetUrl}" alt="Image" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0;" loading="lazy">`,
-      type: 'image',
-    };
-
-  case CONTENT_TYPES.AUDIO:
-    return {
-      html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
-          <p>Your browser does not support the audio element.</p>
-        </audio>`,
-      type: 'audio',
-    };
-
-  case CONTENT_TYPES.VIDEO:
-    return {
-      html: `<video controls src="${assetUrl}" style="width: 100%; max-height: 400px; border-radius: 0.5rem; margin: 0.5rem 0;">
-          <p>Your browser does not support the video element.</p>
-        </video>`,
-      type: 'video',
-    };
-
-  default: {
-    // For unknown types, try to determine from filename or asset pointer
-    const assetLower = assetPointer.toLowerCase();
-    
-    // Special handling for sediment audio files (often stored as .dat files)
-    if (assetPointer.startsWith('sediment://file_') && contentType === CONTENT_TYPES.AUDIO) {
-      return {
-        html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
-            <p>Your browser does not support the audio element.</p>
-          </audio>`,
-        type: 'audio',
-      };
-    }
-    
-    // Check file extensions for type detection
-    const isAudioFile = FILE_EXTENSIONS.AUDIO.some(ext => assetLower.includes(ext));
-    const isImageFile = FILE_EXTENSIONS.IMAGE.some(ext => assetLower.includes(ext));
-    
-    if (isAudioFile) {
-      return {
-        html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
-            <p>Your browser does not support the audio element.</p>
-          </audio>`,
-        type: 'audio',
-      };
-    } else if (isImageFile) {
+    case CONTENT_TYPES.IMAGE:
       return {
         html: `<img src="${assetUrl}" alt="Image" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0;" loading="lazy">`,
         type: 'image',
       };
-    }
 
-    // Fallback: show as download link
-    return {
-      html: `<div class="asset-info" style="margin: 0.5rem 0; padding: 0.5rem; background: #f5f5f5; border-radius: 0.25rem;">
+    case CONTENT_TYPES.AUDIO:
+      return {
+        html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
+          <p>Your browser does not support the audio element.</p>
+        </audio>`,
+        type: 'audio',
+      };
+
+    case CONTENT_TYPES.VIDEO:
+      return {
+        html: `<video controls src="${assetUrl}" style="width: 100%; max-height: 400px; border-radius: 0.5rem; margin: 0.5rem 0;">
+          <p>Your browser does not support the video element.</p>
+        </video>`,
+        type: 'video',
+      };
+
+    default: {
+      // For unknown types, try to determine from filename or asset pointer
+      const assetLower = assetPointer.toLowerCase();
+
+      // Special handling for sediment audio files (often stored as .dat files)
+      if (
+        assetPointer.startsWith('sediment://file_') &&
+        contentType === CONTENT_TYPES.AUDIO
+      ) {
+        return {
+          html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
+            <p>Your browser does not support the audio element.</p>
+          </audio>`,
+          type: 'audio',
+        };
+      }
+
+      // Check file extensions for type detection
+      const isAudioFile = FILE_EXTENSIONS.AUDIO.some(ext => assetLower.includes(ext));
+      const isImageFile = FILE_EXTENSIONS.IMAGE.some(ext => assetLower.includes(ext));
+
+      if (isAudioFile) {
+        return {
+          html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
+            <p>Your browser does not support the audio element.</p>
+          </audio>`,
+          type: 'audio',
+        };
+      } else if (isImageFile) {
+        return {
+          html: `<img src="${assetUrl}" alt="Image" style="max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0;" loading="lazy">`,
+          type: 'image',
+        };
+      }
+
+      // Fallback: show as download link
+      return {
+        html: `<div class="asset-info" style="margin: 0.5rem 0; padding: 0.5rem; background: #f5f5f5; border-radius: 0.25rem;">
           📎 <a href="${assetUrl}" target="_blank" style="color: #0066cc; text-decoration: none;">Download Asset</a>
           <br><small style="color: #666;">${assetPointer}</small>
           </div>`,
-      type: 'unknown',
-    };
-  }
+        type: 'unknown',
+      };
+    }
   }
 }
 
 async function getConversationMessages(conversation, sessionId = null, baseDir = null) {
   try {
-    validateRequiredParams([
-      { name: 'conversation', value: conversation }
-    ], 'getConversationMessages');
-    
+    validateRequiredParams(
+      [{ name: 'conversation', value: conversation }],
+      'getConversationMessages'
+    );
+
     if (sessionId) {
       validateNonEmptyString(sessionId, 'sessionId');
     }
@@ -534,16 +556,18 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
         parts.push({ transcript: p.text || '' });
       } else if (
         p &&
-        [
-          CONTENT_TYPES.AUDIO,
-          CONTENT_TYPES.IMAGE,
-          CONTENT_TYPES.VIDEO,
-        ].includes(p.content_type)
+        [CONTENT_TYPES.AUDIO, CONTENT_TYPES.IMAGE, CONTENT_TYPES.VIDEO].includes(
+          p.content_type
+        )
       ) {
-        logger.debug(`Processing asset: ${p.asset_pointer}, content_type: ${p.content_type}`);
+        logger.debug(
+          `Processing asset: ${p.asset_pointer}, content_type: ${p.content_type}`
+        );
         const assetHtml = await generateAssetHtml(p, sessionId, baseDir, assetMapping);
         if (assetHtml) {
-          logger.debug(`Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`);
+          logger.debug(
+            `Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`
+          );
           parts.push(assetHtml);
         } else {
           logger.warn(`Failed to process asset: ${p.asset_pointer}`);

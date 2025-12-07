@@ -180,18 +180,18 @@ API_PORT=3001
 
 All endpoints use `/api/` prefix and run on port 3001.
 
-| Method | Endpoint                              | Description                      |
-| ------ | ------------------------------------- | -------------------------------- |
-| GET    | `/api/health`                         | Health check                     |
-| POST   | `/api/upload`                          | Process ChatGPT export zip file  |
-| GET    | `/api/sessions`                        | List all sessions                |
-| GET    | `/api/sessions/:sessionId/conversations` | List conversations for a session |
-| GET    | `/api/sessions/:sessionId/conversations/:conversationId` | View specific conversation |
-| DELETE | `/api/sessions/:sessionId`             | Clean up specific session        |
-| POST   | `/api/sessions/cleanup`                | Clean up all old sessions        |
-| POST   | `/api/sessions/:sessionId/backup`      | Create session backup            |
-| GET    | `/api/sessions/:sessionId/backups`     | List session backups             |
-| POST   | `/api/sessions/:sessionId/restore`     | Restore from backup              |
+| Method | Endpoint                                                 | Description                      |
+| ------ | -------------------------------------------------------- | -------------------------------- |
+| GET    | `/api/health`                                            | Health check                     |
+| POST   | `/api/upload`                                            | Process ChatGPT export zip file  |
+| GET    | `/api/sessions`                                          | List all sessions                |
+| GET    | `/api/sessions/:sessionId/conversations`                 | List conversations for a session |
+| GET    | `/api/sessions/:sessionId/conversations/:conversationId` | View specific conversation       |
+| DELETE | `/api/sessions/:sessionId`                               | Clean up specific session        |
+| POST   | `/api/sessions/cleanup`                                  | Clean up all old sessions        |
+| POST   | `/api/sessions/:sessionId/backup`                        | Create session backup            |
+| GET    | `/api/sessions/:sessionId/backups`                       | List session backups             |
+| POST   | `/api/sessions/:sessionId/restore`                       | Restore from backup              |
 
 ### Session Management
 

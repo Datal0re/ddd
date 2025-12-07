@@ -189,18 +189,18 @@ async function runMigration(sessionId, outputDir, baseDir) {
         stdio: 'pipe',
       }
     );
-    
+
     let stdout = '';
     let stderr = '';
-    
-    child.stdout.on('data', (data) => {
+
+    child.stdout.on('data', data => {
       stdout += data.toString();
     });
-    
-    child.stderr.on('data', (data) => {
+
+    child.stderr.on('data', data => {
       stderr += data.toString();
     });
-    
+
     child.on('close', code => {
       if (code === 0) {
         logger.debug('Migration stdout:', stdout);
@@ -296,7 +296,12 @@ async function processZipUpload(
       progress: 80,
       message: 'Finalizing organization...',
     });
-    const conversationsPath = await moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files);
+    const conversationsPath = await moveFilesToFinalLocations(
+      tempDir,
+      sessionDir,
+      mediaDir,
+      files
+    );
 
     logger.info('Files moved, conversationsPath:', conversationsPath);
 
@@ -308,9 +313,11 @@ async function processZipUpload(
     try {
       await fs.access(conversationsPath);
       logger.info('conversations.json verified at:', conversationsPath);
-    } catch (error) {
+    } catch {
       logger.error('conversations.json not found at expected path:', conversationsPath);
-      throw new Error('conversations.json not found at expected path: ' + conversationsPath);
+      throw new Error(
+        'conversations.json not found at expected path: ' + conversationsPath
+      );
     }
 
     onProgress?.({

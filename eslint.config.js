@@ -1,4 +1,5 @@
 const js = require('@eslint/js');
+const prettierConfig = require('eslint-config-prettier');
 
 module.exports = [
   js.configs.recommended,
@@ -36,16 +37,14 @@ module.exports = [
       },
     },
     rules: {
-      indent: ['error', 2],
       'linebreak-style': ['error', 'unix'],
-      quotes: ['error', 'single'],
-      semi: ['error', 'always'],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-console': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
     },
   },
+  prettierConfig, // Must be last to disable conflicting ESLint rules
   {
     ignores: ['node_modules/**', 'dist/**', 'build/**', '*.min.js', 'coverage/**'],
   },

@@ -186,10 +186,10 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
     logger.info('Upload request received:', {
       file: req.file
         ? {
-          originalname: req.file.originalname,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
-        }
+            originalname: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+          }
         : null,
       headers: req.headers,
     });

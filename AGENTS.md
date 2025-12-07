@@ -5,6 +5,7 @@
 ### **Hybrid Electron + Express Application**
 
 This is a sophisticated desktop application that combines:
+
 - **Electron Frontend**: Secure desktop wrapper with IPC communication
 - **Express Backend**: Full REST API server for business logic
 - **Session Management**: Centralized data processing and storage
@@ -20,6 +21,7 @@ This is a sophisticated desktop application that combines:
 ```
 
 **Data Flow:**
+
 1. User interacts with HTML/CSS/JS frontend
 2. Frontend uses `window.electronAPI` for secure IPC calls
 3. Electron main process forwards requests to Express API
@@ -29,12 +31,14 @@ This is a sophisticated desktop application that combines:
 ### **Key Components**
 
 **Main Process (`main.js`):**
+
 - Creates secure BrowserWindow (nodeIntegration: false, contextIsolation: true)
 - Manages file system operations via IPC
 - Waits for API server health before creating window
 - Handles application lifecycle
 
 **Content Security Policy (CSP):**
+
 - All HTML files include comprehensive CSP meta tags
 - Policy: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data:; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';`
 - Allows inline scripts and styles for current functionality
@@ -43,18 +47,21 @@ This is a sophisticated desktop application that combines:
 - Supports data: and blob: URLs for media assets
 
 **API Server (`app.js`):**
+
 - Independent Express server on port 3001
 - CORS-enabled for Electron communication
 - All business logic and data processing
 - Can run standalone as web server
 
 **Session Management (`utils/SessionManager.js`):**
+
 - Centralized session lifecycle management
 - Disk-based session persistence
 - Integration with backup system
 - File processing orchestration
 
 **Security Layer (`utils/fileUtils.js`):**
+
 - Multi-layer file validation
 - ZIP bomb protection
 - Path traversal prevention
@@ -79,16 +86,19 @@ This is a sophisticated desktop application that combines:
 ### **Development Modes**
 
 **Full Development (Recommended):**
+
 ```bash
 npm run dev-full  # Starts API server + Electron app
 ```
 
 **Web-Only Development:**
+
 ```bash
 npm run web       # Starts Express server only (API_PORT=3001)
 ```
 
 **Electron-Only (requires API server):**
+
 ```bash
 npm start         # Launches Electron app
 ```
@@ -120,6 +130,7 @@ API_PORT=3001     # Express server port (default: 3001)
 All endpoints use `/api/` prefix and run on port 3001.
 
 ### **Session Management**
+
 - `GET /api/sessions` - List all sessions
 - `GET /api/sessions/:sessionId/conversations` - Get session conversations
 - `GET /api/sessions/:sessionId/conversations/:conversationId` - Get specific conversation
@@ -127,17 +138,21 @@ All endpoints use `/api/` prefix and run on port 3001.
 - `POST /api/sessions/cleanup` - Clean old sessions
 
 ### **File Operations**
+
 - `POST /api/upload` - Upload and process ZIP file (multer memory storage)
 
 ### **Backup Management**
+
 - `POST /api/sessions/:sessionId/backup` - Create backup
 - `GET /api/sessions/:sessionId/backups` - List backups
 - `POST /api/sessions/:sessionId/restore` - Restore from backup
 
 ### **System**
+
 - `GET /api/health` - Health check endpoint
 
 ### **AI Integration (Placeholders)**
+
 - `POST /api/ai/analyze-conversation` - AI analysis
 - `POST /api/ai/search-conversations` - Semantic search
 - `POST /api/ai/summarize-session` - Session summarization
@@ -178,6 +193,7 @@ data-dumpster-diver/
 ## **Data Organization**
 
 ### **Session Structure**
+
 ```
 data/
 ├── sessions.json              # Session registry and metadata
@@ -197,6 +213,7 @@ backups/
 ## **Security Implementation**
 
 ### **Multi-Layer Validation**
+
 1. **File Size Limits**: MAX_UPLOAD_SIZE (500MB default)
 2. **File Type Validation**: ZIP signature verification
 3. **Path Traversal Protection**: validatePath() function
@@ -204,6 +221,7 @@ backups/
 5. **Content Sanitization**: HTML sanitization for rendered content
 
 ### **Security Constants**
+
 ```javascript
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB
 const MAX_EXTRACTED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB

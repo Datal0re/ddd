@@ -13,7 +13,7 @@
   --success-green: #10b981;
   --warning-orange: #f59e0b;
   --error-red: #ef4444;
-  
+
   /* Compatibility aliases */
   --accent-green: #10b981; /* Alias for success-green */
 
@@ -900,11 +900,7 @@ img {
 
 .action-card.primary {
   border-color: var(--primary-color);
-  background: linear-gradient(
-    135deg,
-    var(--card-bg) 0%,
-    rgba(59, 130, 246, 0.05) 100%
-  );
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(59, 130, 246, 0.05) 100%);
 }
 
 .action-card h3 {

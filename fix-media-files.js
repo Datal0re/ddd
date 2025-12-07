@@ -16,24 +16,24 @@ async function fixMediaFiles(baseDir) {
 
   try {
     const sessions = await fs.readdir(dataDir);
-    
+
     for (const sessionId of sessions) {
       const sessionDataDir = path.join(dataDir, sessionId);
       const sessionPublicDir = path.join(publicMediaDir, sessionId);
-      
+
       // Skip if not a directory
       const stat = await fs.stat(sessionDataDir).catch(() => null);
       if (!stat || !stat.isDirectory()) continue;
 
       logger.info(`Processing session: ${sessionId}`);
-      
+
       // Ensure public media directory exists
       await fs.mkdir(sessionPublicDir, { recursive: true });
-      
+
       // Find and copy media files
       await copyMediaFiles(sessionDataDir, sessionPublicDir);
     }
-    
+
     logger.info('Media file fix completed successfully');
   } catch (error) {
     logger.error('Error fixing media files:', error);
@@ -42,10 +42,10 @@ async function fixMediaFiles(baseDir) {
 
 async function copyMediaFiles(sourceDir, targetDir) {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
-  
+
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry.name);
-    
+
     if (entry.isDirectory()) {
       // Recursively process subdirectories
       const targetSubDir = path.join(targetDir, entry.name);
@@ -66,7 +66,7 @@ function isMediaFile(fileName) {
     /\.(jpeg|jpg|png|gif|webp)$/i, // Image extensions
     /\.(wav|mp3|m4a|ogg)$/i, // Audio extensions
   ];
-  
+
   return mediaPatterns.some(pattern => pattern.test(fileName));
 }
 
