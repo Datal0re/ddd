@@ -1,6 +1,7 @@
 /**
  * Navigation System for Data Dumpster Diver
  * Provides persistent navigation, breadcrumbs, and quick access functionality
+ * Using static CSS classes for better performance and maintainability
  */
 
 /**
@@ -375,52 +376,25 @@ function filterConversations(filter) {
 }
 
 function showComingSoon(feature) {
-  // Create a nice toast notification instead of alert
+  // Create toast notification using static CSS classes
   const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    padding: 1rem 1.5rem;
-    color: var(--text-primary);
-    box-shadow: 0 4px 6px var(--shadow);
-    z-index: 1000;
-    animation: slideIn 0.3s ease-out;
-  `;
+  toast.className = 'toast toast-info';
+
   toast.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <span style="font-size: 1.2rem;">🚧</span>
-      <div>
-        <div style="font-weight: 600; margin-bottom: 0.25rem;">Coming Soon</div>
-        <div style="font-size: 0.875rem; color: var(--text-secondary);">${feature} feature is under development</div>
+    <div class="toast-content">
+      <span class="toast-icon">🚧</span>
+      <div class="toast-message">
+        <div class="toast-title">Coming Soon</div>
+        <div class="toast-description">${feature} feature is under development</div>
       </div>
     </div>
   `;
 
-  // Add animation
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-
   document.body.appendChild(toast);
 
-  // Remove after 3 seconds
+  // Remove after 3 seconds with slide-out animation
   setTimeout(() => {
-    toast.style.animation = 'slideIn 0.3s ease-out reverse';
+    toast.classList.add('hiding');
     setTimeout(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);

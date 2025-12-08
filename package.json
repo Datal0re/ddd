@@ -64,7 +64,6 @@
       "public/**/*",
       "data/**/*",
       "scripts/**/*",
-      "color-palette.css",
       "enhanced-design.css",
       "LICENSE",
       "node_modules/**/*"

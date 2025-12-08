@@ -141,6 +141,31 @@ API_PORT=3001     # Express server port (default: 3001)
 - Docs: Public APIs with docstrings/comments; keep README/docs synced
 - Testing: Core utilities and edge cases, fast/deterministic tests
 
+## **CSS Architecture**
+
+### **Static CSS Approach**
+
+- **Performance-first**: All styles defined in static CSS files for optimal caching
+- **Design System**: Comprehensive CSS custom properties in `styles.css`
+- **Component-based**: Reusable classes for toast notifications, loading states, skeletons
+- **Responsive**: Mobile-first design with progressive enhancement
+- **Accessibility**: Proper focus states, reduced motion support, semantic markup
+
+### **CSS Files Structure**
+
+- `public/styles.css` - Main design system with color palette, typography, components
+- `enhanced-design.css` - Advanced visual effects and glassmorphism
+- `views/index.html` - Critical CSS inlined for above-the-fold rendering
+- **No CSS-in-JS**: Eliminated for better performance and maintainability
+
+### **Key Features**
+
+- **Dark Theme**: Comprehensive dark mode design system
+- **Toast System**: Static classes for notifications (info, success, warning, error)
+- **Loading States**: Overlay, spinner, and skeleton screen components
+- **Glassmorphism**: Modern blur effects with backdrop-filter
+- **Performance Optimized**: CSS containment, will-change properties, GPU acceleration
+
 ## **API Endpoints**
 
 All endpoints use `/api/` prefix and run on port 3001.

@@ -1,6 +1,7 @@
 /**
  * Loading States and Skeleton Screens System
  * Provides consistent loading UI across the application
+ * Using static CSS classes for better performance and maintainability
  */
 
 class LoadingSystem {
@@ -142,113 +143,11 @@ class LoadingSystem {
   }
 
   /**
-   * Add loader styles to document
+   * Add loader styles to document (now using static CSS)
    */
   addLoaderStyles() {
-    if (document.getElementById('loader-styles')) return;
-
-    const styles = document.createElement('style');
-    styles.id = 'loader-styles';
-    styles.textContent = `
-      .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.2s ease-out;
-      }
-      
-      .loading-overlay.hiding {
-        animation: fadeOut 0.3s ease-out forwards;
-      }
-      
-      .loading-backdrop {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(15, 23, 42, 0.8);
-        backdrop-filter: blur(4px);
-      }
-      
-      .loading-content {
-        position: relative;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        padding: 2rem;
-        text-align: center;
-        box-shadow: 0 8px 25px var(--shadow);
-        min-width: 200px;
-        max-width: 400px;
-        z-index: 1;
-      }
-      
-      .loading-spinner {
-        width: 48px;
-        height: 48px;
-        border: 3px solid var(--border-color);
-        border-top: 3px solid var(--primary-blue);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
-      }
-      
-      .loading-message {
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-        line-height: 1.4;
-      }
-      
-      .loading-progress {
-        margin-top: 1rem;
-      }
-      
-      .progress-bar {
-        background: var(--bg-tertiary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.25rem;
-        height: 8px;
-        overflow: hidden;
-        margin-bottom: 0.5rem;
-      }
-      
-      .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary-blue), var(--secondary-purple));
-        transition: width 0.3s ease;
-      }
-      
-      .progress-text {
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        font-weight: 500;
-      }
-      
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      
-      @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
-      
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `;
-
-    document.head.appendChild(styles);
+    // Styles are now in static CSS - no dynamic injection needed
+    // This method kept for compatibility but does nothing
   }
 }
 
@@ -331,110 +230,15 @@ class SkeletonSystem {
   }
 
   /**
-   * Add skeleton styles
+   * Add skeleton styles to document (now using static CSS)
    */
-  static addSkeletonStyles() {
-    if (document.getElementById('skeleton-styles')) return;
-
-    const styles = document.createElement('style');
-    styles.id = 'skeleton-styles';
-    styles.textContent = `
-      .skeleton {
-        background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-color) 50%, var(--bg-tertiary) 75%);
-        background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-        border-radius: 0.25rem;
-      }
-      
-      @keyframes loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-      }
-      
-      .skeleton-item {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.5rem;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.75rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-      
-      .skeleton-title {
-        height: 1.25rem;
-        width: 60%;
-        margin-bottom: 0.5rem;
-      }
-      
-      .skeleton-date {
-        height: 0.875rem;
-        width: 40%;
-      }
-      
-      .skeleton-arrow {
-        height: 1.25rem;
-        width: 1.25rem;
-        flex-shrink: 0;
-      }
-      
-      .skeleton-message {
-        margin-bottom: 1.5rem;
-        display: flex;
-        flex-direction: column;
-      }
-      
-      .skeleton-message.user {
-        align-items: flex-end;
-      }
-      
-      .skeleton-message.assistant {
-        align-items: flex-start;
-      }
-      
-      .skeleton-author {
-        height: 0.75rem;
-        width: 80px;
-        margin-bottom: 0.5rem;
-      }
-      
-      .skeleton-content {
-        height: 3rem;
-        width: 100%;
-        margin-bottom: 0.5rem;
-        border-radius: 1.25rem;
-      }
-      
-      .skeleton-timestamp {
-        height: 0.7rem;
-        width: 120px;
-      }
-      
-      .skeleton-card {
-        min-height: 150px;
-      }
-      
-      .skeleton-header {
-        height: 1.5rem;
-        width: 70%;
-        margin-bottom: 1rem;
-      }
-      
-      .skeleton-text {
-        height: 1rem;
-        width: 100%;
-        margin-bottom: 0.5rem;
-      }
-    `;
-
-    document.head.appendChild(styles);
+  addSkeletonStyles() {
+    // Styles are now in static CSS - no dynamic injection needed
+    // This method kept for compatibility but does nothing
   }
 }
 
-// Initialize skeleton styles
-SkeletonSystem.addSkeletonStyles();
+// Skeleton styles are now in static CSS - no initialization needed
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {

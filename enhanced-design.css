@@ -1,53 +1,9 @@
 /* Data Dumpster Diver - Enhanced Dark Mode Design System */
 
-/* Enhanced Color Palette with Modern Gradients */
+/* Enhanced Design System - Color variables are now consolidated in styles.css */
+
+/* Additional Shadow System */
 :root {
-  /* Core Brand Colors */
-  --primary-blue: #3b82f6;
-  --primary-blue-dark: #2563eb;
-  --primary-blue-light: #60a5fa;
-  --secondary-purple: #8b5cf6;
-  --secondary-purple-dark: #7c3aed;
-  --accent-cyan: #06b6d4;
-  --accent-cyan-light: #22d3ee;
-
-  /* Extended Gradient Palette */
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-  --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-  --gradient-subtle: linear-gradient(
-    135deg,
-    rgba(59, 130, 246, 0.1) 0%,
-    rgba(139, 92, 246, 0.1) 100%
-  );
-  --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-
-  /* Glassmorphism Values */
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(148, 163, 184, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --glass-backdrop: blur(12px);
-
-  /* Enhanced Dark Theme */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-glass: rgba(30, 41, 59, 0.5);
-
-  /* Text Hierarchy */
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --text-accent: #60a5fa;
-
-  /* Interactive States */
-  --hover-glow: rgba(59, 130, 246, 0.3);
-  --active-glow: rgba(59, 130, 246, 0.5);
-  --focus-ring: rgba(59, 130, 246, 0.4);
-
-  /* Shadow System */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.25);
   --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.3);
@@ -402,41 +358,8 @@
   transform: translateY(-1px);
 }
 
-/* Enhanced Cards with Hover Effects */
-.card {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-backdrop);
-  border: 1px solid var(--glass-border);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  box-shadow: var(--shadow-md);
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-}
-
-.card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--gradient-primary);
-  transform: scaleX(0);
-  transition: transform var(--transition-normal);
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary-blue);
-}
-
-.card:hover::after {
-  transform: scaleX(1);
-}
+/* Enhanced Cards - moved to styles.css card system */
+/* Note: card::after hover effect moved to styles.css as .card-glass variant */
 
 /* Loading States with Enhanced Animations */
 .spinner {
@@ -450,14 +373,7 @@
   box-shadow: 0 0 24px rgba(59, 130, 246, 0.3);
 }
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
+/* spin animation moved to styles.css to avoid duplication */
 
 .loading-overlay {
   position: fixed;
