@@ -220,7 +220,7 @@ class NavigationSystem {
    */
   createQuickAccessToolbar() {
     // Only show on certain pages
-    if (!['dashboard', 'conversations'].includes(this.currentPage)) {
+    if (!['conversations'].includes(this.currentPage)) {
       return;
     }
 

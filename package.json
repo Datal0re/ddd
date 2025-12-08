@@ -1,6 +1,6 @@
 {
   "name": "data-dumpster-diver",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A desktop app to explore and visualize exported ChatGPT conversation data.",
   "license": "MIT",
   "author": "Ethan Thomason",
@@ -18,7 +18,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "migrate": "node data/migration.js data/conversations.json",
-    "extract-assets": "node extract-assets-json.js",
+    "extract-assets": "node data/extract-assets-json.js",
     "dev-full": "API_PORT=3001 npm run web & API_PORT=3001 electron ."
   },
   "dependencies": {

@@ -9,6 +9,7 @@
     />
     <title>Data Dumpster Diver – Upload</title>
     <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="../enhanced-design.css" />
     <script src="../public/navigation.js"></script>
     <style>
       /* Unique styles for upload.html - everything else is in public/styles.css */
@@ -41,6 +42,9 @@
     </style>
   </head>
   <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
     <div class="container">
       <div class="page-header page-header-with-nav">
         <h1>Data Dumpster Diver</h1>
@@ -453,10 +457,28 @@
         }
       }
 
+      // Create floating particles for enhanced visual effect
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        if (!container) return;
+
+        const particleCount = 25;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', () => {
         setupProgressListeners();
         initializeProgress();
+        createParticles();
       });
     </script>
   </body>

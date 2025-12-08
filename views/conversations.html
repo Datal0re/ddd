@@ -9,6 +9,7 @@
     />
     <title>Data Dumpster Diver – Conversations</title>
     <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="../enhanced-design.css" />
     <script src="../public/navigation.js"></script>
     <script src="../public/pagination.js"></script>
     <script src="../public/loading-system.js"></script>
@@ -33,19 +34,22 @@
   </head>
 
   <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
     <div class="container">
       <div class="page-header page-header-with-nav">
         <div
           style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center"
         >
-          <button
+          <!-- <button
             onclick="deleteCurrentSession()"
             class="btn btn-danger"
             style="font-size: 0.9rem"
             title="Delete this session and all its data"
           >
             🗑️ Delete Session
-          </button>
+          </button> -->
         </div>
         <h1>Your Conversations</h1>
         <p style="color: var(--text-secondary)">
@@ -284,6 +288,23 @@
       `;
       }
 
+      // Create floating particles for enhanced visual effect
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        if (!container) return;
+
+        const particleCount = 25;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
       // Add keyboard navigation
       document.addEventListener('keydown', function (e) {
         if (
@@ -300,6 +321,9 @@
           filter();
         }
       });
+
+      // Initialize particles when DOM is loaded
+      document.addEventListener('DOMContentLoaded', createParticles);
     </script>
   </body>
 </html>

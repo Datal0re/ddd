@@ -12,12 +12,12 @@ This is a sophisticated desktop application that combines:
 
 ### **Architecture Pattern**
 
-```
-┌─────────────────┐    IPC     ┌──────────────────┐    HTTP     ┌─────────────────┐
-│   Electron      │ ◄──────► │   Electron      │ ◄───────► │   Express      │
-│   Renderer      │           │   Main Process  │           │   API Server   │
-│   (UI Layer)    │           │   (IPC Bridge)  │           │   (Business)   │
-└─────────────────┘           └──────────────────┘           └─────────────────┘
+```text
+┌──────────────┐   IPC   ┌────────────────┐   HTTP  ┌──────────────┐
+│  Electron    │ ◄─────► │  Electron      │ ◄─────► │  Express     │
+│  Renderer    │         │  Main Process  │         │  API Server  │
+│  (UI Layer)  │         │  (IPC Bridge)  │         │  (Business)  │
+└──────────────┘         └────────────────┘         └──────────────┘
 ```
 
 **Data Flow:**
@@ -59,6 +59,14 @@ This is a sophisticated desktop application that combines:
 - Disk-based session persistence
 - Integration with backup system
 - File processing orchestration
+- Progress tracking integration
+
+**Progress Management (`utils/ProgressManager.js`):**
+
+- Real-time upload progress tracking
+- Persistent progress storage across restarts
+- Multi-stage progress visualization
+- Cancellation and cleanup support
 
 **Security Layer (`utils/fileUtils.js`):**
 
@@ -66,6 +74,14 @@ This is a sophisticated desktop application that combines:
 - ZIP bomb protection
 - Path traversal prevention
 - Secure temporary directory handling
+- Enhanced asset extraction capabilities
+
+**Logging System (`utils/logger.js`):**
+
+- Structured logging with Pino framework
+- Module-specific log instances
+- Performance-optimized logging
+- Configurable log levels and output formats
 
 ## **Build/Lint/Test**
 
@@ -140,6 +156,8 @@ All endpoints use `/api/` prefix and run on port 3001.
 ### **File Operations**
 
 - `POST /api/upload` - Upload and process ZIP file (multer memory storage)
+- `GET /api/upload/progress/:uploadId` - Get upload progress status
+- `DELETE /api/upload/progress/:uploadId` - Cancel upload and cleanup
 
 ### **Backup Management**
 
@@ -159,7 +177,7 @@ All endpoints use `/api/` prefix and run on port 3001.
 
 ## **Project Structure**
 
-```
+```text
 data-dumpster-diver/
 ├── main.js                    # Electron main process
 ├── app.js                     # Express API server
@@ -168,6 +186,7 @@ data-dumpster-diver/
 ├── utils/                     # Core utilities
 │   ├── SessionManager.js      # Session lifecycle management
 │   ├── BackupManager.js      # Backup system
+│   ├── ProgressManager.js     # Upload progress tracking
 │   ├── fileUtils.js           # Secure file operations
 │   ├── getConversationMessages.js # Message processing utilities
 │   └── logger.js              # Logging utilities
@@ -178,28 +197,42 @@ data-dumpster-diver/
 │   └── conversation.html      # Conversation viewer
 ├── public/                    # Static assets
 │   ├── styles.css             # Application styles
+│   ├── fonts/                 # FiraCode Nerd Font files
+│   ├── loading-system.js      # Loading state management
+│   ├── navigation.js         # Navigation functionality
+│   ├── pagination.js         # Client-side pagination
 │   └── media/                 # Extracted media files
 ├── data/                      # Data storage
 │   ├── sessions.json          # Session metadata
 │   ├── sessions/              # Session data directories
-│   └── migration.js           # Data migration script
+│   ├── upload-progress.json   # Progress tracking data
+│   ├── migration.js           # Data migration script
+│   └── extract-assets-json.js # Asset extraction script
+├── scripts/                   # Maintenance scripts
+│   ├── fix-media-files.js     # Media file repair utility
+│   └── migrate-logging.sh     # Logging migration script
 ├── backups/                   # Session backups
 ├── docs/                      # Documentation
 │   ├── CHANGELOG.md           # Version history
-│   └── COLOR_PALETTE.md       # Design system
-└── color-palette.css          # CSS custom properties
+│   ├── COLOR_PALETTE.md       # Design system
+│   └── archive/               # Archived documentation
+├── color-palette.css          # CSS custom properties
+├── LICENSE                    # MIT License
+└── AGENTS.md                  # Development guidelines
 ```
 
 ## **Data Organization**
 
 ### **Session Structure**
 
-```
+```text
 data/
 ├── sessions.json              # Session registry and metadata
+├── upload-progress.json       # Active upload progress tracking
 └── sessions/{sessionId}/
     ├── conversations.json     # Original uploaded file
-    └── conversations/        # Migrated individual files
+    ├── conversations/        # Migrated individual files
+    └── assets.json           # Extracted assets from chat.html
 
 public/media/sessions/{sessionId}/
 ├── audio/                    # Voice recordings
@@ -243,6 +276,8 @@ const MAX_FILES_IN_ZIP = 10000; // Max files per zip
 - Start web server: `npm run web` (API_PORT=3001)
 - Full development: `npm run dev-full` (web server + Electron)
 - Data migration: `npm run migrate` (migrates conversation data)
+- Asset extraction: `node data/extract-assets-json.js` (extract assets from chat.html)
+- Media file repair: `node scripts/fix-media-files.js` (fix broken media file references)
 
 ## **Notes**
 

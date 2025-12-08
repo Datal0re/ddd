@@ -2,7 +2,7 @@
 
 A sophisticated desktop application for exploring and visualizing exported ChatGPT conversation data. Built with Electron and Express for secure, local data processing.
 
-![Data Dumpster Diver](https://img.shields.io/badge/version-1.0.4-blue.svg)
+![Data Dumpster Diver](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![Node.js](https://img.shields.io/badge/node.js-18%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-purple.svg)
 
@@ -15,13 +15,17 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 - **Automatic Data Processing**: Extract conversations, media assets, and metadata from exports
 - **Real-time Search**: Instant filtering of conversation titles and content
 - **Rich Message Display**: Markdown rendering, code highlighting, and media embedding
+- **Advanced Asset Extraction**: Extract and organize assets from chat.html files
+- **Progress Tracking**: Real-time upload progress with multi-stage visualization
 
 ### 🎨 User Experience
 
 - **Modern Dark Mode**: Eye-friendly interface with comprehensive color palette
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Smooth Animations**: Polished transitions and micro-interactions
-- **Progress Tracking**: Real-time feedback during file processing
+- **Advanced Loading System**: Skeleton screens and loading states for better UX
+- **Keyboard Navigation**: Full keyboard support with shortcuts and arrow key navigation
+- **Pagination System**: Efficient handling of large conversation datasets
 - **Accessibility**: WCAG-compliant design with proper contrast ratios
 
 ### 🔧 Technical Features
@@ -32,6 +36,9 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 - **Session Persistence**: Data survives application restarts
 - **Media Asset Management**: Automatic extraction and organization of images, audio, and files
 - **Markdown Support**: Full markdown rendering with safe HTML output
+- **Structured Logging**: Pino-based logging system for better debugging and monitoring
+- **Content Security Policy**: Comprehensive CSP implementation for enhanced security
+- **Progress Persistence**: Upload progress survives navigation and app restarts
 
 ## 🚀 Quick Start
 
@@ -113,33 +120,46 @@ User Interface → IPC → Main Process → HTTP → Express API → SessionMana
 
 ```text
 data-dumpster-diver/
-├── main.js                    # Electron main process
-├── app.js                     # Express API server
-├── renderer.js                # Electron preload script
-├── package.json               # Dependencies and scripts
-├── utils/                     # Core utilities
-│   ├── SessionManager.js      # Session lifecycle management
-│   ├── BackupManager.js       # Backup system
-│   ├── fileUtils.js           # Secure file operations
+├── main.js                        # Electron main process
+├── app.js                         # Express API server
+├── renderer.js                    # Electron preload script
+├── package.json                   # Dependencies and scripts
+├── utils/                         # Core utilities
+│   ├── SessionManager.js          # Session lifecycle management
+│   ├── BackupManager.js           # Backup system
+│   ├── ProgressManager.js         # Upload progress tracking
+│   ├── fileUtils.js               # Secure file operations
 │   ├── getConversationMessages.js # Message processing utilities
-│   └── logger.js              # Logging utilities
-├── views/                     # Frontend HTML files
-│   ├── index.html             # Main dashboard
-│   ├── upload.html            # File upload interface
-│   ├── conversations.html     # Conversation list
-│   └── conversation.html      # Conversation viewer
-├── public/                    # Static assets
-│   ├── styles.css             # Application styles
-│   └── media/                 # Extracted media files
-├── data/                      # Data storage
-│   ├── sessions.json          # Session metadata
-│   ├── sessions/              # Session data directories
-│   └── migration.js           # Data migration script
-├── backups/                   # Session backups
-├── docs/                      # Documentation
-│   ├── CHANGELOG.md           # Version history
-│   └── COLOR_PALETTE.md       # Design system
-└── color-palette.css          # CSS custom properties
+│   └── logger.js                  # Logging utilities
+├── views/                         # Frontend HTML files
+│   ├── index.html                 # Main dashboard
+│   ├── upload.html                # File upload interface
+│   ├── conversations.html         # Conversation list
+│   └── conversation.html          # Conversation viewer
+├── public/                        # Static assets
+│   ├── styles.css                 # Application styles
+│   ├── fonts/                     # FiraCode Nerd Font files
+│   ├── loading-system.js          # Loading state management
+│   ├── navigation.js              # Navigation functionality
+│   ├── pagination.js              # Client-side pagination
+│   └── media/                     # Extracted media files
+├── data/                          # Data storage
+│   ├── sessions.json              # Session metadata
+│   ├── sessions/                  # Session data directories
+│   ├── upload-progress.json       # Progress tracking data
+│   ├── migration.js               # Data migration script
+│   └── extract-assets-json.js     # Asset extraction script
+├── scripts/                       # Maintenance scripts
+│   ├── fix-media-files.js         # Media file repair utility
+│   └── migrate-logging.sh         # Logging migration script
+├── backups/                       # Session backups
+├── docs/                          # Documentation
+│   ├── CHANGELOG.md               # Version history
+│   ├── COLOR_PALETTE.md           # Design system
+│   └── archive/                   # Archived documentation
+├── color-palette.css              # CSS custom properties
+├── LICENSE                        # MIT License
+└── AGENTS.md                      # Development guidelines
 ```
 
 ## 🔧 Development
@@ -161,6 +181,12 @@ npm run dev-full
 
 # Run migration script manually
 npm run migrate [path/to/conversations.json]
+
+# Extract assets from chat.html
+node data/extract-assets-json.js
+
+# Fix media file references
+node scripts/fix-media-files.js
 
 # Linting and formatting
 npm run lint
@@ -184,6 +210,8 @@ All endpoints use `/api/` prefix and run on port 3001.
 | ------ | -------------------------------------------------------- | -------------------------------- |
 | GET    | `/api/health`                                            | Health check                     |
 | POST   | `/api/upload`                                            | Process ChatGPT export zip file  |
+| GET    | `/api/upload/progress/:uploadId`                         | Get upload progress status       |
+| DELETE | `/api/upload/progress/:uploadId`                         | Cancel upload and cleanup        |
 | GET    | `/api/sessions`                                          | List all sessions                |
 | GET    | `/api/sessions/:sessionId/conversations`                 | List conversations for a session |
 | GET    | `/api/sessions/:sessionId/conversations/:conversationId` | View specific conversation       |

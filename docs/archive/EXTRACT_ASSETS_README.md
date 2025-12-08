@@ -7,15 +7,13 @@ This script extracts `assetsJson` variables from chat.html files and saves them 
 ### Process all sessions
 
 ```bash
-npm run extract-assets
-# or
-node extract-assets-json.js
+node data/extract-assets-json.js
 ```
 
 ### Process a specific session
 
 ```bash
-node extract-assets-json.js <session-id>
+node data/extract-assets-json.js <session-id>
 ```
 
 ## What it does

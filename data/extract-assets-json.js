@@ -4,8 +4,8 @@
  * Extract assetsJson from chat.html files and save as assets.json
  *
  * Usage:
- *   node extract-assets-json.js                    # Process all sessions
- *   node extract-assets-json.js <session-id>       # Process specific session
+ *   node data/extract-assets-json.js                    # Process all sessions
+ *   node data/extract-assets-json.js <session-id>       # Process specific session
  *
  * This script finds `var assetsJson = {...}` (or `var assetsJson={}`) in chat.html files
  * and saves the JSON content as assets.json in the session root directory.

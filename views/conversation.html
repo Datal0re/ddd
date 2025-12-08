@@ -9,6 +9,7 @@
     />
     <title id="page-title">Conversation – Data Dumpster Diver</title>
     <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="../enhanced-design.css" />
     <script src="../public/navigation.js"></script>
     <script src="../public/loading-system.js"></script>
     <style>
@@ -28,10 +29,10 @@
         color: var(--text-primary);
         word-break: break-word;
       }
-      .navigation {
+      .conversation-actions {
         margin-top: 1rem;
       }
-      .navigation a {
+      .conversation-actions a {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
@@ -40,7 +41,7 @@
         transition: color 0.2s ease;
         text-decoration: none;
       }
-      .navigation a:hover {
+      .conversation-actions a:hover {
         color: var(--accent-cyan);
       }
       .message-container {
@@ -158,12 +159,15 @@
     </style>
   </head>
   <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
     <div class="container">
       <div class="conversation-header fade-in">
         <div class="conversation-title centered" id="conversation-title">
           Loading...
         </div>
-        <div class="navigation centered">
+        <div class="conversation-actions centered">
           <a
             href="index.html"
             class="btn btn-outline"
@@ -378,6 +382,23 @@
         }
       });
 
+      // Create floating particles for enhanced visual effect
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        if (!container) return;
+
+        const particleCount = 25;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
       // Smooth scroll for anchor links if any
       document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -392,6 +413,9 @@
             }
           });
         });
+
+        // Initialize particles
+        createParticles();
       });
     </script>
   </body>
