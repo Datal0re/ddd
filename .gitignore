@@ -69,6 +69,7 @@ sessions/
 backups/
 public/media/
 data/sessions.json
+data/upload-progress.json
 
 # Database files
 *.db
