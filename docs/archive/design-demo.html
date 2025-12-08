@@ -1,310 +1,932 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data Dumpster Diver - Enhanced Design Demo</title>
-    <link rel="stylesheet" href="../public/styles.css" />
-    <link rel="stylesheet" href="enhanced-design.css" />
-    <style>
-      body {
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: 'FiraCode Nerd Font', system-ui, sans-serif;
-        line-height: 1.6;
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Dumpster Diver - Enhanced Design Demo</title>
+  <link rel="stylesheet" href="../public/styles.css" />
+  <!-- <link rel="stylesheet" href="enhanced-design.css" /> -->
+  <style>
+    /* Data Dumpster Diver - Enhanced Dark Mode Design System */
+    /* Copy-pasted from enhanced-design.css for self-containment */
+    /* Enhanced Color Palette with Modern Gradients */
+    :root {
+      /* Core Brand Colors */
+      --primary-blue: #3b82f6;
+      --primary-blue-dark: #2563eb;
+      --primary-blue-light: #60a5fa;
+      --secondary-purple: #8b5cf6;
+      --secondary-purple-dark: #7c3aed;
+      --accent-cyan: #06b6d4;
+      --accent-cyan-light: #22d3ee;
+
+      /* Extended Gradient Palette */
+      --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --gradient-secondary: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+      --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+      --gradient-subtle: linear-gradient(135deg,
+          rgba(59, 130, 246, 0.1) 0%,
+          rgba(139, 92, 246, 0.1) 100%);
+      --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+
+      /* Glassmorphism Values */
+      --glass-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(148, 163, 184, 0.1);
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --glass-backdrop: blur(12px);
+
+      /* Enhanced Dark Theme */
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --bg-glass: rgba(30, 41, 59, 0.5);
+
+      /* Text Hierarchy */
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --text-accent: #60a5fa;
+
+      /* Interactive States */
+      --hover-glow: rgba(59, 130, 246, 0.3);
+      --active-glow: rgba(59, 130, 246, 0.5);
+      --focus-ring: rgba(59, 130, 246, 0.4);
+
+      /* Shadow System */
+      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+      --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.25);
+      --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.3);
+
+      /* Animation Timing */
+      --transition-fast: 0.15s ease;
+      --transition-normal: 0.25s ease;
+      --transition-slow: 0.4s ease;
+    }
+
+    /* Enhanced Page Header with Gradient Background */
+    .page-header {
+      position: relative;
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 4rem 2rem 3rem;
+      overflow: hidden;
+      background: var(--gradient-dark);
+      border-radius: 0 0 2rem 2rem;
+    }
+
+    /* Animated Background Pattern */
+    .page-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+      animation: floatPattern 20s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    @keyframes floatPattern {
+
+      0%,
+      100% {
+        transform: translateY(0) rotate(0deg);
       }
 
-      .demo-section {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 2rem;
+      33% {
+        transform: translateY(-10px) rotate(1deg);
       }
 
-      .demo-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
-        margin: 2rem 0;
+      66% {
+        transform: translateY(5px) rotate(-1deg);
+      }
+    }
+
+    /* Enhanced Typography Hierarchy */
+    .page-header h1 {
+      position: relative;
+      z-index: 1;
+      font-size: 4rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+      animation: titleGlow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes titleGlow {
+      from {
+        filter: brightness(1);
       }
 
-      .color-swatch {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: var(--bg-secondary);
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
+      to {
+        filter: brightness(1.2);
+      }
+    }
+
+    .page-header p {
+      position: relative;
+      z-index: 1;
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.7;
+    }
+
+    /* Glassmorphism Status Indicator */
+    .status-indicator {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1.5rem;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: var(--glass-shadow);
+      transition: all var(--transition-normal);
+    }
+
+    .status-indicator:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-xl), var(--shadow-glow);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 12px currentColor;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
       }
 
-      .color-preview {
-        width: 60px;
-        height: 60px;
-        border-radius: 0.5rem;
-        box-shadow: var(--shadow-md);
+      50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+      }
+    }
+
+    .status-indicator.has-data {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+
+    .status-indicator.no-data {
+      background: var(--gradient-subtle);
+      border-color: var(--glass-border);
+      color: var(--accent-cyan);
+    }
+
+    /* Enhanced Action Cards with Glassmorphism */
+    .action-card {
+      position: relative;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;
+      padding: 2.5rem;
+      text-align: center;
+      transition: all var(--transition-normal);
+      overflow: hidden;
+    }
+
+    .action-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--gradient-subtle);
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+      z-index: -1;
+    }
+
+    .action-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: var(--shadow-xl), var(--shadow-glow);
+      border-color: var(--primary-blue);
+    }
+
+    .action-card:hover::before {
+      opacity: 1;
+    }
+
+    .action-card.primary {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .action-card .action-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1.5rem;
+      display: block;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+
+      0%,
+      100% {
+        transform: translateY(0);
       }
 
-      .gradient-preview {
-        height: 60px;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        box-shadow: var(--shadow-md);
+      50% {
+        transform: translateY(-5px);
       }
-    </style>
-  </head>
-  <body>
-    <!-- Particle Background -->
-    <div class="particle-background" id="particleBackground"></div>
+    }
 
-    <!-- Enhanced Navigation -->
-    <nav class="main-nav">
-      <div class="nav-container">
-        <a href="#" class="nav-brand">
-          <div class="nav-brand-icon">🔍</div>
-          <span>ddd</span>
-        </a>
-        <div class="nav-menu">
-          <a href="#" class="nav-item active">Dashboard</a>
-          <a href="#" class="nav-item">Conversations</a>
-          <a href="#" class="nav-item">Analytics</a>
-        </div>
-        <div class="nav-actions">
-          <button class="search-toggle">🔍</button>
-          <button class="settings-btn">⚙️</button>
-        </div>
+    .action-card h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 1rem 0;
+      color: var(--text-primary);
+    }
+
+    .action-card p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    /* Enhanced Buttons with Gradient Effects */
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      border: none;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent);
+      transition: left var(--transition-slow);
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--primary-blue);
+      border: 2px solid var(--primary-blue);
+      backdrop-filter: var(--glass-backdrop);
+    }
+
+    .btn-outline:hover {
+      background: var(--primary-blue);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Enhanced Navigation with Glassmorphism */
+    .main-nav {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: all var(--transition-normal);
+    }
+
+    .nav-brand:hover {
+      color: var(--primary-blue);
+      transform: scale(1.05);
+    }
+
+    .nav-brand-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--gradient-primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+      animation: brandIconPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes brandIconPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 4px 24px rgba(59, 130, 246, 0.5);
+      }
+    }
+
+    /* Enhanced Search and Input Fields */
+    .search-input,
+    .quick-search {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      padding: 1rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      transition: all var(--transition-normal);
+    }
+
+    .search-input:focus,
+    .quick-search:focus {
+      outline: none;
+      border-color: var(--primary-blue);
+      box-shadow:
+        0 0 0 3px var(--focus-ring),
+        var(--shadow-glow);
+      transform: translateY(-1px);
+    }
+
+    /* Enhanced Cards with Hover Effects */
+    .card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-md);
+      transition: all var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--gradient-primary);
+      transform: scaleX(0);
+      transition: transform var(--transition-normal);
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-blue);
+    }
+
+    .card:hover::after {
+      transform: scaleX(1);
+    }
+
+    /* Loading States with Enhanced Animations */
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--glass-border);
+      border-top: 3px solid var(--primary-blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+      box-shadow: 0 0 24px rgba(59, 130, 246, 0.3);
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    /* Responsive Design Adjustments */
+    @media (max-width: 768px) {
+      .page-header {
+        padding: 2rem 1rem 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .page-header h1 {
+        font-size: 2.5rem;
+      }
+
+      .page-header p {
+        font-size: 1rem;
+      }
+
+      .action-card {
+        padding: 1.5rem;
+      }
+
+      .action-card .action-icon {
+        font-size: 2.5rem;
+      }
+    }
+
+    /* Subtle Particle Animation Background */
+    .particle-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: var(--primary-blue);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float 20s infinite linear;
+    }
+
+    @keyframes float {
+      from {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 0.3;
+      }
+
+      90% {
+        opacity: 0.3;
+      }
+
+      to {
+        transform: translateY(-100vh) translateX(100px);
+        opacity: 0;
+      }
+    }
+
+    /* Enhanced Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, var(--primary-blue), var(--secondary-purple));
+      border-radius: 4px;
+      transition: all var(--transition-normal);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg,
+          var(--primary-blue-light),
+          var(--secondary-purple));
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* Focus States for Accessibility */
+    *:focus-visible {
+      outline: 2px solid var(--primary-blue);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Enhanced Modal Styles */
+    .modal-content,
+    .session-modal-content {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: var(--shadow-xl);
+    }
+
+    /* Quick Access Toolbar Enhancement */
+    .quick-access-toolbar {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-backdrop);
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Performance Optimizations */
+    .action-card,
+    .card,
+    .btn {
+      will-change: transform;
+      transform: translateZ(0);
+    }
+
+    /* Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* End of copy-pasted styles */
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'FiraCode Nerd Font', system-ui, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .demo-section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin: 2rem 0;
+    }
+
+    .color-swatch {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .color-preview {
+      width: 60px;
+      height: 60px;
+      border-radius: 0.5rem;
+      box-shadow: var(--shadow-md);
+    }
+
+    .gradient-preview {
+      height: 60px;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-md);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Particle Background -->
+  <div class="particle-background" id="particleBackground"></div>
+
+  <!-- Enhanced Navigation -->
+  <nav class="main-nav">
+    <div class="nav-container">
+      <a href="#" class="nav-brand">
+        <div class="nav-brand-icon">🔍</div>
+        <span>ddd</span>
+      </a>
+      <div class="nav-menu">
+        <a href="#" class="nav-item active">Dashboard</a>
+        <a href="#" class="nav-item">Conversations</a>
+        <a href="#" class="nav-item">Analytics</a>
       </div>
-    </nav>
-
-    <!-- Enhanced Page Header -->
-    <header class="page-header">
-      <h1>ddd</h1>
-      <p>
-        Data Dumpster Diver - Explore and visualize your ChatGPT conversation data with
-        modern dark mode aesthetics
-      </p>
-      <div class="status-indicator has-data">
-        <span class="status-dot"></span>
-        <span>Enhanced Design Active</span>
+      <div class="nav-actions">
+        <button class="search-toggle">🔍</button>
+        <button class="settings-btn">⚙️</button>
       </div>
-    </header>
+    </div>
+  </nav>
 
-    <div class="demo-section">
-      <!-- Color Palette Showcase -->
-      <section style="margin-bottom: 3rem">
-        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
-          Enhanced Color Palette
-        </h2>
+  <!-- Enhanced Page Header -->
+  <header class="page-header">
+    <h1>ddd</h1>
+    <p>
+      Data Dumpster Diver - Explore and visualize your ChatGPT conversation data with
+      modern dark mode aesthetics
+    </p>
+    <div class="status-indicator has-data">
+      <span class="status-dot"></span>
+      <span>Enhanced Design Active</span>
+    </div>
+  </header>
 
-        <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
-          Core Gradients
-        </h3>
-        <div class="gradient-preview" style="background: var(--gradient-primary)"></div>
-        <div
-          class="gradient-preview"
-          style="background: var(--gradient-secondary)"
-        ></div>
-        <div class="gradient-preview" style="background: var(--gradient-accent)"></div>
-        <div class="gradient-preview" style="background: var(--gradient-subtle)"></div>
+  <div class="demo-section">
+    <!-- Color Palette Showcase -->
+    <section style="margin-bottom: 3rem">
+      <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+        Enhanced Color Palette
+      </h2>
 
-        <h3 style="color: var(--text-secondary); margin: 2rem 0 1rem">
-          Glassmorphism Colors
-        </h3>
-        <div class="color-swatch">
-          <div class="color-preview" style="background: var(--glass-bg)"></div>
-          <div>
-            <div style="font-weight: 600">Glass Background</div>
-            <div style="color: var(--text-muted); font-size: 0.875rem">
-              rgba(30, 41, 59, 0.7)
-            </div>
+      <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
+        Core Gradients
+      </h3>
+      <div class="gradient-preview" style="background: var(--gradient-primary)"></div>
+      <div class="gradient-preview" style="background: var(--gradient-secondary)"></div>
+      <div class="gradient-preview" style="background: var(--gradient-accent)"></div>
+      <div class="gradient-preview" style="background: var(--gradient-subtle)"></div>
+
+      <h3 style="color: var(--text-secondary); margin: 2rem 0 1rem">
+        Glassmorphism Colors
+      </h3>
+      <div class="color-swatch">
+        <div class="color-preview" style="background: var(--glass-bg)"></div>
+        <div>
+          <div style="font-weight: 600">Glass Background</div>
+          <div style="color: var(--text-muted); font-size: 0.875rem">
+            rgba(30, 41, 59, 0.7)
           </div>
         </div>
-        <div class="color-swatch">
-          <div class="color-preview" style="background: var(--glass-border)"></div>
-          <div>
-            <div style="font-weight: 600">Glass Border</div>
-            <div style="color: var(--text-muted); font-size: 0.875rem">
-              rgba(148, 163, 184, 0.1)
-            </div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-preview" style="background: var(--glass-border)"></div>
+        <div>
+          <div style="font-weight: 600">Glass Border</div>
+          <div style="color: var(--text-muted); font-size: 0.875rem">
+            rgba(148, 163, 184, 0.1)
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Action Cards Demo -->
-      <section style="margin-bottom: 3rem">
-        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
-          Enhanced Action Cards
-        </h2>
-        <div class="actions-grid with-data">
-          <div class="action-card primary">
-            <span class="action-icon">🔍</span>
-            <h3>Explore Conversations</h3>
+    <!-- Action Cards Demo -->
+    <section style="margin-bottom: 3rem">
+      <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+        Enhanced Action Cards
+      </h2>
+      <div class="actions-grid with-data">
+        <div class="action-card primary">
+          <span class="action-icon">🔍</span>
+          <h3>Explore Conversations</h3>
+          <p>
+            Browse through your existing ChatGPT conversations with enhanced visual
+            design and smooth animations
+          </p>
+          <button class="btn btn-primary">Start Exploring</button>
+        </div>
+        <div class="secondary-row">
+          <div class="action-card">
+            <span class="action-icon">📤</span>
+            <h3>Upload New Data</h3>
             <p>
-              Browse through your existing ChatGPT conversations with enhanced visual
-              design and smooth animations
+              Add a new ChatGPT export to your collection with modern upload interface
             </p>
-            <button class="btn btn-primary">Start Exploring</button>
+            <button class="btn btn-outline">Upload ZIP File</button>
           </div>
-          <div class="secondary-row">
-            <div class="action-card">
-              <span class="action-icon">📤</span>
-              <h3>Upload New Data</h3>
-              <p>
-                Add a new ChatGPT export to your collection with modern upload interface
-              </p>
-              <button class="btn btn-outline">Upload ZIP File</button>
-            </div>
-            <div class="action-card">
-              <span class="action-icon">📊</span>
-              <h3>View Analytics</h3>
-              <p>Get insights into your conversation patterns and usage statistics</p>
-              <button class="btn btn-outline">View Stats</button>
-            </div>
+          <div class="action-card">
+            <span class="action-icon">📊</span>
+            <h3>View Analytics</h3>
+            <p>Get insights into your conversation patterns and usage statistics</p>
+            <button class="btn btn-outline">View Stats</button>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Interactive Elements Demo -->
-      <section style="margin-bottom: 3rem">
-        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
-          Interactive Elements
-        </h2>
+    <!-- Interactive Elements Demo -->
+    <section style="margin-bottom: 3rem">
+      <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+        Interactive Elements
+      </h2>
 
-        <div class="demo-grid">
-          <div class="card">
-            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
-              Enhanced Search
-            </h3>
-            <input
-              type="text"
-              class="search-input"
-              placeholder="Search conversations..."
-              style="width: 100%; margin-bottom: 1rem"
-            />
-            <p style="color: var(--text-secondary); font-size: 0.875rem">
-              Features glassmorphism background with focus glow effects
-            </p>
-          </div>
-
-          <div class="card">
-            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
-              Status Indicators
-            </h3>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem">
-              <div class="status-indicator has-data">
-                <span class="status-dot"></span>
-                <span>Data Available</span>
-              </div>
-              <div class="status-indicator no-data">
-                <span class="status-dot"></span>
-                <span>No Data</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
-              Button Variants
-            </h3>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem">
-              <button class="btn btn-primary">Primary Action</button>
-              <button class="btn btn-outline">Secondary Action</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Typography Hierarchy -->
-      <section style="margin-bottom: 3rem">
-        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
-          Typography Hierarchy
-        </h2>
+      <div class="demo-grid">
         <div class="card">
-          <h1
-            style="
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+            Enhanced Search
+          </h3>
+          <input type="text" class="search-input" placeholder="Search conversations..." style="width: 100%; margin-bottom: 1rem" />
+          <p style="color: var(--text-secondary); font-size: 0.875rem">
+            Features glassmorphism background with focus glow effects
+          </p>
+        </div>
+
+        <div class="card">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+            Status Indicators
+          </h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem">
+            <div class="status-indicator has-data">
+              <span class="status-dot"></span>
+              <span>Data Available</span>
+            </div>
+            <div class="status-indicator no-data">
+              <span class="status-dot"></span>
+              <span>No Data</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+            Button Variants
+          </h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem">
+            <button class="btn btn-primary">Primary Action</button>
+            <button class="btn btn-outline">Secondary Action</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Typography Hierarchy -->
+    <section style="margin-bottom: 3rem">
+      <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+        Typography Hierarchy
+      </h2>
+      <div class="card">
+        <h1 style="
               background: var(--gradient-primary);
               -webkit-background-clip: text;
               -webkit-text-fill-color: transparent;
               background-clip: text;
-            "
-          >
-            Heading 1 - Main Title
-          </h1>
-          <h2 style="color: var(--text-primary)">Heading 2 - Section Title</h2>
-          <h3 style="color: var(--text-secondary)">Heading 3 - Subsection</h3>
-          <p style="color: var(--text-secondary)">
-            Body text with proper hierarchy and contrast for dark mode readability.
-          </p>
-          <p style="color: var(--text-muted); font-size: 0.875rem">
-            Muted text for secondary information and metadata.
-          </p>
-        </div>
-      </section>
+            ">
+          Heading 1 - Main Title
+        </h1>
+        <h2 style="color: var(--text-primary)">Heading 2 - Section Title</h2>
+        <h3 style="color: var(--text-secondary)">Heading 3 - Subsection</h3>
+        <p style="color: var(--text-secondary)">
+          Body text with proper hierarchy and contrast for dark mode readability.
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.875rem">
+          Muted text for secondary information and metadata.
+        </p>
+      </div>
+    </section>
 
-      <!-- Loading States -->
-      <section style="margin-bottom: 3rem">
-        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
-          Loading States
-        </h2>
-        <div class="card" style="text-align: center">
-          <div class="spinner"></div>
-          <p style="color: var(--text-secondary)">
-            Enhanced loading animation with glow effects
-          </p>
-        </div>
-      </section>
-    </div>
+    <!-- Loading States -->
+    <section style="margin-bottom: 3rem">
+      <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+        Loading States
+      </h2>
+      <div class="card" style="text-align: center">
+        <div class="spinner"></div>
+        <p style="color: var(--text-secondary)">
+          Enhanced loading animation with glow effects
+        </p>
+      </div>
+    </section>
+  </div>
 
-    <script>
-      // Create floating particles
-      function createParticles() {
-        const container = document.getElementById('particleBackground');
-        const particleCount = 30;
+  <script>
+    // Create floating particles
+    function createParticles() {
+      const container = document.getElementById('particleBackground');
+      const particleCount = 30;
 
-        for (let i = 0; i < particleCount; i++) {
-          const particle = document.createElement('div');
-          particle.className = 'particle';
-          particle.style.left = Math.random() * 100 + '%';
-          particle.style.animationDelay = Math.random() * 20 + 's';
-          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
-          container.appendChild(particle);
-        }
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 20 + 's';
+        particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+        container.appendChild(particle);
       }
+    }
 
-      // Initialize particles when page loads
-      document.addEventListener('DOMContentLoaded', createParticles);
+    // Initialize particles when page loads
+    document.addEventListener('DOMContentLoaded', createParticles);
 
-      // Add interactive hover effects
-      document.querySelectorAll('.btn, .card, .action-card').forEach(element => {
-        element.addEventListener('mouseenter', function () {
-          this.style.transform = 'translateY(-2px) scale(1.02)';
-        });
-
-        element.addEventListener('mouseleave', function () {
-          this.style.transform = 'translateY(0) scale(1)';
-        });
+    // Add interactive hover effects
+    document.querySelectorAll('.btn, .card, .action-card').forEach(element => {
+      element.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px) scale(1.02)';
       });
 
-      // Simulate status changes
-      let statusIndex = 0;
-      const statuses = [
-        { class: 'has-data', text: 'Enhanced Design Active' },
-        { class: 'no-data', text: 'Processing Data...' },
-        { class: 'has-data', text: '3 Sessions Available' },
-      ];
+      element.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0) scale(1)';
+      });
+    });
 
-      setInterval(() => {
-        const indicator = document.querySelector('.status-indicator');
-        const statusText = indicator.querySelector('span:last-child');
-        const status = statuses[statusIndex];
+    // Simulate status changes
+    let statusIndex = 0;
+    const statuses = [{
+        class: 'has-data',
+        text: 'Enhanced Design Active'
+      },
+      {
+        class: 'no-data',
+        text: 'Processing Data...'
+      },
+      {
+        class: 'has-data',
+        text: '3 Sessions Available'
+      },
+    ];
 
-        indicator.className = `status-indicator ${status.class}`;
-        statusText.textContent = status.text;
+    setInterval(() => {
+      const indicator = document.querySelector('.status-indicator');
+      const statusText = indicator.querySelector('span:last-child');
+      const status = statuses[statusIndex];
 
-        statusIndex = (statusIndex + 1) % statuses.length;
-      }, 3000);
-    </script>
-  </body>
+      indicator.className = `status-indicator ${status.class}`;
+      statusText.textContent = status.text;
+
+      statusIndex = (statusIndex + 1) % statuses.length;
+    }, 3000);
+  </script>
+</body>
+
 </html>

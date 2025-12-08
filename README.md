@@ -234,7 +234,7 @@ All endpoints use `/api/` prefix and run on port 3001.
 
 ## 🎨 Design System
 
-The application uses a comprehensive dark mode color palette documented in [`docs/COLOR_PALETTE.md`](./docs/COLOR_PALETTE.md). Key features:
+The application uses a comprehensive dark mode color palette documented in [`COLOR_PALETTE.md`](./docs/archive/COLOR_PALETTE.md). Key features:
 
 - **Accessibility**: WCAG AA compliant contrast ratios
 - **Consistency**: CSS custom properties for maintainable theming

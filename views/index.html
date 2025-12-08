@@ -13,8 +13,128 @@
     <script src="../public/navigation.js"></script>
     <style>
       /* Unique styles for index.html - everything else is in public/styles.css */
+
+      /* CSS Variables for compatibility */
+      :root {
+        --card-bg: var(--bg-secondary);
+        --success-bg: rgba(16, 185, 129, 0.1);
+        --success-text: #10b981;
+        --input-bg: var(--bg-tertiary);
+        --message-user-text: rgba(255, 255, 255, 0.9);
+      }
+
       .container {
         padding: 2rem;
+        max-width: 1400px;
+        /* Increased for desktop layout */
+      }
+
+      /* Desktop Layout Grid */
+      .desktop-layout {
+        display: grid;
+        grid-template-columns: minmax(300px, 0.8fr) 1fr;
+        gap: clamp(2rem, 4vw, 4rem);
+        align-items: start;
+        min-height: calc(100vh - 8rem);
+        /* Fit on one screen without scrolling */
+      }
+
+      /* Left side - Header */
+      .desktop-header {
+        position: sticky;
+        top: 2rem;
+        z-index: 10;
+      }
+
+      /* Right side - Actions */
+      .desktop-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      /* Responsive adjustments */
+      @media (min-width: 1200px) {
+        .container {
+          max-width: 90vw;
+        }
+
+        .page-header {
+          padding: 2rem;
+          margin-bottom: 0;
+        }
+      }
+
+      /* Action cards in desktop layout */
+      .desktop-actions .actions-grid {
+        margin-top: 0;
+      }
+
+      .desktop-actions .actions-grid.with-data {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .desktop-actions .actions-grid.no-data {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      /* Ensure cards don't get too wide on desktop */
+      .desktop-actions .action-card {
+        max-width: 100%;
+        width: 100%;
+      }
+
+      /* Desktop action card sizing */
+      @media (min-width: 1025px) {
+        .desktop-actions .action-card {
+          min-height: 280px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          will-change: transform;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .desktop-actions .action-card:hover {
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
+        }
+
+        .desktop-actions .secondary-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+        }
+
+        .desktop-actions .secondary-row .action-card {
+          min-height: 220px;
+        }
+
+        .desktop-actions {
+          contain: layout style;
+        }
+      }
+
+      /* Tablet and mobile fallback */
+      @media (max-width: 1024px) {
+        .container {
+          max-width: 800px;
+        }
+
+        .desktop-layout {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .desktop-header {
+          position: static;
+        }
+
+        .page-header {
+          margin-bottom: 3rem;
+        }
       }
 
       /* Enhanced Page Header Styles */
@@ -32,6 +152,14 @@
         margin-bottom: 3rem;
         backdrop-filter: blur(10px);
         border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+
+      /* Desktop header adjustments */
+      @media (min-width: 1025px) {
+        .page-header {
+          margin-bottom: 0;
+          padding: 2.5rem 2rem;
+        }
       }
 
       .page-header::before {
@@ -66,9 +194,11 @@
         100% {
           transform: translate(0, 0) rotate(0deg);
         }
+
         33% {
           transform: translate(-20px, -20px) rotate(120deg);
         }
+
         66% {
           transform: translate(20px, -10px) rotate(240deg);
         }
@@ -96,6 +226,7 @@
         0% {
           filter: brightness(1) drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
         }
+
         100% {
           filter: brightness(1.1) drop-shadow(0 0 30px rgba(139, 92, 246, 0.4));
         }
@@ -144,6 +275,7 @@
           opacity: 1;
           transform: scale(1);
         }
+
         50% {
           opacity: 0.7;
           transform: scale(1.1);
@@ -162,6 +294,10 @@
 
       /* Responsive adjustments */
       @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+
         .page-header {
           padding: 2rem 1.5rem;
           margin-bottom: 2rem;
@@ -174,6 +310,10 @@
         .page-header p {
           font-size: 1.1rem;
         }
+
+        .desktop-layout {
+          gap: 1.5rem;
+        }
       }
 
       @media (max-width: 480px) {
@@ -183,6 +323,10 @@
 
         .page-header p {
           font-size: 1rem;
+        }
+
+        .desktop-layout {
+          gap: 1rem;
         }
       }
 
@@ -259,35 +403,52 @@
       }
     </style>
   </head>
+
   <body>
     <!-- Particle Background -->
     <div class="particle-background" id="particleBackground"></div>
 
     <div class="container">
-      <div class="page-header page-header-with-nav">
-        <h1>ddd</h1>
-        <p>
-          - Data Dumpster Diver -<br />Explore and visualize your ChatGPT conversation
-          data
-        </p>
-        <div id="status-indicator" class="status-indicator">
-          <span class="status-dot"></span>
-          <span id="status-text">Checking for existing data...</span>
-        </div>
-      </div>
-
-      <div id="loading" class="loading show">
-        <div class="spinner"></div>
-        <p>Loading your data...</p>
-      </div>
-
-      <div id="content" class="hidden">
-        <div id="sessions-info" class="sessions-info hidden">
-          <span id="sessions-count"></span>
+      <div class="desktop-layout">
+        <!-- Left side: Header -->
+        <div class="desktop-header">
+          <div class="page-header page-header-with-nav">
+            <h1>ddd</h1>
+            <p>- Data Dumpster Diver -</p>
+            <p style="font-size: small">
+              Explore and manage your ChatGPT conversation exports with ease.
+            </p>
+            <div id="status-indicator" class="status-indicator">
+              <span class="status-dot"></span>
+              <span id="status-text">Checking for existing data...</span>
+            </div>
+          </div>
         </div>
 
-        <div id="actions-grid" class="actions-grid">
-          <!-- Actions will be dynamically inserted here -->
+        <!-- Right side: Actions -->
+        <div class="desktop-actions">
+          <div id="loading" class="loading show">
+            <div
+              class="action-card"
+              style="
+                text-align: center;
+                justify-content: center;
+                min-height: 400px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              "
+            >
+              <div class="spinner"></div>
+              <p>Loading your data...</p>
+            </div>
+          </div>
+
+          <div id="content" class="hidden">
+            <div id="actions-grid" class="actions-grid">
+              <!-- Actions will be dynamically inserted here -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -347,19 +508,6 @@
         } else {
           indicator.className = 'status-indicator no-data';
           statusText.textContent = 'No data found';
-        }
-      }
-
-      // Update sessions info
-      function updateSessionsInfo() {
-        const sessionsInfo = document.getElementById('sessions-info');
-        const sessionsCountEl = document.getElementById('sessions-count');
-
-        if (hasExistingData) {
-          sessionsInfo.classList.remove('hidden');
-          sessionsCountEl.textContent = `You have ${sessionsCount} session${sessionsCount !== 1 ? 's' : ''} of conversation data ready to explore`;
-        } else {
-          sessionsInfo.classList.add('hidden');
         }
       }
 
@@ -471,7 +619,6 @@
           await checkExistingData();
           console.log('Data check completed');
           updateStatusIndicator();
-          updateSessionsInfo();
           renderActions();
           console.log('UI updates completed');
 
@@ -624,7 +771,6 @@
 
             // Update UI
             updateStatusIndicator();
-            updateSessionsInfo();
 
             // Close modal and refresh if no sessions left
             const modal = document.querySelector('.session-modal');
