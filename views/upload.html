@@ -8,11 +8,96 @@
       content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3001; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data: http://localhost:3001; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';"
     />
     <title>Data Dumpster Diver – Upload</title>
-    <link rel="stylesheet" href="../public/styles.css" />
-    <link rel="stylesheet" href="../enhanced-design.css" />
-    <script src="../public/navigation.js"></script>
+    <!-- Critical CSS inlined for faster render -->
     <style>
-      /* Unique styles for upload.html - everything else is in public/styles.css */
+      /* ========================================
+         CRITICAL CSS - Above the Fold
+         ======================================== */
+
+      /* Essential Reset and Base */
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          'FiraCode Nerd Font',
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        line-height: 1.25;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+
+      /* Essential Layout */
+      .container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      /* Critical Typography */
+      h1 {
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+      }
+
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* Critical Components */
+      .page-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding: 4rem 2rem 3rem;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-md);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background: var(--primary-blue);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: var(--primary-blue-hover);
+        transform: translateY(-1px);
+      }
+
+      /* File Selection Component */
       .file-selection {
         display: flex;
         align-items: center;
@@ -23,17 +108,80 @@
         background: var(--input-bg);
         transition: border-color 0.2s ease;
       }
+
       .file-selection:hover {
         border-color: var(--primary-color);
       }
-      .file-selection.has-file {
-        border-color: var(--success-green);
-        border-style: solid;
+
+      /* Loading States */
+      .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid var(--border-color);
+        border-top: 3px solid var(--primary-blue);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
       }
+
+      /* Critical Animation */
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Responsive Critical */
+      @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+
+        .page-header {
+          padding: 2rem 1rem 1.5rem;
+        }
+
+        h1 {
+          font-size: 2rem;
+        }
+
+        .card {
+          padding: 1rem;
+        }
+      }
+    </style>
+
+    <!-- Non-critical CSS loaded asynchronously -->
+    <link
+      rel="preload"
+      href="../public/styles.css"
+      as="style"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
+    />
+    <link
+      rel="preload"
+      href="../enhanced-design.css"
+      as="style"
+      onload="
+        this.onload = null;
+        this.rel = 'stylesheet';
+      "
+    />
+    <noscript>
+      <link rel="stylesheet" href="../public/styles.css" />
+      <link rel="stylesheet" href="../enhanced-design.css" />
+    </noscript>
+    <script src="../public/navigation.js"></script>
+    <style>
+      /* Unique styles for upload.html - using utility classes from styles.css */
       #selected-file-name {
         flex: 1;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
       }
       .upload-section {
         max-width: 500px;
@@ -88,18 +236,14 @@
 
         <div class="upload-section">
           <div class="form-group">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500">
-              Choose ChatGPT Export File
-            </label>
+            <label class="block mb-0_5 font-medium"> Choose ChatGPT Export File </label>
             <div id="file-selection" class="file-selection">
               <span id="selected-file-name">No file selected</span>
               <button id="select-file-btn" class="btn btn-outline">
                 📁 Browse Files
               </button>
             </div>
-            <p
-              style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted)"
-            >
+            <p class="mt-0_5 text-sm text-muted">
               Upload the zip file from your ChatGPT data export. The app will extract
               media assets and process conversations automatically.
             </p>
