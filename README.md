@@ -277,105 +277,19 @@ Font variants included:
 - **File Limits**: Configure security constants in fileUtils.js
 - **Styling**: Modify CSS custom properties in color-palette.css
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-<<<<<<< HEAD
-**Upload fails with "conversations.json not found"**
-=======
-
-#### Application fails to start
-
-- Ensure Node.js 18+ is installed
-- Check that all dependencies are installed with `npm install`
-- Verify API server can start with `npm run web`
-
-#### Upload fails with "conversations.json not found"
-
-> > > > > > > lean
-
-- Ensure you're uploading the complete ChatGPT export zip file
-- Check that the export was generated successfully from ChatGPT settings
-
-<<<<<<< HEAD
-**Media files not displaying**
-=======
-
-#### Media files not displaying
-
-> > > > > > > lean
-
-- Verify the export contains media files in the expected format
-- Check browser console for any asset loading errors
-
-<<<<<<< HEAD
-**Session data disappears**
-
-- Sessions automatically expire after 24 hours for privacy
-- Use the "Clear All Sessions" button to manually clean up
-
-**Performance issues with large exports**
-
-=======
-
-#### Session data disappears
-
-- Sessions automatically expire after 24 hours for privacy
-- Use backup system to preserve important sessions
-- Check data/sessions.json for session metadata
-
-#### Performance issues with large exports
-
-> > > > > > > lean
-
-- Large exports (>1GB) may take several minutes to process
-- Consider breaking up very large exports into smaller chunks
-- Monitor memory usage during processing
-
-### Getting Help
-
-1. Check the [Issues](../../issues) page for known problems
-2. Review the [CHANGELOG](./docs/CHANGELOG.md) for recent updates
-3. Create a new issue with details about your problem
-
-## 🤝 Contributing
-
-Contributions are welcome! Please see [`AGENTS.md`](./AGENTS.md) for development guidelines.
-
-### Development Setup
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Test thoroughly with various ChatGPT export formats
-5. Submit a pull request
-
-### Code Style
-
-- Use ES6+ features and modern JavaScript patterns
-- Follow the existing code formatting and naming conventions
-- Add comments for complex logic
-- Ensure all new features include error handling
-  <<<<<<< HEAD
-
 ## 📈 Roadmap
 
 ### Version 1.1 (Planned)
 
-- [ ] User authentication and persistent sessions
 - [ ] Advanced search and filtering options
 - [ ] Data visualization and analytics dashboard
-- [ ] Export functionality (PDF, JSON, CSV)
+- [ ] Export functionality (PDF, JSON, CSV, MD)
 
 ### Version 1.2 (Future)
 
 - [ ] Theme customization (light mode, custom colors)
 - [ ] API for external integrations
-- [ ] Real-time collaboration features
 - [ ] # Mobile app companion
-- Run `npm run lint-and-fix` before submitting
-  > > > > > > > lean
 
 ## 📄 License
 
@@ -387,12 +301,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - UI powered by modern HTML/CSS/JavaScript
 - Styling with comprehensive CSS custom properties
 - Icons and emojis from native browser support
-
----
-
-<<<<<<< HEAD
-**Data Dumpster Diver** - Dive deep into your ChatGPT conversations with style and ease.
-=======
-**Data Dumpster Diver** - Dive deep into your ChatGPT conversations with security and style.
-
-> > > > > > > lean
