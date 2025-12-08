@@ -23,6 +23,10 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: write
+  pull-requests: write
+
 env:
   NODE_VERSION: '20'
 
@@ -33,12 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -128,9 +135,9 @@ jobs:
           prerelease: true
           generate_release_notes: false
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push changes (if tags were created)
         if: github.event.inputs.create_git_tag == 'true'
         run: |
-          git push origin --follow-tags
+          git push origin main --follow-tags

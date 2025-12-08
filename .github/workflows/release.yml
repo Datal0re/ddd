@@ -30,6 +30,10 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: write
+  pull-requests: write
+
 env:
   NODE_VERSION: '20'
   CACHE_VERSION: 'v1'
@@ -42,12 +46,15 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       is_alpha: ${{ steps.version.outputs.is_alpha }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -119,7 +126,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git add package.json docs/CHANGELOG.md
           git commit -m "Release v${{ env.VERSION }}"
-          git push
+          git push origin main
 
       - name: Create git tag
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_git_tag == 'true'
@@ -154,6 +161,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -195,6 +204,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -281,7 +292,7 @@ jobs:
           prerelease: ${{ needs.quality.outputs.is_alpha == 'true' }}
           generate_release_notes: true
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Update Alpha Release Summary (for alpha releases only)
   update-alpha-summary:
@@ -292,6 +303,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update alpha release summary
         run: |
