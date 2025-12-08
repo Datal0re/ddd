@@ -1,3 +1,53 @@
+## [1.0.9-alpha] - 2025-12-08
+
+### 🚀 Alpha Release
+
+#### Automated Release
+
+- **Version**: 1.0.9-alpha
+- **Build Date**: 2025-12-08
+- **Release Type**: Automated alpha release
+- **Build Platforms**: mac, win, linux
+
+#### Changes Since Previous Release
+
+- Version bump to 1.0.9-alpha
+- Automated build and release process
+- Updated documentation and release notes
+
+#### Testing
+
+- ✅ Pre-release checks passed
+- ✅ Build process completed successfully
+- ✅ All platforms built successfully
+
+---
+
+## [1.0.8-alpha] - 2025-12-08
+
+### 🚀 Alpha Release
+
+#### Automated Release
+
+- **Version**: 1.0.8-alpha
+- **Build Date**: 2025-12-08
+- **Release Type**: Automated alpha release
+- **Build Platforms**: mac, win, linux
+
+#### Changes Since Previous Release
+
+- Version bump to 1.0.8-alpha
+- Automated build and release process
+- Updated documentation and release notes
+
+#### Testing
+
+- ✅ Pre-release checks passed
+- ✅ Build process completed successfully
+- ✅ All platforms built successfully
+
+---
+
 ## [1.0.7-alpha] - 2025-12-08
 
 ### 🚀 Alpha Release

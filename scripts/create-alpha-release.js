@@ -21,8 +21,8 @@ const { execSync } = require('child_process');
 // Configuration
 const CONFIG = {
   buildAllPlatforms: true,
-  createGitCommit: false, // Set to true to auto-commit
-  createGitTag: false, // Set to true to auto-tag
+  createGitCommit: true, // Set to true to auto-commit
+  createGitTag: true, // Set to true to auto-tag
   skipTests: false, // Set to true to skip pre-release checks
   platforms: ['mac', 'win', 'linux'],
 };

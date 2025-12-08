@@ -6,4 +6,4 @@ dist/
 build/
 coverage/
 *.min.js
-docs/
+docs/archive
