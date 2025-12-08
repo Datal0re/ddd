@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 /**
  * Alpha Release Automation Script
@@ -39,7 +40,6 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  // eslint-disable-next-line no-console
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
@@ -69,11 +69,9 @@ function execCommand(command, description) {
   } catch (error) {
     logError(`${description} failed: ${error.message}`);
     if (error.stdout) {
-      // eslint-disable-next-line no-console
       console.log('STDOUT:', error.stdout);
     }
     if (error.stderr) {
-      // eslint-disable-next-line no-console
       console.log('STDERR:', error.stderr);
     }
     throw error;
@@ -545,7 +543,6 @@ async function main() {
 // Handle command line arguments
 const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
-  // eslint-disable-next-line no-console
   console.log(`
 Data Dumpster Diver - Alpha Release Automation
 
