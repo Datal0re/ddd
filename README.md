@@ -1,46 +1,23 @@
-# Data Dumpster Diver
+# DDD - Data Dumpster Diver
 
-A sophisticated desktop application for exploring and visualizing exported ChatGPT conversation data. Built with Electron and Express for secure, local data processing.
+A desktop application for exploring and visualizing your ChatGPT conversation data locally and securely.
 
-![Data Dumpster Diver](https://img.shields.io/badge/version-1.0.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![Node.js](https://img.shields.io/badge/node.js-18%2B-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-purple.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
 
 ## ✨ Features
 
-### 🚀 Core Functionality
-
-- **Desktop Application**: Secure Electron wrapper with Express backend
-- **Session Management**: Isolated processing sessions with automatic cleanup
-- **Automatic Data Processing**: Extract conversations, media assets, and metadata from exports
-- **Real-time Search**: Instant filtering of conversation titles and content
-- **Rich Message Display**: Markdown rendering, code highlighting, and media embedding
-- **Advanced Asset Extraction**: Extract and organize assets from chat.html files
-- **Progress Tracking**: Real-time upload progress with multi-stage visualization
-
-### 🎨 User Experience
-
-- **Modern Dark Mode**: Eye-friendly interface with comprehensive color palette
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
-- **Smooth Animations**: Polished transitions and micro-interactions
-- **Advanced Loading System**: Skeleton screens and loading states for better UX
-- **Keyboard Navigation**: Full keyboard support with shortcuts and arrow key navigation
-- **Pagination System**: Efficient handling of large conversation datasets
-- **Accessibility**: WCAG-compliant design with proper contrast ratios
-
-### 🔧 Technical Features
-
-- **Secure File Handling**: Type validation and sanitization
-- **Hybrid Architecture**: Electron frontend + Express API backend
-- **Multi-layer Validation**: ZIP bomb protection and path traversal prevention
-- **Backup System**: Automated session backups and restoration
-- **Session Persistence**: Data survives application restarts
-- **Media Asset Management**: Automatic extraction and organization of images, audio, and files
-- **Markdown Support**: Full markdown rendering with safe HTML output
-- **Structured Logging**: Pino-based logging system for better debugging and monitoring
-- **Content Security Policy**: Comprehensive CSP implementation for enhanced security
-- **Progress Persistence**: Upload progress survives navigation and app restarts
-- **Static CSS Architecture**: Performance-optimized styling with comprehensive design system
+- **🔒 Privacy-First**: All data processing happens locally on your machine
+- **📁 Smart Organization**: Automatically extracts and organizes conversations, media, and assets
+- **🔍 Instant Search**: Real-time filtering of conversation titles and content
+- **📱 Beautiful Interface**: Modern dark mode with smooth animations and responsive design
+- **⚡ Fast Performance**: Optimized for handling large conversation datasets
+- **🎨 Rich Display**: Markdown rendering, code highlighting, and media embedding
+- **💾 Backup & Restore**: Automatic session backups with easy restoration
+- **⌨️ Keyboard Friendly**: Full keyboard navigation and shortcuts
+- **📊 Progress Tracking**: Real-time upload progress with detailed status updates
 
 ## 🚀 Quick Start
 
@@ -51,42 +28,19 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 
 ### Installation
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd data-dumpster-diver
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Start the application**
-
-   ```bash
-   npm start
-   # or for development
-   npm run dev
-   ```
-
-   The desktop application will launch automatically.
-
-### Development Modes
-
-**Full Development (Recommended):**
-
 ```bash
-npm run dev-full  # Starts API server + Electron app
+# Clone the repository
+git clone https://github.com/Datal0re/ddd.git
+cd ddd
+
+# Install dependencies
+npm install
+
+# Start the application
+npm start
 ```
 
-**Web-Only Development:**
-
-```bash
-npm run web       # Starts Express server only (API_PORT=3001)
-```
+The desktop application will launch automatically.
 
 ### Usage
 
@@ -94,7 +48,7 @@ npm run web       # Starts Express server only (API_PORT=3001)
    - Go to ChatGPT Settings → Data controls → Export
    - Wait for the email notification and download the zip file
 
-2. **Upload to Data Dumpster Diver**
+2. **Upload to DDD**
    - Launch the desktop application
    - Drag the zip file onto the upload area or click to select
    - Wait for processing to complete
@@ -104,219 +58,72 @@ npm run web       # Starts Express server only (API_PORT=3001)
    - Click any conversation to view detailed messages
    - Use keyboard shortcuts for efficient navigation
 
-## 🏗️ Architecture
+## 📸 Screenshots
 
-Data Dumpster Diver uses a hybrid architecture combining:
+<!-- TODO: Add screenshots of the application -->
 
-- **Electron Frontend**: Secure desktop wrapper with IPC communication
-- **Express Backend**: Full REST API server for business logic
-- **Session Management**: Centralized data processing and storage
+_Main dashboard with conversation list_
+_Conversation viewer with rich message display_
+_Upload interface with progress tracking_
 
-### Data Flow
+## 🔒 Privacy & Security
 
-```text
-User Interface → IPC → Main Process → HTTP → Express API → SessionManager
+- **🏠 Local Processing**: All data processing happens locally on your machine
+- **🚫 No External APIs**: No data is sent to external services
+- **🔐 Session Isolation**: Each upload session is completely isolated
+- **🛡️ Multi-layer Validation**: File size, type, and ZIP bomb protection
+- **🔒 Secure File Handling**: Path traversal prevention and content sanitization
+- **🧹 Automatic Cleanup**: Temporary files are automatically removed
+
+## 🛠️ For Developers
+
+DDD is built with modern web technologies and follows best practices for security and performance.
+
+**Tech Stack:**
+
+- **Frontend**: Electron + HTML/CSS/JavaScript
+- **Backend**: Express.js + Node.js
+- **Architecture**: Hybrid desktop application with local API server
+
+**Development:**
+
+```bash
+# Full development (recommended)
+npm run dev-full  # Starts API server + Electron app
+
+# Web-only development
+npm run web       # Starts Express server only
+
+# Code quality
+npm run lint      # ESLint checking
+npm run format    # Prettier formatting
 ```
 
-## 🎨 CSS Architecture
+**Documentation:**
 
-### Static CSS Approach
-
-Data Dumpster Diver uses a performance-first static CSS architecture:
-
-- **Single Source of Truth**: All styles defined in CSS files, no runtime generation
-- **Design System**: Comprehensive CSS custom properties and component library
-- **Performance Optimized**: Critical CSS inlined, non-critical loaded asynchronously
-- **Responsive Design**: Mobile-first approach with progressive enhancement
-
-### CSS Files Structure
-
-```text
-public/
-├── styles.css              # Main design system (2500+ lines)
-├── enhanced-design.css      # Visual effects and glassmorphism
-└── fonts/                 # FiraCode Nerd Font files
-
-views/
-└── index.html             # Critical CSS inlined for above-the-fold rendering
-```
-
-### Key Features
-
-- **Dark Theme**: Comprehensive dark mode design system
-- **Component Library**: Reusable classes for cards, buttons, forms, navigation
-- **Toast System**: Static classes for notifications (info, success, warning, error)
-- **Loading States**: Overlay, spinner, and skeleton screen components
-- **Glassmorphism**: Modern blur effects with backdrop-filter
-- **Performance Optimized**: CSS containment, will-change properties, GPU acceleration
-
-### Migration Benefits
-
-Recent migration from CSS-in-JS to static CSS provided:
-
-- **🚫 Critical Bug Fix**: Eliminated browser module loading errors
-- **⚡ Performance Boost**: Better caching and faster execution
-- **📉 Bundle Size**: Reduced JavaScript payload by removing unused utilities
-- **🛠️ Maintainability**: Single source of truth for all styles
-- **🔧 Developer Experience**: Standard CSS tooling and debugging
+- 📖 **[API Documentation](./docs/API.md)** - Complete API reference
+- 🏗️ **[Architecture Guide](./docs/ARCHITECTURE.md)** - Technical architecture
+- 👨‍💻 **[Development Guidelines](./AGENTS.md)** - Contributing and development practices
+- 📋 **[Changelog](./docs/CHANGELOG.md)** - Version history and updates
 
 ## 📁 Project Structure
 
 ```text
-data-dumpster-diver/
-├── main.js                        # Electron main process
-├── app.js                         # Express API server
-├── renderer.js                    # Electron preload script
-├── package.json                   # Dependencies and scripts
-├── utils/                         # Core utilities
-│   ├── SessionManager.js          # Session lifecycle management
-│   ├── BackupManager.js           # Backup system
-│   ├── ProgressManager.js         # Upload progress tracking
-│   ├── fileUtils.js               # Secure file operations
-│   ├── getConversationMessages.js # Message processing utilities
-│   └── logger.js                  # Logging utilities
-├── views/                         # Frontend HTML files
-│   ├── index.html                 # Main dashboard
-│   ├── upload.html                # File upload interface
-│   ├── conversations.html         # Conversation list
-│   └── conversation.html          # Conversation viewer
-├── public/                        # Static assets
-│   ├── styles.css                 # Application styles
-│   ├── fonts/                     # FiraCode Nerd Font files
-│   ├── loading-system.js          # Loading state management
-│   ├── navigation.js              # Navigation functionality
-│   ├── pagination.js              # Client-side pagination
-│   └── media/                     # Extracted media files
-├── data/                          # Data storage
-│   ├── sessions.json              # Session metadata
-│   ├── sessions/                  # Session data directories
-│   ├── upload-progress.json       # Progress tracking data
-│   ├── migration.js               # Data migration script
-│   └── extract-assets-json.js     # Asset extraction script
-├── scripts/                       # Maintenance scripts
-│   ├── fix-media-files.js         # Media file repair utility
-│   └── migrate-logging.sh         # Logging migration script
-├── backups/                       # Session backups
-├── docs/                          # Documentation
-│   ├── CHANGELOG.md               # Version history
-│   ├── COLOR_PALETTE.md           # Design system
-│   └── archive/                   # Archived documentation
-├── color-palette.css              # CSS custom properties
-├── LICENSE                        # MIT License
-└── AGENTS.md                      # Development guidelines
+ddd/
+├── main.js                    # Electron main process
+├── app.js                     # Express API server
+├── renderer.js                # Electron preload script
+├── package.json               # Dependencies and scripts
+├── utils/                     # Core utilities
+├── views/                     # Frontend HTML files
+├── public/                    # Static assets (styles, fonts, scripts)
+├── data/                      # Data storage and sessions
+├── scripts/                   # Maintenance and utility scripts
+├── backups/                   # Session backups
+├── docs/                      # Documentation
+├── LICENSE                    # MIT License
+└── AGENTS.md                  # Development guidelines
 ```
-
-## 🔧 Development
-
-### Available Scripts
-
-```bash
-# Start the desktop application
-npm start
-
-# Development mode (same as start)
-npm run dev
-
-# Start web server only
-npm run web
-
-# Full development (server + desktop)
-npm run dev-full
-
-# Run migration script manually
-npm run migrate [path/to/conversations.json]
-
-# Extract assets from chat.html
-node data/extract-assets-json.js
-
-# Fix media file references
-node scripts/fix-media-files.js
-
-# Linting and formatting
-npm run lint
-npm run lint:fix
-npm run format
-npm run lint-and-fix
-```
-
-### Environment Variables
-
-```bash
-# API server port (default: 3001)
-API_PORT=3001
-```
-
-### API Endpoints
-
-All endpoints use `/api/` prefix and run on port 3001.
-
-| Method | Endpoint                                                 | Description                      |
-| ------ | -------------------------------------------------------- | -------------------------------- |
-| GET    | `/api/health`                                            | Health check                     |
-| POST   | `/api/upload`                                            | Process ChatGPT export zip file  |
-| GET    | `/api/upload/progress/:uploadId`                         | Get upload progress status       |
-| DELETE | `/api/upload/progress/:uploadId`                         | Cancel upload and cleanup        |
-| GET    | `/api/sessions`                                          | List all sessions                |
-| GET    | `/api/sessions/:sessionId/conversations`                 | List conversations for a session |
-| GET    | `/api/sessions/:sessionId/conversations/:conversationId` | View specific conversation       |
-| DELETE | `/api/sessions/:sessionId`                               | Clean up specific session        |
-| POST   | `/api/sessions/cleanup`                                  | Clean up all old sessions        |
-| POST   | `/api/sessions/:sessionId/backup`                        | Create session backup            |
-| GET    | `/api/sessions/:sessionId/backups`                       | List session backups             |
-| POST   | `/api/sessions/:sessionId/restore`                       | Restore from backup              |
-
-### Session Management
-
-- **Session Creation**: Generated automatically on file upload
-- **Data Isolation**: Each session has isolated data and media folders
-- **Automatic Cleanup**: Sessions expire after 24 hours by default
-- **Manual Cleanup**: Use the cleanup API endpoints
-- **Backup System**: Automated backups with restoration capabilities
-
-## 🎨 Design System
-
-The application uses a comprehensive dark mode color palette documented in [`COLOR_PALETTE.md`](./docs/archive/COLOR_PALETTE.md). Key features:
-
-- **Accessibility**: WCAG AA compliant contrast ratios
-- **Consistency**: CSS custom properties for maintainable theming
-- **Responsive**: Mobile-first design with fluid layouts
-- **Performance**: Optimized CSS with minimal reflows
-
-### Typography
-
-The application features **FiraCode Nerd Font** integration for enhanced Unicode character support and code readability:
-
-- **Font Files**: Self-hosted WOFF2 format with ~50% compression
-- **UI Elements**: Standard FiraCode Nerd Font for all interface text
-- **Code Blocks**: FiraCode Nerd Font Mono for technical content
-- **Performance**: `font-display: swap` for optimal loading with graceful fallbacks
-- **Unicode Support**: Extensive character and icon support for conversation data
-- **Offline Capability**: Self-hosted fonts work without internet connection
-
-Font variants included:
-
-- Regular and Bold weights for standard UI
-- Monospace variants for code and technical content
-- System font fallbacks for reliability
-
-## 🔒 Security & Privacy
-
-- **Local Processing**: All data processing happens locally on your machine
-- **No External APIs**: No data is sent to external services
-- **Session Isolation**: Each upload session is completely isolated
-- **Multi-layer Validation**: File size, type, and ZIP bomb protection
-- **Path Traversal Prevention**: Secure file handling with validation
-- **Content Sanitization**: All rendered content is sanitized for safety
-- **Automatic Cleanup**: Temporary files are automatically removed
-
-## 🛠️ Configuration
-
-### Customization
-
-- **Port**: Modify the `API_PORT` environment variable
-- **Session Duration**: Adjust cleanup timing in SessionManager
-- **File Limits**: Configure security constants in fileUtils.js
-- **Styling**: Modify CSS custom properties in color-palette.css
 
 ## 📈 Roadmap
 
@@ -330,7 +137,7 @@ Font variants included:
 
 - [ ] Theme customization (light mode, custom colors)
 - [ ] API for external integrations
-- [ ] # Mobile app companion
+- [ ] Mobile app companion
 
 ## 📄 License
 
@@ -339,6 +146,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Built with [Electron](https://electronjs.org/) and [Express.js](https://expressjs.com/)
-- UI powered by modern HTML/CSS/JavaScript
-- Styling with comprehensive CSS custom properties
+- Fonts powered by [FiraCode](https://firacode.org)
 - Icons and emojis from native browser support
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if it helped you explore your ChatGPT data!**
+
+Made with ❤️ for data privacy and exploration
+
+</div>
