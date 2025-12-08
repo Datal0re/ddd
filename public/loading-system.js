@@ -32,6 +32,7 @@ class LoadingSystem {
       setTimeout(() => {
         if (this.activeLoaders.has(id)) {
           this.hide(id);
+          // eslint-disable-next-line no-console
           console.warn(`Loading timeout for ${id} after ${config.timeout}ms`);
         }
       }, config.timeout);
