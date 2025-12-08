@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3001; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data: http://localhost:3001; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';"
+    />
+    <title id="page-title">Conversation – Data Dumpster Diver</title>
+    <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="../enhanced-design.css" />
+    <script src="../public/navigation.js"></script>
+    <script src="../public/loading-system.js"></script>
+    <style>
+      /* Unique styles for conversation.html - everything else is in public/styles.css */
+      .conversation-header {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px var(--shadow);
+      }
+      .conversation-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+        word-break: break-word;
+      }
+      .conversation-actions {
+        margin-top: 1rem;
+      }
+      .conversation-actions a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--primary-blue);
+        font-weight: 500;
+        transition: color 0.2s ease;
+        text-decoration: none;
+      }
+      .conversation-actions a:hover {
+        color: var(--accent-cyan);
+      }
+      .message-container {
+        scroll-margin-top: 2rem;
+      }
+
+      .content pre {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        overflow-x: auto;
+        font-family:
+          'FiraCode Nerd Font Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 1rem 0;
+      }
+      .content code {
+        background: var(--bg-tertiary);
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        font-family:
+          'FiraCode Nerd Font Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+      }
+      .content blockquote {
+        border-left: 4px solid var(--primary-blue);
+        padding-left: 1rem;
+        margin: 1rem 0;
+        font-style: italic;
+        color: var(--text-secondary);
+      }
+      .content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+      }
+      .content th,
+      .content td {
+        border: 1px solid var(--border-color);
+        padding: 0.75rem;
+        text-align: left;
+      }
+      .content th {
+        background: var(--bg-tertiary);
+        font-weight: 600;
+      }
+      .asset-info {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        font-family: 'FiraCode Nerd Font Mono', monospace;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
+      .transcript-info {
+        background: rgba(6, 182, 212, 0.1);
+        border: 1px solid var(--accent-cyan);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: var(--accent-cyan);
+        font-style: italic;
+      }
+      .asset-missing {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid #ffc107;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        color: #856404;
+      }
+      .scroll-to-top {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--primary-blue);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px var(--shadow);
+        transition: all 0.2s ease;
+        opacity: 0;
+        visibility: hidden;
+        z-index: 1000;
+      }
+      .scroll-to-top.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .scroll-to-top:hover {
+        background: #2563eb;
+        transform: translateY(-2px);
+      }
+      .author.assistant {
+        color: var(--success-green);
+      }
+      @media (max-width: 768px) {
+        .scroll-to-top {
+          bottom: 1rem;
+          right: 1rem;
+          width: 2.5rem;
+          height: 2.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
+    <div class="container">
+      <div class="conversation-header fade-in">
+        <div class="conversation-title centered" id="conversation-title">
+          Loading...
+        </div>
+        <div class="conversation-actions centered">
+          <a
+            href="index.html"
+            class="btn btn-outline"
+            style="font-size: 0.9rem; margin-right: 1rem"
+            >← Back to Home</a
+          >
+          <a href="conversations.html" id="back-link"> ← Back to conversations </a>
+        </div>
+      </div>
+
+      <div id="messages-container">
+        <!-- Messages will be loaded here -->
+      </div>
+
+      <div id="empty-state" class="card empty-state" style="display: none">
+        <div style="font-size: 3rem; margin-bottom: 1rem">💬</div>
+        <h3>No messages found</h3>
+        <p style="color: var(--text-secondary)">
+          This conversation doesn't contain any messages.
+        </p>
+      </div>
+
+      <div style="margin-top: 3rem; text-align: center">
+        <a
+          href="conversations.html"
+          id="footer-back-link"
+          style="color: var(--text-muted); font-size: 0.875rem"
+        >
+          ← Back to conversations
+        </a>
+      </div>
+    </div>
+
+    <button
+      class="scroll-to-top"
+      id="scrollToTop"
+      onclick="scrollToTop()"
+      title="Scroll to top"
+    >
+      ↑
+    </button>
+
+    <script>
+      let conversationData = null;
+      let sessionId = '';
+      let conversationId = '';
+
+      // Load conversation on page load
+      document.addEventListener('DOMContentLoaded', async function () {
+        // Check if electronAPI is available
+        if (!window.electronAPI) {
+          console.error('electronAPI is not available!');
+          showError(
+            "Electron API is not available. Make sure you're running this in the Electron app."
+          );
+          return;
+        }
+
+        console.log('electronAPI available:', Object.keys(window.electronAPI));
+
+        const urlParams = new URLSearchParams(window.location.search);
+        sessionId = urlParams.get('session');
+        conversationId = urlParams.get('id');
+
+        if (!sessionId || !conversationId) {
+          showError('Missing session or conversation ID');
+          return;
+        }
+
+        // Update navigation links
+        const backLinks = ['back-link', 'footer-back-link'];
+        backLinks.forEach(linkId => {
+          const link = document.getElementById(linkId);
+          if (link) {
+            link.href = `conversations.html?session=${sessionId}`;
+          }
+        });
+
+        // Initialize loading system
+        console.log('Initializing loading system...');
+        window.loadingSystem = new LoadingSystem();
+        console.log('Loading system initialized:', !!window.loadingSystem);
+
+        try {
+          console.log('Attempting to load conversation...');
+
+          const result = await window.electronAPI.getConversation(
+            sessionId,
+            conversationId
+          );
+          console.log('API call result:', result);
+
+          if (result.success) {
+            conversationData = result;
+            renderConversation();
+          } else {
+            console.error('API call failed:', result.error);
+            showError(result.error || 'Failed to load conversation');
+          }
+        } catch (err) {
+          console.error('Error loading conversation:', err);
+          showError('Error loading conversation');
+        }
+      });
+
+      function renderConversation() {
+        if (!conversationData) return;
+
+        // Update title
+        document.title = `${conversationData.title} – Data Dumpster Diver`;
+        document.getElementById('page-title').textContent =
+          `${conversationData.title} – Data Dumpster Diver`;
+        document.getElementById('conversation-title').textContent =
+          conversationData.title;
+
+        const messagesContainer = document.getElementById('messages-container');
+        const emptyState = document.getElementById('empty-state');
+
+        // Clear existing content
+        messagesContainer.innerHTML = '';
+
+        if (!conversationData.messages || conversationData.messages.length === 0) {
+          emptyState.style.display = 'block';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+
+        // Render messages
+        conversationData.messages.forEach((msg, index) => {
+          const messageDiv = document.createElement('div');
+          messageDiv.className = `message ${msg.author.toLowerCase()} message-container fade-in`;
+          messageDiv.style.animationDelay = `${index * 0.1}s`;
+          messageDiv.id = `message-${index}`;
+
+          let contentHtml = '';
+          msg.parts.forEach(part => {
+            if (part.html) {
+              // Use HTML as-is - backend already generates correct URLs
+              contentHtml += part.html;
+            } else if (part.transcript) {
+              contentHtml += `
+              <div class="transcript-info">
+                🎵 Audio Transcript: ${part.transcript}
+              </div>
+            `;
+            } else if (part.asset) {
+              // This should not happen if backend processing worked correctly
+              console.warn('Unexpected asset part found:', part.asset);
+            } else if (part.text) {
+              contentHtml += `<p>${part.text}</p>`;
+            }
+          });
+
+          messageDiv.innerHTML = `
+            <div class="message-bubble">
+              <div class="author">${msg.author}</div>
+              <div class="content">${contentHtml}</div>
+            </div>
+          `;
+
+          messagesContainer.appendChild(messageDiv);
+        });
+
+        // Lazy loading is automatically initialized by MediaOptimizationSystem
+        // Images will be processed automatically when they enter the viewport
+        console.log('Checking lazy loading system...');
+        console.log('MediaOptimizer available:', !!window.mediaOptimizer);
+        // Scroll to top after rendering (start of conversation)
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 100);
+      }
+
+      function showError(message) {
+        const messagesContainer = document.getElementById('messages-container');
+        messagesContainer.innerHTML = `
+        <div class="card" style="background: var(--error-bg); color: var(--error-text);">
+          ${message}
+        </div>
+      `;
+      }
+
+      // Scroll to top functionality
+      function scrollToTop() {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        });
+      }
+
+      // Show/hide scroll to top button
+      window.addEventListener('scroll', function () {
+        const scrollButton = document.getElementById('scrollToTop');
+        if (window.pageYOffset > 300) {
+          scrollButton.classList.add('visible');
+        } else {
+          scrollButton.classList.remove('visible');
+        }
+      });
+
+      // Keyboard navigation
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Home' && e.ctrlKey) {
+          e.preventDefault();
+          scrollToTop();
+        }
+
+        if (e.key === 'b' && e.ctrlKey) {
+          e.preventDefault();
+          window.location.href = `conversations.html?session=${sessionId}`;
+        }
+      });
+
+      // Create floating particles for enhanced visual effect
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        if (!container) return;
+
+        const particleCount = 25;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
+      // Smooth scroll for anchor links if any
+      document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+          anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+              target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            }
+          });
+        });
+
+        // Initialize particles
+        createParticles();
+      });
+    </script>
+  </body>
+</html>

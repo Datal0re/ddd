@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Dumpster Diver - Enhanced Design Demo</title>
+    <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="enhanced-design.css" />
+    <style>
+      body {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: 'FiraCode Nerd Font', system-ui, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+
+      .demo-section {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+      }
+
+      .color-swatch {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .color-preview {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow-md);
+      }
+
+      .gradient-preview {
+        height: 60px;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-md);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
+    <!-- Enhanced Navigation -->
+    <nav class="main-nav">
+      <div class="nav-container">
+        <a href="#" class="nav-brand">
+          <div class="nav-brand-icon">🔍</div>
+          <span>ddd</span>
+        </a>
+        <div class="nav-menu">
+          <a href="#" class="nav-item active">Dashboard</a>
+          <a href="#" class="nav-item">Conversations</a>
+          <a href="#" class="nav-item">Analytics</a>
+        </div>
+        <div class="nav-actions">
+          <button class="search-toggle">🔍</button>
+          <button class="settings-btn">⚙️</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Enhanced Page Header -->
+    <header class="page-header">
+      <h1>ddd</h1>
+      <p>
+        Data Dumpster Diver - Explore and visualize your ChatGPT conversation data with
+        modern dark mode aesthetics
+      </p>
+      <div class="status-indicator has-data">
+        <span class="status-dot"></span>
+        <span>Enhanced Design Active</span>
+      </div>
+    </header>
+
+    <div class="demo-section">
+      <!-- Color Palette Showcase -->
+      <section style="margin-bottom: 3rem">
+        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+          Enhanced Color Palette
+        </h2>
+
+        <h3 style="color: var(--text-secondary); margin-bottom: 1rem">
+          Core Gradients
+        </h3>
+        <div class="gradient-preview" style="background: var(--gradient-primary)"></div>
+        <div
+          class="gradient-preview"
+          style="background: var(--gradient-secondary)"
+        ></div>
+        <div class="gradient-preview" style="background: var(--gradient-accent)"></div>
+        <div class="gradient-preview" style="background: var(--gradient-subtle)"></div>
+
+        <h3 style="color: var(--text-secondary); margin: 2rem 0 1rem">
+          Glassmorphism Colors
+        </h3>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: var(--glass-bg)"></div>
+          <div>
+            <div style="font-weight: 600">Glass Background</div>
+            <div style="color: var(--text-muted); font-size: 0.875rem">
+              rgba(30, 41, 59, 0.7)
+            </div>
+          </div>
+        </div>
+        <div class="color-swatch">
+          <div class="color-preview" style="background: var(--glass-border)"></div>
+          <div>
+            <div style="font-weight: 600">Glass Border</div>
+            <div style="color: var(--text-muted); font-size: 0.875rem">
+              rgba(148, 163, 184, 0.1)
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Action Cards Demo -->
+      <section style="margin-bottom: 3rem">
+        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+          Enhanced Action Cards
+        </h2>
+        <div class="actions-grid with-data">
+          <div class="action-card primary">
+            <span class="action-icon">🔍</span>
+            <h3>Explore Conversations</h3>
+            <p>
+              Browse through your existing ChatGPT conversations with enhanced visual
+              design and smooth animations
+            </p>
+            <button class="btn btn-primary">Start Exploring</button>
+          </div>
+          <div class="secondary-row">
+            <div class="action-card">
+              <span class="action-icon">📤</span>
+              <h3>Upload New Data</h3>
+              <p>
+                Add a new ChatGPT export to your collection with modern upload interface
+              </p>
+              <button class="btn btn-outline">Upload ZIP File</button>
+            </div>
+            <div class="action-card">
+              <span class="action-icon">📊</span>
+              <h3>View Analytics</h3>
+              <p>Get insights into your conversation patterns and usage statistics</p>
+              <button class="btn btn-outline">View Stats</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Elements Demo -->
+      <section style="margin-bottom: 3rem">
+        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+          Interactive Elements
+        </h2>
+
+        <div class="demo-grid">
+          <div class="card">
+            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+              Enhanced Search
+            </h3>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search conversations..."
+              style="width: 100%; margin-bottom: 1rem"
+            />
+            <p style="color: var(--text-secondary); font-size: 0.875rem">
+              Features glassmorphism background with focus glow effects
+            </p>
+          </div>
+
+          <div class="card">
+            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+              Status Indicators
+            </h3>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem">
+              <div class="status-indicator has-data">
+                <span class="status-dot"></span>
+                <span>Data Available</span>
+              </div>
+              <div class="status-indicator no-data">
+                <span class="status-dot"></span>
+                <span>No Data</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="color: var(--text-primary); margin-bottom: 1rem">
+              Button Variants
+            </h3>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem">
+              <button class="btn btn-primary">Primary Action</button>
+              <button class="btn btn-outline">Secondary Action</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Typography Hierarchy -->
+      <section style="margin-bottom: 3rem">
+        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+          Typography Hierarchy
+        </h2>
+        <div class="card">
+          <h1
+            style="
+              background: var(--gradient-primary);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              background-clip: text;
+            "
+          >
+            Heading 1 - Main Title
+          </h1>
+          <h2 style="color: var(--text-primary)">Heading 2 - Section Title</h2>
+          <h3 style="color: var(--text-secondary)">Heading 3 - Subsection</h3>
+          <p style="color: var(--text-secondary)">
+            Body text with proper hierarchy and contrast for dark mode readability.
+          </p>
+          <p style="color: var(--text-muted); font-size: 0.875rem">
+            Muted text for secondary information and metadata.
+          </p>
+        </div>
+      </section>
+
+      <!-- Loading States -->
+      <section style="margin-bottom: 3rem">
+        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem">
+          Loading States
+        </h2>
+        <div class="card" style="text-align: center">
+          <div class="spinner"></div>
+          <p style="color: var(--text-secondary)">
+            Enhanced loading animation with glow effects
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Create floating particles
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        const particleCount = 30;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
+      // Initialize particles when page loads
+      document.addEventListener('DOMContentLoaded', createParticles);
+
+      // Add interactive hover effects
+      document.querySelectorAll('.btn, .card, .action-card').forEach(element => {
+        element.addEventListener('mouseenter', function () {
+          this.style.transform = 'translateY(-2px) scale(1.02)';
+        });
+
+        element.addEventListener('mouseleave', function () {
+          this.style.transform = 'translateY(0) scale(1)';
+        });
+      });
+
+      // Simulate status changes
+      let statusIndex = 0;
+      const statuses = [
+        { class: 'has-data', text: 'Enhanced Design Active' },
+        { class: 'no-data', text: 'Processing Data...' },
+        { class: 'has-data', text: '3 Sessions Available' },
+      ];
+
+      setInterval(() => {
+        const indicator = document.querySelector('.status-indicator');
+        const statusText = indicator.querySelector('span:last-child');
+        const status = statuses[statusIndex];
+
+        indicator.className = `status-indicator ${status.class}`;
+        statusText.textContent = status.text;
+
+        statusIndex = (statusIndex + 1) % statuses.length;
+      }, 3000);
+    </script>
+  </body>
+</html>

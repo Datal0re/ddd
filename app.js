@@ -1,296 +1,428 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import fs from 'fs/promises';
-import multer from 'multer';
-import decompress from 'decompress';
-import { v4 as uuidv4 } from 'uuid';
-import { getConversationMessages } from './main.js';
-import session from 'express-session';
-import authRoutes from './routes/auth.js';
-import { requireAuth, optionalAuth } from './middleware/auth.js';
-import {
-  securityHeaders,
-  generalLimiter,
-  doubleCsrfProtection,
-  generateToken,
-  sanitizeInput,
-  securityLogger,
-  getSecureCookieOptions
-} from './middleware/security.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const express = require('express');
+const path = require('path');
+const logger = require('./utils/logger').createLogger({ module: 'api-server' });
+const { SessionManager } = require('./utils/SessionManager.js');
+const { getProgressManager } = require('./utils/ProgressManager.js');
+const multer = require('multer');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.API_PORT || 3001;
 
-// Security middleware
-app.use(securityLogger);
-app.use(securityHeaders);
-app.use(generalLimiter);
-app.use(sanitizeInput);
+// Initialize session manager and progress manager
+const sessionManager = new SessionManager(__dirname);
+const progressManager = getProgressManager();
+
+// Async initialization function
+async function initializeApp() {
+  await sessionManager.initialize();
+
+  // Periodically clean up old sessions
+  setInterval(() => sessionManager.cleanupOldSessions(), 24 * 60 * 60 * 1000); // Daily cleanup
+
+  // Start server
+  app.listen(port, () => {
+    logger.info('Data Dumpster Diver API server listening on port ${port}');
+  });
+}
+
+// Initialize the app
+initializeApp().catch(logger.error);
 
 // Middleware
-app.use(express.static('public'));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Support large conversation data
 app.use(express.urlencoded({ extended: true }));
-app.set('view engine', 'ejs');
 
-// Session configuration with secure settings
-app.use(session({
-  name: 'ddd-session',
-  secret: process.env.SESSION_SECRET || 'data-dumpster-diver-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  rolling: true,
-  cookie: getSecureCookieOptions()
-}));
+// Serve static media files
+app.use('/media', express.static(path.join(__dirname, 'public', 'media')));
 
-// Session storage (for file uploads, not user sessions)
-const sessions = new Map();
-
-// Helper to clean up old sessions
-async function cleanupOldSessions(maxAgeMs = 24 * 60 * 60 * 1000) {
-  const now = Date.now();
-  for (const [id, info] of sessions.entries()) {
-    if (now - info.uploadedAt.getTime() > maxAgeMs) {
-      // Remove session folder and media folder
-      const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-      const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-      try {
-        await fs.rmdir(sessionDir, { recursive: true });
-        await fs.rmdir(mediaDir, { recursive: true });
-      } catch {
-        // Ignore errors if already gone
-      }
-      sessions.delete(id);
-    }
+// Enable CORS for Electron app
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
   }
-}
+});
 
-// Multer config for memory storage (we’ll handle zip extraction manually)
+// Multer config for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Helper to ensure a directory exists
-async function ensureDir(dirPath) {
+// ===== API ROUTES =====
+
+// Session Management APIs
+app.get('/api/sessions', async (req, res) => {
   try {
-    await fs.access(dirPath);
-  } catch {
-    await fs.mkdir(dirPath, { recursive: true });
+    const sessions = sessionManager.getAllSessions();
+    const sessionArray = Array.from(sessions.entries()).map(([id, info]) => ({
+      id,
+      uploadedAt: info.uploadedAt,
+    }));
+    res.json({ success: true, sessions: sessionArray });
+  } catch (err) {
+    logger.error('Error getting sessions:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
-}
-
-// Helper to run migration script on a given conversations.json
-async function runMigration(sessionId, outputDir) {
-  const { spawn } = await import('child_process');
-  const inputPath = path.join(__dirname, 'data', 'sessions', sessionId, 'conversations.json');
-  await ensureDir(outputDir);
-  return new Promise((resolve, reject) => {
-    const child = spawn('node', [path.join(__dirname, 'data', 'migration.js'), inputPath, outputDir], {
-      stdio: 'inherit',
-    });
-    child.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Migration exited with code ${code}`));
-    });
-  });
-}
-
-// CSRF token endpoint
-app.get('/api/csrf-token', (req, res) => {
-  const csrfToken = generateToken(req, res);
-  res.json({ csrfToken });
 });
 
-// Authentication routes with rate limiting
-app.use('/', authRoutes);
-
-// Apply API rate limiting to API routes
-// app.use('/api', apiLimiter);
-
-// Routes
-app.get('/', requireAuth, (req, res) => {
-  res.render('upload', { 
-    error: null, 
-    user: req.user,
-    csrfToken: req.csrfToken ? req.csrfToken() : ''
-  });
-});
-
-app.post('/upload', requireAuth, upload.single('chatgpt-export'), async (req, res) => {
+app.get('/api/sessions/:sessionId/conversations', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).render('upload', { 
-        error: 'No file uploaded.',
-        user: req.user,
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
+    const { sessionId } = req.params;
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
     }
 
-    const sessionId = uuidv4();
-    const sessionDir = path.join(__dirname, 'data', 'sessions', sessionId);
-    const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', sessionId);
-    await ensureDir(sessionDir);
-    await ensureDir(mediaDir);
+    const conversations = await sessionManager.getConversations(sessionId);
+    res.json({ success: true, conversations });
+  } catch (err) {
+    logger.error('Error getting conversations:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-    // Save uploaded file temporarily
-    const tempZipPath = path.join(sessionDir, 'upload.zip');
-    await fs.writeFile(tempZipPath, req.file.buffer);
-
-    // Extract zip
-    const files = await decompress(tempZipPath, sessionDir);
-    // Find conversations.json and media assets
-    let conversationsPath = null;
-    // Detect if there is a single top-level folder (common in macOS exports)
-    const topLevelDirs = new Set();
-    for (const file of files) {
-      const parts = file.path.split(path.sep);
-      if (parts.length > 1) {
-        topLevelDirs.add(parts[0]);
-      }
+app.get('/api/sessions/:sessionId/conversations/:conversationId', async (req, res) => {
+  try {
+    const { sessionId, conversationId } = req.params;
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
     }
-    const hasSingleTopLevel = topLevelDirs.size === 1;
-    const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : null;
 
-    for (const file of files) {
-      if (file.path.endsWith('conversations.json')) {
-        const candidatePath = path.join(sessionDir, file.path);
-        // Validate it's a text file (UTF-8) and not binary
-        const stats = await fs.stat(candidatePath);
-        if (stats.isFile()) {
-          const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
-          if (sample && !sample.includes('\u0000')) {
-            conversationsPath = candidatePath;
+    const conversation = await sessionManager.getConversation(
+      sessionId,
+      conversationId
+    );
+    res.json({ success: true, ...conversation });
+  } catch (err) {
+    logger.error('Error getting conversation:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/sessions/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const deleted = await sessionManager.deleteSession(sessionId);
+    res.json({ success: true, deleted });
+  } catch (err) {
+    logger.error('Error deleting session:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sessions/cleanup', async (req, res) => {
+  try {
+    const deletedCount = await sessionManager.cleanupOldSessions();
+    res.json({ success: true, deletedCount });
+  } catch (err) {
+    logger.error('Error cleaning up sessions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Backup Management APIs
+app.post('/api/sessions/:sessionId/backup', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+
+    const backupPath = await sessionManager.createBackup(sessionId);
+    res.json({ success: true, data: { backupPath } });
+  } catch (err) {
+    logger.error('Error creating backup:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/sessions/:sessionId/backups', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+
+    const backups = await sessionManager.listBackups(sessionId);
+    res.json({ success: true, data: { backups } });
+  } catch (err) {
+    logger.error('Error listing backups:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/sessions/:sessionId/restore', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { backupFile } = req.body;
+
+    // Validate session exists before processing
+    if (!sessionManager.hasSession(sessionId)) {
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+
+    // Validate backupFile parameter
+    if (!backupFile || typeof backupFile !== 'string') {
+      return res.status(400).json({ success: false, error: 'Backup file is required' });
+    }
+
+    const success = await sessionManager.restoreBackup(sessionId, backupFile);
+    res.json({ success: true, data: { restored: success } });
+  } catch (err) {
+    logger.error('Error restoring backup:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// File Upload API
+app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
+  let uploadId = null;
+  try {
+    logger.info('Upload request received:', {
+      file: req.file
+        ? {
+            originalname: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
           }
-        }
-      }
-      // Copy media assets to public/media/sessions/<sessionId>/ preserving relative structure
-      // Only copy files, skip directories
-      if ((file.path.startsWith('file-') || file.path.includes('audio/') || file.path.includes('dalle-generations/')) && !file.path.endsWith('/')) {
-        const src = path.join(sessionDir, file.path);
-        // Strip top-level folder if present to keep media paths clean
-        const relativePath = hasSingleTopLevel && file.path.startsWith(topLevelFolder + path.sep)
-          ? file.path.slice((topLevelFolder + path.sep).length)
-          : file.path;
-        const destPath = path.join(mediaDir, relativePath);
-        await ensureDir(path.dirname(destPath));
-        await fs.copyFile(src, destPath);
-      }
-    }
-
-    if (!conversationsPath) {
-      return res.status(400).render('upload', { 
-        error: 'conversations.json not found in uploaded zip.',
-        user: req.user,
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-      });
-    }
-
-    // Ensure conversations.json is at session root for migration
-    const targetConversationsPath = path.join(sessionDir, 'conversations.json');
-    if (conversationsPath && conversationsPath !== targetConversationsPath) {
-      await fs.rename(conversationsPath, targetConversationsPath);
-    }
-    // Delete any other top-level folders to avoid confusion
-    if (hasSingleTopLevel && topLevelFolder) {
-      const nestedDir = path.join(sessionDir, topLevelFolder);
-      try {
-        await fs.rmdir(nestedDir, { recursive: true });
-      } catch {
-        // Ignore if already removed or not empty
-      }
-    }
-
-    // Clean up temporary zip
-    await fs.unlink(tempZipPath);
-
-    // Run migration with session-scoped output directory
-    await runMigration(sessionId, path.join(sessionDir, 'conversations'));
-
-    // Store session info
-    sessions.set(sessionId, { uploadedAt: new Date() });
-
-    // Redirect to conversation list
-    res.redirect(`/conversations?session=${sessionId}`);
-  } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).render('upload', { 
-      error: 'Upload failed. Please try again.',
-      user: req.user,
-      csrfToken: req.csrfToken ? req.csrfToken() : ''
+        : null,
+      headers: req.headers,
     });
-  }
-});
 
-app.get('/conversations', requireAuth, async (req, res) => {
-  const { session } = req.query;
-  if (!session || !sessions.has(session)) {
-    return res.status(400).send('Invalid or missing session ID.');
-  }
-  const conversationsDir = path.join(__dirname, 'data', 'sessions', session, 'conversations');
-  try {
-    const files = await fs.readdir(conversationsDir);
-    const conversations = [];
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const filePath = path.join(conversationsDir, file);
-        const content = await fs.readFile(filePath, 'utf8');
-        const conv = JSON.parse(content);
-        conversations.push({ id: file, title: conv.title || 'Untitled', date: file.split('_')[0] });
-      }
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
-    res.render('conversations', { conversations, session });
+
+    // Generate upload ID and create progress entry
+    uploadId = progressManager.generateUploadId();
+    progressManager.createProgress(uploadId);
+
+    logger.info(
+      'Calling sessionManager.createSession with buffer size:',
+      req.file.buffer.length
+    );
+
+    const sessionId = await sessionManager.createSession(
+      req.file.buffer,
+      true, // true = buffer
+      progressUpdate => {
+        // Update progress manager with backend progress
+        progressManager.updateProgress(uploadId, {
+          stage: progressUpdate.stage,
+          progress: progressUpdate.progress,
+          message: progressUpdate.message,
+        });
+
+        logger.info(
+          `Upload progress: ${progressUpdate.stage} - ${progressUpdate.progress}% - ${progressUpdate.message}`
+        );
+      }
+    );
+
+    // Mark progress as completed
+    progressManager.completeProgress(uploadId, sessionId);
+    logger.info('Session created successfully:', sessionId);
+
+    res.json({ success: true, sessionId, uploadId });
   } catch (err) {
-    console.error('Error loading conversations:', err);
-    res.status(500).send('Error loading conversations.');
+    logger.error('Upload error:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      name: err.name,
+    });
+
+    // Mark progress as failed if we had an upload ID
+    if (uploadId) {
+      progressManager.failProgress(uploadId, err.message || 'Upload failed');
+    }
+
+    res.status(500).json({ success: false, error: err.message || 'Upload failed' });
   }
 });
 
-app.get('/conversation/:id', requireAuth, async (req, res) => {
-  const { id } = req.params;
-  const { session } = req.query;
-  if (!session || !sessions.has(session)) {
-    return res.status(400).send('Invalid or missing session ID.');
+// Progress streaming endpoint
+app.get('/api/upload-progress/:uploadId', (req, res) => {
+  const { uploadId } = req.params;
+
+  logger.info(`Progress stream requested for upload: ${uploadId}`);
+
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control',
+  });
+
+  // Send initial progress
+  const initialProgress = progressManager.getProgress(uploadId);
+  if (initialProgress) {
+    res.write(`data: ${JSON.stringify(initialProgress)}\n\n`);
+  } else {
+    res.write(`data: ${JSON.stringify({ error: 'Upload not found' })}\n\n`);
   }
-  const filePath = path.join(__dirname, 'data', 'sessions', session, 'conversations', id);
+
+  // Set up progress tracking interval
+  const progressInterval = setInterval(() => {
+    const progress = progressManager.getProgress(uploadId);
+
+    if (!progress) {
+      clearInterval(progressInterval);
+      res.write(`data: ${JSON.stringify({ error: 'Upload not found' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.write(`data: ${JSON.stringify(progress)}\n\n`);
+
+    // End stream if completed, error, or cancelled
+    if (['completed', 'error', 'cancelled'].includes(progress.status)) {
+      clearInterval(progressInterval);
+      res.end();
+      logger.info(`Progress stream ended for upload: ${uploadId} (${progress.status})`);
+    }
+  }, 500); // Update every 500ms
+
+  // Clean up on client disconnect
+  req.on('close', () => {
+    clearInterval(progressInterval);
+    logger.info(`Progress stream closed by client for upload: ${uploadId}`);
+  });
+});
+
+// ===== AI INTEGRATION ENDPOINTS (PLACEHOLDERS) =====
+
+app.post('/api/ai/analyze-conversation', async (req, res) => {
   try {
-    const content = await fs.readFile(filePath, 'utf8');
-    const conv = JSON.parse(content);
-    const messages = getConversationMessages(conv);
-    res.render('conversation', { title: conv.title || 'Untitled', messages, session });
+    const { sessionId, conversationId, analysisType } = req.body;
+
+    // Placeholder: Simulate AI analysis
+    logger.debug(
+      `AI Analysis requested for conversation ${conversationId} in session ${sessionId}`
+    );
+    logger.info(`Analysis type: ${analysisType}`);
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const placeholderResults = {
+      sentiment: 'neutral',
+      topics: ['technology', 'programming', 'discussion'],
+      summary:
+        'This conversation discusses technical topics related to programming and software development.',
+      keyPoints: [
+        'Discussion about programming concepts',
+        'Technical problem solving',
+        'Code review and feedback',
+      ],
+      message: 'AI analysis completed successfully (placeholder)',
+    };
+
+    res.json({
+      success: true,
+      analysis: placeholderResults,
+      message: 'Analysis completed (placeholder implementation)',
+    });
   } catch (err) {
-    console.error('Error loading conversation:', err);
-    res.status(500).send('Error loading conversation.');
+    logger.error('AI analysis error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE /sessions/:id endpoint
-app.delete('/sessions/:id', requireAuth, async (req, res) => {
-  const { id } = req.params;
-  
-  // Remove session folder and media folder
-  const sessionDir = path.join(__dirname, 'data', 'sessions', id);
-  const mediaDir = path.join(__dirname, 'public', 'media', 'sessions', id);
-  
+app.post('/api/ai/search-conversations', async (req, res) => {
   try {
-    await fs.rmdir(sessionDir, { recursive: true });
-    await fs.rmdir(mediaDir, { recursive: true });
-  } catch {
-    // Ignore errors if directories don't exist
+    const { sessionId, query, searchType } = req.body;
+
+    // Placeholder: Simulate AI-powered semantic search
+    logger.info(`AI Search requested in session ${sessionId}`);
+    logger.info(`Query: ${query}, Search type: ${searchType}`);
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const placeholderResults = [
+      {
+        conversationId: 'conv_123',
+        title: 'Discussion about React hooks',
+        relevanceScore: 0.95,
+        snippet: '...talking about useState and useEffect hooks in React...',
+      },
+      {
+        conversationId: 'conv_456',
+        title: 'JavaScript async patterns',
+        relevanceScore: 0.87,
+        snippet: '...explaining promises and async/await patterns...',
+      },
+    ];
+
+    res.json({
+      success: true,
+      results: placeholderResults,
+      message: 'Search completed (placeholder implementation)',
+    });
+  } catch (err) {
+    logger.error('AI search error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
-  
-  sessions.delete(id);
-  res.sendStatus(204);
 });
 
-// POST /cleanup endpoint
-app.post('/cleanup', requireAuth, doubleCsrfProtection, async (req, res) => {
-  await cleanupOldSessions();
-  res.json({ success: true, message: 'Sessions cleared successfully' });
+app.post('/api/ai/summarize-session', async (req, res) => {
+  try {
+    const { sessionId, summaryType } = req.body;
+
+    // Placeholder: Simulate AI session summarization
+    logger.info(`AI Summary requested for session ${sessionId}`);
+    logger.info(`Summary type: ${summaryType}`);
+
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const placeholderSummary = {
+      totalConversations: 42,
+      mainTopics: ['programming', 'web development', 'problem solving'],
+      overview:
+        'This session contains primarily technical discussions about programming concepts, web development, and problem-solving approaches.',
+      keyInsights: [
+        'Focus on modern JavaScript frameworks',
+        'Regular discussion of best practices',
+        'Collaborative problem-solving approaches',
+      ],
+      timeline: 'Conversations span from January to March 2024',
+      message: 'Session summary completed (placeholder implementation)',
+    };
+
+    res.json({
+      success: true,
+      summary: placeholderSummary,
+      message: 'Summary completed (placeholder implementation)',
+    });
+  } catch (err) {
+    logger.error('AI summary error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-app.listen(port, () => {
-  console.log(`Data Dumpster Diver listening on port ${port}`);
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.5',
+  });
+});
+
+// 404 handler for API routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, error: 'API endpoint not found' });
 });

@@ -1,0 +1,8 @@
+# Ignore backup files and other large/generated files
+backups/
+*.log
+node_modules/
+dist/
+build/
+coverage/
+*.min.js

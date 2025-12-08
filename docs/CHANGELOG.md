@@ -1,0 +1,561 @@
+# Changelog
+
+All notable changes to Data Dumpster Diver will be documented in this file.
+
+## [1.0.5] - 2025-12-07
+
+### 🚀 Major Feature Enhancements
+
+#### Advanced Loading & Navigation System
+
+- **Feature**: Complete loading and skeleton screen system for improved UX
+- **Implementation**: Modular JavaScript components with real-time status updates
+- **Files Added**:
+  - `public/loading-system.js` - Centralized loading state management
+  - `public/navigation.js` - Enhanced navigation with keyboard shortcuts
+  - `public/pagination.js` - Client-side pagination for large datasets
+- **Files Modified**: `public/styles.css`, all HTML views
+- **User Benefits**:
+  - Smooth loading transitions with skeleton screens
+  - Keyboard navigation support (arrow keys, shortcuts)
+  - Efficient pagination for conversation lists
+  - Reduced perceived loading times
+  - Better mobile navigation experience
+
+#### Upload Progress Management System
+
+- **Feature**: Real-time upload progress tracking with persistence
+- **Implementation**: ProgressManager class with disk-based persistence
+- **Files Added**: `utils/ProgressManager.js`, `data/upload-progress.json`
+- **Files Modified**: `utils/SessionManager.js`, `renderer.js`, `views/upload.html`
+- **Key Features**:
+  - Multi-stage progress tracking (validation, extraction, processing)
+  - Progress persistence across navigation and app restarts
+  - Real-time UI updates with detailed status messages
+  - Cancellation support for long-running uploads
+  - Automatic cleanup of old progress data
+
+#### Asset Extraction Enhancement
+
+- **Feature**: Advanced asset extraction from ChatGPT chat.html files
+- **Implementation**: Dedicated extraction script with JSON output
+- **Files Added**: `data/extract-assets-json.js`
+- **Files Modified**: `utils/getConversationMessages.js`
+- **Capabilities**:
+  - Extract embedded assets from chat.html files
+  - Save assets as structured JSON for easier access
+  - Support for DALL-E generations, audio files, and images
+  - Enhanced media file organization and serving
+
+### 🔧 Technical Infrastructure
+
+#### Structured Logging System
+
+- **Feature**: Complete integration of Pino logging framework
+- **Implementation**: Centralized logger utility with module-specific instances
+- **Files Added**: `utils/logger.js`
+- **Files Modified**: All core application files
+- **Benefits**:
+  - Structured JSON logging for better debugging
+  - Module-specific log identification
+  - Performance-optimized logging
+  - Configurable log levels
+  - Better error tracking and monitoring
+
+#### Enhanced Security & CSP
+
+- **Improvement**: Content Security Policy implementation across all views
+- **Files Modified**: All HTML view files
+- **Security Features**:
+  - Comprehensive CSP meta tags
+  - Prevention of XSS attacks
+  - Controlled resource loading
+  - Inline script and style allowances for current functionality
+
+### 🎨 User Interface Improvements
+
+#### Navigation & Pagination
+
+- **Enhancement**: Modern navigation system with keyboard support
+- **Features**:
+  - Arrow key navigation between conversations
+  - Keyboard shortcuts for common actions
+  - Breadcrumb navigation
+  - Mobile-responsive navigation menu
+  - Smooth transitions and micro-interactions
+
+#### Upload Interface Redesign
+
+- **Improvement**: Complete redesign of upload interface
+- **Features**:
+  - Real-time progress visualization
+  - Stage-by-stage upload tracking
+  - Error handling with retry options
+  - Drag-and-drop file upload
+  - File validation feedback
+
+### 📁 Project Organization
+
+#### Code Structure Refactoring
+
+- **Improvement**: Better organization of utility functions
+- **Changes**:
+  - Moved `getConversationMessages.js` to `utils/` directory
+  - Created `scripts/` directory for maintenance scripts
+  - Updated all import references
+  - Improved code modularity and maintainability
+
+#### License & Legal
+
+- **Addition**: MIT License implementation
+- **Files Added**: `LICENSE` file with proper copyright
+- **Package Update**: Corrected license type in package.json from ISC to MIT
+
+### 🐛 Bug Fixes & Optimizations
+
+#### Session Management Fixes
+
+- **Fix**: Critical data loss bug in session serialization
+- **Implementation**: Improved error handling and cleanup logic
+- **Files Modified**: `main.js`, `utils/SessionManager.js`
+
+#### File System Improvements
+
+- **Fix**: Enhanced media file handling and path resolution
+- **Implementation**: Better error handling for missing files
+- **Files Modified**: `utils/fileUtils.js`, `utils/getConversationMessages.js`
+
+#### Git Configuration
+
+- **Fix**: Removed sensitive data files from git tracking
+- **Changes**: Updated `.gitignore` to exclude `data/sessions.json`
+- **Benefit**: Prevents accidental commit of user data
+
+### 📦 Dependency Updates
+
+#### New Dependencies
+
+- `pino`: Structured logging framework
+- `eventsource`: Enhanced event handling for real-time updates
+
+#### Development Tools
+
+- **ESLint**: Added console usage warnings
+- **Scripts**: Organized maintenance scripts in dedicated directory
+
+## [1.0.4] - 2025-12-07
+
+### 🎨 Typography & Unicode Support
+
+#### FiraCode Nerd Font Integration
+
+- **Feature**: Complete FiraCode Nerd Font integration for enhanced Unicode character support
+- **Implementation**: Self-hosted WOFF2 fonts with optimized loading strategy
+- **Files Added**:
+  - `public/fonts/FiraCodeNerdFont-Regular.woff2`
+  - `public/fonts/FiraCodeNerdFont-Bold.woff2`
+  - `public/fonts/FiraCodeNerdFontMono-Regular.woff2`
+  - `public/fonts/FiraCodeNerdFontMono-Bold.woff2`
+- **Files Modified**: `public/styles.css`, `views/conversation.html`, `views/index.html`
+- **Performance**: Used `font-display: swap` for optimal loading with graceful fallbacks
+- **User Benefits**:
+  - Enhanced Unicode character display for conversation data
+  - Improved code readability with monospace variant
+  - Consistent typography across entire application
+  - Better support for special characters and icons
+  - Offline-capable font loading (self-hosted)
+
+#### Font Strategy
+
+- **UI Elements**: Standard FiraCode Nerd Font for all interface text
+- **Code Blocks**: FiraCode Nerd Font Mono for technical content
+- **Fallbacks**: System fonts maintained as fallbacks for reliability
+- **Compression**: ~50% size reduction with WOFF2 format
+
+## [1.0.3] - 2025-12-07
+
+### 🎯 Session Management System
+
+#### Complete Session Management UI
+
+- **Feature**: Comprehensive session management interface with backup/restore capabilities
+- **Implementation**: Enhanced modal with session cards and action buttons
+- **Files Modified**: `views/index.html`, `views/conversations.html`
+- **User Benefits**:
+  - Delete individual sessions with confirmation
+  - Create backups before making changes
+  - Restore from any previous backup point
+  - View backup metadata (timestamps, file sizes)
+
+#### Backup & Restore System
+
+- **Feature**: Full backup/restore functionality for session data
+- **API Endpoints**:
+  - `POST /api/sessions/:sessionId/backup` - Create backup
+  - `GET /api/sessions/:sessionId/backups` - List backups
+  - `POST /api/sessions/:sessionId/restore` - Restore from backup
+- **Electron API**: `createBackup()`, `listBackups()`, `restoreBackup()`
+- **Files Modified**: `renderer.js` (exposed backup methods)
+
+#### Enhanced User Interface
+
+- **Improvement**: Beautiful session management modal with responsive design
+- **Features**:
+  - Session cards with ID and upload date
+  - Action buttons: 💾 Backup, 📁 Backups, 🗑️ Delete
+  - Backup selection modal with restore options
+  - Confirmation dialogs for all destructive actions
+- **Styling**: Enhanced CSS with hover effects and transitions
+
+#### Safety & Error Handling
+
+- **Feature**: Comprehensive safety measures for data protection
+- **Implementations**:
+  - Double confirmation dialogs for delete/restore operations
+  - Clear messaging about permanent data loss
+  - Try-catch blocks with user-friendly error messages
+  - Graceful fallbacks when operations fail
+- **User Experience**: Prevents accidental data loss with clear warnings
+
+### 🐛 Bug Fixes
+
+#### File Upload 500 Error (FIXED ✅)
+
+- **Issue**: Missing `decompress` package dependency caused upload failures
+- **Fix**: Added `decompress` package to dependencies with `npm install decompress`
+- **Files Modified**: `package.json`
+
+#### File Path Logic Error (FIXED ✅)
+
+- **Issue**: `processZipUpload()` function accessed files using wrong directory paths
+- **Fix**: Updated file processing to use `tempDir` for extraction, then move to final locations
+- **Files Modified**: `utils/fileUtils.js`
+
+#### JavaScript Syntax Errors (FIXED ✅)
+
+- **Issue**: Orphaned code blocks and duplicate `try` statements caused syntax errors
+- **Fix**: Removed duplicate code and fixed curly brace matching
+- **Files Modified**: `views/index.html`
+
+#### Migration Error Handling (FIXED ✅)
+
+- **Issue**: Migration script errors were not properly captured and displayed
+- **Fix**: Enhanced `runMigration()` to capture stdout/stderr and provide detailed error messages
+- **Files Modified**: `utils/fileUtils.js`
+
+### 🔧 Technical Improvements
+
+#### Enhanced Logging
+
+- **Improvement**: Better error capture and logging for debugging
+- **Implementation**: Detailed migration error output with file paths and error details
+- **Benefit**: Easier troubleshooting of upload and processing issues
+
+#### Code Cleanup
+
+- **Improvement**: Removed duplicate file processing logic
+- **Implementation**: Streamlined `processZipUpload()` to use single `moveFilesToFinalLocations()` function
+- **Benefit**: Cleaner, more maintainable code with fewer bugs
+
+## [1.0.2] - 2025-12-06
+
+### 🔒 Critical Security Fixes
+
+#### Path Traversal Vulnerability (FIXED ✅)
+
+- **Issue**: `moveFilesToFinalLocations()` function didn't validate file paths, allowing malicious zip files to write files outside intended directories using `../` sequences
+- **Fix**: Added `validatePath()` function with path normalization and validation for all file operations
+- **Files Modified**: `utils/fileUtils.js`
+
+#### Zip Bomb Protection (FIXED ✅)
+
+- **Issue**: Only basic ZIP signature validation was performed, with no protection against compression ratio attacks
+- **Fix**: Added `validateZipStructure()` function with compression ratio checks (max 100:1 ratio) and file count limits (max 10,000 files)
+- **Files Modified**: `utils/fileUtils.js`
+
+#### API Endpoint Validation (FIXED ✅)
+
+- **Issue**: Backup API endpoints didn't validate session existence before processing requests
+- **Fix**: Added session existence checks using `sessionManager.hasSession()` and proper HTTP status codes
+- **Files Modified**: `app.js`
+
+#### Backup Restore Cleanup (FIXED ✅)
+
+- **Issue**: Failed backup restores didn't clean up partial changes, potentially leaving data in inconsistent state
+- **Fix**: Implemented rollback mechanism with automatic file restoration on backup failure
+- **Files Modified**: `utils/BackupManager.js`
+
+#### Race Condition Protection (FIXED ✅)
+
+- **Issue**: Multiple simultaneous backup calls could create conflicting files
+- **Fix**: Implemented locking mechanism using `backupLocks` Map with timestamp collision detection
+- **Files Modified**: `utils/BackupManager.js`
+
+### 🏗️ Architecture Improvements
+
+#### Hybrid Electron + Express Architecture
+
+- **Change**: Transformed from web application to sophisticated desktop application
+- **Implementation**:
+  - Electron frontend with secure IPC communication
+  - Express backend API server on port 3001
+  - Main process acts as API client to its own Express server
+- **Files Added**: `renderer.js` (preload script), updated `main.js` (Electron main process)
+
+#### Enhanced Session Management
+
+- **Improvement**: Centralized session lifecycle management with disk-based persistence
+- **Features**: Session rehydration on startup, integration with backup system
+- **Files Modified**: `utils/SessionManager.js`, added `data/sessions.json` metadata storage
+
+### 💾 Backup System Implementation
+
+#### Automated Backup Creation
+
+- **Feature**: `BackupManager` class for session backups with timestamps
+- **Capabilities**: JSON-based backups, automatic cleanup (max 10), pre-restore backup creation
+- **API Endpoints**:
+  - `POST /api/sessions/:sessionId/backup`
+  - `GET /api/sessions/:sessionId/backups`
+  - `POST /api/sessions/:sessionId/restore`
+
+### 📈 Performance & UX Enhancements
+
+#### Progress Tracking
+
+- **Feature**: Real-time progress callbacks during upload processing
+- **Benefit**: Better UX for large files with processing feedback
+
+#### Enhanced Error Handling
+
+- **Improvement**: More specific error messages, better logging, graceful error recovery
+- **Benefit**: Improved debugging and user experience
+
+#### Resource Management
+
+- **Optimization**: Streaming processing for large files, memory-efficient operations
+- **Benefit**: Better performance with large exports
+
+### 🔧 Security Constants Added
+
+```javascript
+const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB
+const MAX_EXTRACTED_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+const MAX_COMPRESSION_RATIO = 100; // 100:1 ratio limit
+const MAX_FILES_IN_ZIP = 10000; // Max files per zip
+```
+
+## [1.0.1] - 2025-11-30
+
+### 🛠️ Session Persistence Fix
+
+- Problem: Sessions were lost on server restart
+- Solution: Implemented disk-based session storage with startup rehydration
+- Implementation:
+  - Sessions now saved to `data/sessions.json` using disk storage
+  - On server startup, sessions are automatically rehydrated from disk
+- Validation:
+  - Restart server and verify session data persistence
+  - Test with `npm test` suite (includes session serialization tests)
+
+## [1.0.0] - 2025-11-16
+
+### 🎉 MVP Release
+
+Initial release of Data Dumpster Diver - a web application for exploring and visualizing exported ChatGPT conversation data. (Later evolved to hybrid Electron + Express desktop application)
+
+### ✨ Features Added
+
+#### Core Web Application
+
+- **Express.js Server**: Full-featured web server with HTML views
+- **File Upload System**: Secure zip file upload with multer middleware
+- **Session Management**: In-memory session handling with automatic cleanup
+- **Data Migration**: Automated processing of ChatGPT export files
+
+#### User Interface
+
+- **Dark Mode Design**: Modern, accessible dark theme with comprehensive color palette
+- **Responsive Design**: Mobile-friendly interface with CSS Grid and Flexbox
+- **Upload Page**: Intuitive file upload interface with error handling and progress feedback
+- **Conversations List**: Searchable, filterable conversation browser with real-time search
+- **Conversation Viewer**: Rich message display with markdown rendering and media support
+
+#### Data Processing
+
+- **Zip Extraction**: Automatic extraction of ChatGPT export zip files
+- **Media Asset Handling**: Extraction and organization of images, audio, and other media files
+- **Conversation Migration**: Processing of conversations.json into individual files
+- **Content Sanitization**: Safe HTML rendering with sanitize-html
+- **Markdown Support**: Full markdown rendering with marked.js
+
+#### Technical Features
+
+- **ES Module Architecture**: Modern JavaScript module system
+- **Asset Management**: Organized media file serving with session-scoped paths
+- **Error Handling**: Comprehensive error handling throughout the application
+- **File System Operations**: Robust file and directory management
+- **Automatic Cleanup**: Session cleanup with configurable retention periods
+
+### 🏗️ Architecture
+
+#### Backend Components
+
+- `app.js`: Express API server with routing and middleware
+- `main.js`: Electron main process with IPC communication
+- `utils/SessionManager.js`: Session lifecycle management
+- `utils/BackupManager.js`: Backup system implementation
+- `utils/fileUtils.js`: Secure file operations
+- `data/migration.js`: Data migration script for processing exports
+
+#### Frontend Components
+
+- `views/upload.html`: File upload interface
+- `views/conversations.html`: Conversation listing with search
+- `views/conversation.html`: Individual conversation viewer
+- `public/styles.css`: Comprehensive dark mode CSS with custom properties
+- `renderer.js`: Electron preload script for IPC communication
+
+#### Data Structure
+
+- Session-based data organization
+- Per-conversation JSON files with timestamp-based naming
+- Media asset extraction and serving
+- In-memory session storage with cleanup
+
+### 🔧 Technical Implementation
+
+#### Dependencies
+
+- **Electron 35.7.5**: Desktop application framework
+- **Express 5.1.0**: Web framework and routing
+- **Multer 2.0.2**: File upload handling
+- **Marked 17.0.0**: Markdown parsing and rendering
+- **Sanitize-html 2.17.0**: HTML content sanitization
+- **UUID 13.0.0**: Session identifier generation
+- **Axios 1.6.0**: HTTP client for API communication
+- **Pino 10.1.0**: Logging utility
+- **Electron-log 5.4.3**: Electron-specific logging
+
+#### API Endpoints
+
+- `GET /api/health`: Health check
+- `POST /api/upload`: File upload and processing
+- `GET /api/sessions`: Session listing
+- `GET /api/sessions/:sessionId/conversations`: Conversation listing for session
+- `GET /api/sessions/:sessionId/conversations/:conversationId`: Individual conversation view
+- `DELETE /api/sessions/:sessionId`: Session cleanup
+- `POST /api/sessions/cleanup`: Bulk session cleanup
+
+#### Security Features
+
+- File type validation (zip files only)
+- HTML sanitization for rendered content
+- Session-based data isolation
+- Automatic cleanup of temporary files
+
+### 🎨 User Experience
+
+#### Interface Design
+
+- **Color Palette**: Comprehensive dark mode color system with accessibility focus
+- **Typography**: System font stack with optimized readability
+- **Animations**: Smooth transitions and micro-interactions
+- **Responsive Design**: Mobile-first approach with breakpoints
+
+#### Interactive Features
+
+- Real-time search with result counting
+- Keyboard navigation shortcuts
+- Scroll-to-top functionality
+- Double-click to copy message content
+- Hover effects and visual feedback
+
+### 📱 Browser Support
+
+- Modern browsers with ES6 module support
+- Chrome/Edge 88+
+- Firefox 85+
+- Safari 14+
+
+### 🚀 Performance
+
+- Efficient file processing with streaming
+- Lazy loading of conversation data
+- Optimized CSS with custom properties
+- Minimal JavaScript bundle size
+
+### 🔒 Privacy & Security
+
+- Local-only processing (no external API calls)
+- Session data isolation
+- Automatic cleanup of uploaded files
+- No tracking or analytics
+
+### 📁 File Structure
+
+```text
+data-dumpster-diver/
+├── main.js                    # Electron main process
+├── app.js                     # Express API server
+├── renderer.js                # Electron preload script
+├── package.json               # Dependencies and scripts
+├── utils/                     # Core utilities
+│   ├── SessionManager.js      # Session lifecycle management
+│   ├── BackupManager.js      # Backup system
+│   ├── fileUtils.js           # Secure file operations
+│   ├── getConversationMessages.js # Message processing utilities
+│   └── logger.js              # Logging utilities
+├── views/                     # Frontend HTML files
+│   ├── index.html             # Main dashboard
+│   ├── upload.html            # File upload interface
+│   ├── conversations.html     # Conversation list
+│   └── conversation.html      # Conversation viewer
+├── public/                    # Static assets
+│   ├── styles.css             # Application styles
+│   └── media/                 # Extracted media files
+├── data/                      # Data storage
+│   ├── sessions.json          # Session metadata
+│   ├── sessions/              # Session data directories
+│   └── migration.js           # Data migration script
+├── backups/                   # Session backups
+├── docs/                      # Documentation
+│   ├── CHANGELOG.md           # Version history
+│   └── COLOR_PALETTE.md       # Design system
+├── color-palette.css          # CSS custom properties
+├── AGENTS.md                  # Development guidelines
+└── README.md                  # Project documentation
+```
+
+### 🎯 MVP Scope
+
+This initial release focuses on core functionality:
+
+- Upload and process ChatGPT export files
+- Browse and search conversations
+- View individual conversations with rich formatting
+- Basic session management and cleanup
+
+### 🔮 Future Enhancements (Planned)
+
+- User authentication and persistent sessions
+- Advanced search and filtering options
+- Data visualization and analytics
+- Export functionality
+- Theme customization
+- API for external integrations
+
+---
+
+## Version History
+
+### Pre-1.0 Development
+
+- Initial project setup and architecture design
+- Core file processing implementation
+- UI/UX development and testing
+- Integration testing with various ChatGPT export formats
+
+---
+
+**Note**: This changelog covers the initial MVP release. Future releases will follow semantic versioning and include detailed change logs for each version.

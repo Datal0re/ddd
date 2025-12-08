@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:3001; font-src 'self' data:; connect-src 'self' http://localhost:3001; media-src 'self' blob: data: http://localhost:3001; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; form-action 'self';"
+    />
+    <title>Data Dumpster Diver</title>
+    <link rel="stylesheet" href="../public/styles.css" />
+    <link rel="stylesheet" href="../enhanced-design.css" />
+    <script src="../public/navigation.js"></script>
+    <style>
+      /* Unique styles for index.html - everything else is in public/styles.css */
+      .container {
+        padding: 2rem;
+      }
+
+      /* Enhanced Page Header Styles */
+      .page-header {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(
+          135deg,
+          rgba(59, 130, 246, 0.1) 0%,
+          rgba(139, 92, 246, 0.05) 50%,
+          rgba(6, 182, 212, 0.05) 100%
+        );
+        border-radius: 1rem;
+        padding: 3rem 2rem;
+        margin-bottom: 3rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+
+      .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background:
+          radial-gradient(
+            circle at 20% 80%,
+            rgba(59, 130, 246, 0.1) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(139, 92, 246, 0.08) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 40%,
+            rgba(6, 182, 212, 0.05) 0%,
+            transparent 50%
+          );
+        animation: floatGradient 20s ease-in-out infinite;
+        z-index: -1;
+      }
+
+      @keyframes floatGradient {
+        0%,
+        100% {
+          transform: translate(0, 0) rotate(0deg);
+        }
+        33% {
+          transform: translate(-20px, -20px) rotate(120deg);
+        }
+        66% {
+          transform: translate(20px, -10px) rotate(240deg);
+        }
+      }
+
+      .page-header h1 {
+        font-size: 4rem;
+        font-weight: 800;
+        background: linear-gradient(
+          135deg,
+          var(--primary-blue) 0%,
+          var(--secondary-purple) 50%,
+          var(--accent-cyan) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+        animation: titleGlow 3s ease-in-out infinite alternate;
+        letter-spacing: -0.02em;
+      }
+
+      @keyframes titleGlow {
+        0% {
+          filter: brightness(1) drop-shadow(0 0 20px rgba(59, 130, 246, 0.3));
+        }
+        100% {
+          filter: brightness(1.1) drop-shadow(0 0 30px rgba(139, 92, 246, 0.4));
+        }
+      }
+
+      .page-header p {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+        opacity: 0.9;
+      }
+
+      .page-header .status-indicator {
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-radius: 2rem;
+        font-weight: 600;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+      }
+
+      .page-header .status-indicator:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(1.1);
+        }
+      }
+
+      .status-indicator.has-data .status-dot {
+        background: var(--success-green);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+      }
+
+      .status-indicator.no-data .status-dot {
+        background: var(--warning-orange);
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .page-header {
+          padding: 2rem 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+          font-size: 3rem;
+        }
+
+        .page-header p {
+          font-size: 1.1rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .page-header h1 {
+          font-size: 2.5rem;
+        }
+
+        .page-header p {
+          font-size: 1rem;
+        }
+      }
+
+      /* Session modal styles */
+      .session-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .session-modal-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .session-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+      }
+
+      .session-item:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-1px);
+      }
+
+      .session-item-id {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        font-family: 'FiraCode Nerd Font Mono', monospace;
+        font-size: 0.875rem;
+      }
+
+      .session-item-date {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+      }
+
+      .session-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .backup-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
+      }
+
+      .backup-item:hover {
+        border-color: var(--border-hover);
+        transform: translateY(-1px);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Particle Background -->
+    <div class="particle-background" id="particleBackground"></div>
+
+    <div class="container">
+      <div class="page-header page-header-with-nav">
+        <h1>ddd</h1>
+        <p>
+          - Data Dumpster Diver -<br />Explore and visualize your ChatGPT conversation
+          data
+        </p>
+        <div id="status-indicator" class="status-indicator">
+          <span class="status-dot"></span>
+          <span id="status-text">Checking for existing data...</span>
+        </div>
+      </div>
+
+      <div id="loading" class="loading show">
+        <div class="spinner"></div>
+        <p>Loading your data...</p>
+      </div>
+
+      <div id="content" class="hidden">
+        <div id="sessions-info" class="sessions-info hidden">
+          <span id="sessions-count"></span>
+        </div>
+
+        <div id="actions-grid" class="actions-grid">
+          <!-- Actions will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let hasExistingData = false;
+      let sessionsCount = 0;
+      let sessions = [];
+
+      // Check for existing sessions
+      async function checkExistingData() {
+        try {
+          // For Electron, we need to check via IPC
+          if (window.electronAPI) {
+            // This will be implemented in main.js
+            console.log('Checking for sessions via Electron API...');
+            const result = await window.electronAPI.getAllSessions();
+            console.log('Sessions result:', result);
+
+            if (result && result.success) {
+              sessions = result.sessions || [];
+              sessionsCount = sessions.length;
+              hasExistingData = sessionsCount > 0;
+              console.log(`Found ${sessionsCount} sessions`);
+            } else {
+              console.log('No sessions found or API call failed');
+              sessions = [];
+              sessionsCount = 0;
+              hasExistingData = false;
+            }
+          } else {
+            // For Express, we'll get this from the server-side rendering
+            // The data will be embedded in the page
+            console.log('Running in web mode, checking window variables...');
+            hasExistingData = window.hasExistingData || false;
+            sessionsCount = window.sessionsCount || 0;
+            console.log(
+              `Web mode: hasExistingData=${hasExistingData}, sessionsCount=${sessionsCount}`
+            );
+          }
+        } catch (error) {
+          console.error('Error checking for existing data:', error);
+          sessions = [];
+          sessionsCount = 0;
+          hasExistingData = false;
+        }
+      }
+
+      // Update status indicator
+      function updateStatusIndicator() {
+        const indicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+
+        if (hasExistingData) {
+          indicator.className = 'status-indicator has-data';
+          statusText.textContent = `Data available (${sessionsCount} session${sessionsCount !== 1 ? 's' : ''})`;
+        } else {
+          indicator.className = 'status-indicator no-data';
+          statusText.textContent = 'No data found';
+        }
+      }
+
+      // Update sessions info
+      function updateSessionsInfo() {
+        const sessionsInfo = document.getElementById('sessions-info');
+        const sessionsCountEl = document.getElementById('sessions-count');
+
+        if (hasExistingData) {
+          sessionsInfo.classList.remove('hidden');
+          sessionsCountEl.textContent = `You have ${sessionsCount} session${sessionsCount !== 1 ? 's' : ''} of conversation data ready to explore`;
+        } else {
+          sessionsInfo.classList.add('hidden');
+        }
+      }
+
+      // Render action cards
+      function renderActions() {
+        const actionsGrid = document.getElementById('actions-grid');
+        actionsGrid.innerHTML = '';
+
+        if (hasExistingData) {
+          // Set grid layout for data exists scenario
+          actionsGrid.className = 'actions-grid with-data';
+
+          // Explore conversations card (primary, full width)
+          const exploreCard = document.createElement('div');
+          exploreCard.className = 'action-card primary fade-in';
+
+          if (sessionsCount === 1) {
+            // Direct link if only one session
+            exploreCard.innerHTML = `
+            <span class="action-icon">🔍</span>
+            <h3>Explore Conversations</h3>
+            <p>Browse through your existing ChatGPT conversations and media assets</p>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+              <button onclick="window.location.href='conversations.html'" class="btn btn-primary">Start Exploring</button>
+              <button onclick="deleteSession('${sessions[0].id}')" class="btn btn-danger" style="font-size: 0.875rem;">🗑️ Delete Session</button>
+            </div>
+          `;
+          } else {
+            // Session selection if multiple sessions
+            exploreCard.innerHTML = `
+            <span class="action-icon">🔍</span>
+            <h3>Explore Conversations</h3>
+            <p>Browse through your existing ChatGPT conversations and media assets</p>
+            <button onclick="selectSession()" class="btn btn-primary">Select Session</button>
+          `;
+          }
+          actionsGrid.appendChild(exploreCard);
+
+          // Create secondary row container
+          const secondaryRow = document.createElement('div');
+          secondaryRow.className = 'secondary-row';
+
+          // Upload new data card (secondary, half width)
+          const uploadCard = document.createElement('div');
+          uploadCard.className = 'action-card fade-in';
+          uploadCard.innerHTML = `
+          <span class="action-icon">📤</span>
+          <h3>Upload New Data</h3>
+          <p>Add a new ChatGPT export to your collection</p>
+          <button onclick="window.location.href='upload.html'" class="btn btn-outline">Upload ZIP File</button>
+        `;
+          secondaryRow.appendChild(uploadCard);
+
+          // Add session management card if multiple sessions, otherwise add placeholder
+          if (sessionsCount > 1) {
+            const manageCard = document.createElement('div');
+            manageCard.className = 'action-card fade-in';
+            manageCard.innerHTML = `
+            <span class="action-icon">⚙️</span>
+            <h3>Manage Sessions</h3>
+            <p>Delete or manage your existing conversation sessions</p>
+            <button onclick="selectSession()" class="btn btn-outline">Manage Sessions</button>
+          `;
+            secondaryRow.appendChild(manageCard);
+          } else {
+            // Add an info card when only one session exists
+            const infoCard = document.createElement('div');
+            infoCard.className = 'action-card fade-in';
+            infoCard.innerHTML = `
+            <span class="action-icon">📊</span>
+            <h3>Session Stats</h3>
+            <p>You have one active session with conversation data ready to explore</p>
+          `;
+            secondaryRow.appendChild(infoCard);
+          }
+
+          actionsGrid.appendChild(secondaryRow);
+        } else {
+          // Set grid layout for no data scenario
+          actionsGrid.className = 'actions-grid no-data';
+
+          // Upload card (primary when no data exists)
+          const uploadCard = document.createElement('div');
+          uploadCard.className = 'action-card primary fade-in';
+          uploadCard.innerHTML = `
+          <span class="action-icon">📤</span>
+          <h3>Upload Your Data</h3>
+          <p>Get started by uploading your ChatGPT export file</p>
+          <button onclick="window.location.href='upload.html'" class="btn btn-primary">Upload ZIP File</button>
+        `;
+          actionsGrid.appendChild(uploadCard);
+
+          // Info card about how it works
+          const infoCard = document.createElement('div');
+          infoCard.className = 'action-card fade-in';
+          infoCard.innerHTML = `
+          <span class="action-icon">ℹ️</span>
+          <h3>How It Works</h3>
+          <p>Export your data from ChatGPT (Settings → Data controls → Export), then upload the resulting zip file to explore your conversations in an organized interface.</p>
+        `;
+          actionsGrid.appendChild(infoCard);
+        }
+      }
+
+      // Initialize the page
+      async function initializePage() {
+        console.log('Initializing page...');
+        try {
+          await checkExistingData();
+          console.log('Data check completed');
+          updateStatusIndicator();
+          updateSessionsInfo();
+          renderActions();
+          console.log('UI updates completed');
+
+          // Hide loading and show content
+          const loadingEl = document.getElementById('loading');
+          const contentEl = document.getElementById('content');
+
+          console.log('Hiding loading, showing content');
+          if (loadingEl) loadingEl.classList.remove('show');
+          if (contentEl) contentEl.classList.remove('hidden');
+
+          console.log('Page initialization complete');
+        } catch (error) {
+          console.error('Error during page initialization:', error);
+          // Still hide loading even if there's an error
+          const loadingEl = document.getElementById('loading');
+          const contentEl = document.getElementById('content');
+          if (loadingEl) loadingEl.classList.remove('show');
+          if (contentEl) contentEl.classList.remove('hidden');
+        }
+      }
+
+      // Create backup function
+      async function createBackup(sessionId) {
+        try {
+          const result = await window.electronAPI.createBackup(sessionId);
+          if (result.success) {
+            alert(
+              `Backup created successfully!\n\nLocation: ${result.data.backupPath}`
+            );
+          } else {
+            alert(`Failed to create backup: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error creating backup:', error);
+          alert(`Error creating backup: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // View backups function
+      async function viewBackups(sessionId) {
+        try {
+          const result = await window.electronAPI.listBackups(sessionId);
+          if (result.success) {
+            const backups = result.data.backups;
+            if (backups.length === 0) {
+              alert('No backups found for this session.');
+              return;
+            }
+
+            // Create backup selection modal
+            const backupModal = document.createElement('div');
+            backupModal.className = 'session-modal';
+
+            const backupContent = document.createElement('div');
+            backupContent.className = 'session-modal-content';
+
+            backupContent.innerHTML = `
+            <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Available Backups</h3>
+            <div style="margin-bottom: 1.5rem;">
+              ${backups
+                .map(
+                  backup => `
+              <div class="backup-item" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 1rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-primary);">${backup.filename}</div>
+                    <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+                      ${new Date(backup.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                  <button onclick="restoreFromBackup('${sessionId}', '${backup.filename}')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    🔄 Restore
+                  </button>
+                </div>
+              </div>
+              `
+                )
+                .join('')}
+            </div>
+            <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary" style="width: 100%;">Close</button>
+          `;
+
+            backupModal.appendChild(backupContent);
+            document.body.appendChild(backupModal);
+
+            // Close modal when clicking outside
+            backupModal.addEventListener('click', e => {
+              if (e.target === backupModal) {
+                backupModal.remove();
+              }
+            });
+          } else {
+            alert(`Failed to list backups: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error listing backups:', error);
+          alert(`Error listing backups: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Restore from backup function
+      async function restoreFromBackup(sessionId, backupFile) {
+        if (
+          !confirm(
+            `Are you sure you want to restore from backup "${backupFile}"? This will replace all current data for this session.`
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.restoreBackup(sessionId, backupFile);
+          if (result.success) {
+            alert(
+              'Session restored successfully! The page will refresh to show the restored data.'
+            );
+            // Close backup modal
+            const modal = document.querySelector('.session-modal');
+            if (modal) modal.remove();
+            // Close session modal too
+            const sessionModal = document.querySelector('.session-modal');
+            if (sessionModal) sessionModal.remove();
+          } else {
+            alert(`Failed to restore backup: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error restoring backup:', error);
+          alert(`Error restoring backup: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Delete session function
+      async function deleteSession(sessionId) {
+        if (
+          !confirm(
+            'Are you sure you want to delete this session? This action cannot be undone and will permanently remove all conversation data and media files.'
+          )
+        ) {
+          return;
+        }
+
+        try {
+          const result = await window.electronAPI.deleteSession(sessionId);
+          if (result.success) {
+            // Remove session from local array
+            sessions = sessions.filter(s => s.id !== sessionId);
+            sessionsCount = sessions.length;
+            hasExistingData = sessionsCount > 0;
+
+            // Update UI
+            updateStatusIndicator();
+            updateSessionsInfo();
+
+            // Close modal and refresh if no sessions left
+            const modal = document.querySelector('.session-modal');
+            if (modal) modal.remove();
+
+            // If no sessions left, refresh page
+            if (sessionsCount === 0) {
+              initializePage();
+            } else {
+              // Refresh modal content
+              selectSession();
+            }
+          } else {
+            alert(`Failed to delete session: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error('Error deleting session:', error);
+          alert(`Error deleting session: ${error.message || 'Unknown error'}`);
+        }
+      }
+
+      // Session selection function
+      async function selectSession() {
+        if (sessions.length === 0) {
+          alert('No sessions available');
+          return;
+        }
+
+        if (sessions.length === 1) {
+          // Direct navigation if only one session
+          window.location.href = `conversations.html?session=${sessions[0].id}`;
+          return;
+        }
+
+        // Create session selection modal
+        const modal = document.createElement('div');
+        modal.className = 'session-modal';
+
+        const modalContent = document.createElement('div');
+        modalContent.className = 'session-modal-content';
+
+        modalContent.innerHTML = `
+        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Manage Sessions</h2>
+        <div style="margin-bottom: 1.5rem;">
+          ${sessions
+            .filter(session => session && session.id && session.uploadedAt)
+            .map(
+              session => `
+            <div class="session-item" style="display: flex; justify-content: space-between; align-items: center;">
+              <div onclick="window.location.href='conversations.html?session=${session.id}'" style="flex: 1; cursor: pointer;">
+                <div class="session-item-id">Session ID: ${session.id.substring(0, 8)}...</div>
+                <div class="session-item-date">
+                  Uploaded: ${new Date(session.uploadedAt).toLocaleString()}
+                </div>
+              </div>
+              <div class="session-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                <button onclick="createBackup('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Create backup">
+                  💾 Backup
+                </button>
+                <button onclick="viewBackups('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="View backups">
+                  📁 Backups
+                </button>
+                <button onclick="deleteSession('${session.id}')" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Delete session">
+                  🗑️ Delete
+                </button>
+              </div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+        <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary" style="width: 100%;">Cancel</button>
+      `;
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', e => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      }
+
+      // Create floating particles for enhanced visual effect
+      function createParticles() {
+        const container = document.getElementById('particleBackground');
+        if (!container) return;
+
+        const particleCount = 25;
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 20 + 's';
+          particle.style.animationDuration = 15 + Math.random() * 10 + 's';
+          container.appendChild(particle);
+        }
+      }
+
+      // Toggle search functionality
+      function toggleSearch() {
+        // Placeholder for search functionality
+        console.log('Search toggled');
+      }
+
+      // Toggle settings functionality
+      function toggleSettings() {
+        // Placeholder for settings functionality
+        console.log('Settings toggled');
+      }
+
+      // Initialize when DOM is loaded
+      document.addEventListener('DOMContentLoaded', () => {
+        initializePage();
+        createParticles();
+      });
+    </script>
+  </body>
+</html>
