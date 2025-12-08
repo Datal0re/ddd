@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 /**
  * Generate Release Notes from Git Commits
@@ -11,7 +12,6 @@
 
 const { execSync } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -127,6 +127,7 @@ function generateReleaseNotes() {
         }).trim();
       } catch (error) {
         latestTag = 'HEAD~10'; // Fallback to last 10 commits
+        throw new Error(error);
       }
     }
 
