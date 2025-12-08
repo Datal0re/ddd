@@ -19,12 +19,16 @@
     "format:check": "prettier --check .",
     "migrate": "node data/migration.js data/conversations.json",
     "extract-assets": "node data/extract-assets-json.js",
-    "dev-full": "API_PORT=3001 npm run web & API_PORT=3001 electron ."
+    "dev-full": "API_PORT=3001 npm run web & API_PORT=3001 electron .",
+    "build": "electron-builder",
+    "build-mac": "electron-builder --mac",
+    "build-win": "electron-builder --win",
+    "build-linux": "electron-builder --linux",
+    "dist": "npm run build"
   },
   "dependencies": {
     "axios": "^1.6.0",
     "decompress": "^4.2.1",
-    "electron": "^35.7.5",
     "electron-log": "^5.4.3",
     "eventsource": "^4.1.0",
     "express": "^5.1.0",
@@ -38,8 +42,64 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.7.4"
+  },
+  "build": {
+    "appId": "com.ethanthomason.data-dumpster-diver",
+    "productName": "Data Dumpster Diver",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "app.js",
+      "renderer.js",
+      "package.json",
+      "utils/**/*",
+      "views/**/*",
+      "public/**/*",
+      "data/**/*",
+      "scripts/**/*",
+      "color-palette.css",
+      "enhanced-design.css",
+      "LICENSE",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

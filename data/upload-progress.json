@@ -46,5 +46,41 @@
     "startTime": 1765096137537,
     "estimatedTimeRemaining": 0,
     "lastUpdated": 1765096145887
+  },
+  "upload_1765164853589_kn2elc7pz": {
+    "uploadId": "upload_1765164853589_kn2elc7pz",
+    "stage": "completed",
+    "progress": 100,
+    "message": "Upload processing complete!",
+    "sessionId": "ed9ca242-c295-4c7f-b533-a4479c38a0c8",
+    "status": "completed",
+    "error": null,
+    "startTime": 1765164853589,
+    "estimatedTimeRemaining": 0,
+    "lastUpdated": 1765164863122
+  },
+  "upload_1765164925290_v22a639zn": {
+    "uploadId": "upload_1765164925290_v22a639zn",
+    "stage": "error",
+    "progress": 0,
+    "message": "Upload failed: Invalid file format - expected ZIP archive",
+    "sessionId": null,
+    "status": "error",
+    "error": "Invalid file format - expected ZIP archive",
+    "startTime": 1765164925290,
+    "estimatedTimeRemaining": null,
+    "lastUpdated": 1765164925292
+  },
+  "upload_1765164953549_t3o0peie5": {
+    "uploadId": "upload_1765164953549_t3o0peie5",
+    "stage": "error",
+    "progress": 0,
+    "message": "Upload failed: Invalid file format - expected ZIP archive",
+    "sessionId": null,
+    "status": "error",
+    "error": "Invalid file format - expected ZIP archive",
+    "startTime": 1765164953549,
+    "estimatedTimeRemaining": null,
+    "lastUpdated": 1765164953551
   }
 }
