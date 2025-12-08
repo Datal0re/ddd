@@ -30,11 +30,9 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 
 ### 🔧 Technical Features
 
-<<<<<<< HEAD
-
 - **Secure File Handling**: Type validation and sanitization
 - **Hybrid Architecture**: Electron frontend + Express API backend
-- **Secure File Handling**: Multi-layer validation and ZIP bomb protection
+- **Multi-layer Validation**: ZIP bomb protection and path traversal prevention
 - **Backup System**: Automated session backups and restoration
 - **Session Persistence**: Data survives application restarts
 - **Media Asset Management**: Automatic extraction and organization of images, audio, and files
@@ -42,6 +40,7 @@ A sophisticated desktop application for exploring and visualizing exported ChatG
 - **Structured Logging**: Pino-based logging system for better debugging and monitoring
 - **Content Security Policy**: Comprehensive CSP implementation for enhanced security
 - **Progress Persistence**: Upload progress survives navigation and app restarts
+- **Static CSS Architecture**: Performance-optimized styling with comprehensive design system
 
 ## 🚀 Quick Start
 
@@ -118,6 +117,48 @@ Data Dumpster Diver uses a hybrid architecture combining:
 ```text
 User Interface → IPC → Main Process → HTTP → Express API → SessionManager
 ```
+
+## 🎨 CSS Architecture
+
+### Static CSS Approach
+
+Data Dumpster Diver uses a performance-first static CSS architecture:
+
+- **Single Source of Truth**: All styles defined in CSS files, no runtime generation
+- **Design System**: Comprehensive CSS custom properties and component library
+- **Performance Optimized**: Critical CSS inlined, non-critical loaded asynchronously
+- **Responsive Design**: Mobile-first approach with progressive enhancement
+
+### CSS Files Structure
+
+```text
+public/
+├── styles.css              # Main design system (2500+ lines)
+├── enhanced-design.css      # Visual effects and glassmorphism
+└── fonts/                 # FiraCode Nerd Font files
+
+views/
+└── index.html             # Critical CSS inlined for above-the-fold rendering
+```
+
+### Key Features
+
+- **Dark Theme**: Comprehensive dark mode design system
+- **Component Library**: Reusable classes for cards, buttons, forms, navigation
+- **Toast System**: Static classes for notifications (info, success, warning, error)
+- **Loading States**: Overlay, spinner, and skeleton screen components
+- **Glassmorphism**: Modern blur effects with backdrop-filter
+- **Performance Optimized**: CSS containment, will-change properties, GPU acceleration
+
+### Migration Benefits
+
+Recent migration from CSS-in-JS to static CSS provided:
+
+- **🚫 Critical Bug Fix**: Eliminated browser module loading errors
+- **⚡ Performance Boost**: Better caching and faster execution
+- **📉 Bundle Size**: Reduced JavaScript payload by removing unused utilities
+- **🛠️ Maintainability**: Single source of truth for all styles
+- **🔧 Developer Experience**: Standard CSS tooling and debugging
 
 ## 📁 Project Structure
 

@@ -2,6 +2,49 @@
 
 All notable changes to Data Dumpster Diver will be documented in this file.
 
+## [1.0.5] - 2025-12-08
+
+### 🚫 Critical Bug Fixes
+
+#### CSS Architecture Migration
+
+- **Issue**: Browser module loading errors due to CSS-in-JS `require()` statements
+- **Solution**: Complete migration from CSS-in-JS to static CSS architecture
+- **Impact**: Application now loads without module errors, improved performance
+- **Files Modified**:
+  - `public/styles.css` - Added comprehensive toast and loading systems
+  - `public/navigation.js` - Migrated to static CSS classes
+  - `public/loading-system.js` - Simplified, removed dynamic style generation
+  - `views/index.html` - Removed CSS-in-JS script reference
+  - `package.json` - Fixed build configuration
+- **Files Removed**:
+  - `public/critical.css` - Redundant with inline CSS
+  - `utils/css-in-js.js` - No longer used after migration
+
+### ⚡ Performance Improvements
+
+#### Static CSS Benefits
+
+- **Better Caching**: Static CSS files cache efficiently vs runtime generation
+- **Smaller Bundle**: Removed 427-line CSS-in-JS utility from browser
+- **Faster Execution**: No DOM manipulation for style injection
+- **Optimized Loading**: Critical CSS inlined, non-critical loaded asynchronously
+
+### 🛠️ Architecture Enhancements
+
+#### Unified Design System
+
+- **Single Source of Truth**: All styles in CSS files using design tokens
+- **Component Library**: Reusable classes for toast, loading, and UI components
+- **Responsive Design**: Mobile-first approach with progressive enhancement
+- **Accessibility**: Proper focus states and reduced motion support
+
+#### Developer Experience
+
+- **Standard Tooling**: CSS linting, formatting, and autocomplete work
+- **Easier Debugging**: Styles visible in browser dev tools
+- **Better Maintainability**: No complex module loading issues
+
 ## [1.0.5] - 2025-12-07
 
 ### 🚀 Major Feature Enhancements
