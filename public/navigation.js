@@ -87,7 +87,7 @@ class NavigationSystem {
         <div class="nav-container">
           <a href="index.html" class="nav-brand">
             <div class="nav-brand-icon">🗂️</div>
-            <span>Data Dumpster Diver</span>
+            <span>ddd</span>
           </a>
           
           <div class="nav-menu">

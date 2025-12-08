@@ -92,8 +92,11 @@
   <body>
     <div class="container">
       <div class="page-header page-header-with-nav">
-        <h1>Data Dumpster Diver</h1>
-        <p>Explore and visualize your ChatGPT conversation data</p>
+        <h1>ddd</h1>
+        <p>
+          - Data Dumpster Diver -<br />Explore and visualize your ChatGPT conversation
+          data
+        </p>
         <div id="status-indicator" class="status-indicator">
           <span class="status-dot"></span>
           <span id="status-text">Checking for existing data...</span>
@@ -193,7 +196,10 @@
         actionsGrid.innerHTML = '';
 
         if (hasExistingData) {
-          // Explore conversations card (primary when data exists)
+          // Set grid layout for data exists scenario
+          actionsGrid.className = 'actions-grid with-data';
+
+          // Explore conversations card (primary, full width)
           const exploreCard = document.createElement('div');
           exploreCard.className = 'action-card primary fade-in';
 
@@ -204,7 +210,7 @@
             <h3>Explore Conversations</h3>
             <p>Browse through your existing ChatGPT conversations and media assets</p>
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-              <a href="conversations.html" class="btn btn-primary">Start Exploring</a>
+              <button onclick="window.location.href='conversations.html'" class="btn btn-primary">Start Exploring</button>
               <button onclick="deleteSession('${sessions[0].id}')" class="btn btn-danger" style="font-size: 0.875rem;">🗑️ Delete Session</button>
             </div>
           `;
@@ -219,18 +225,22 @@
           }
           actionsGrid.appendChild(exploreCard);
 
-          // Upload new data card (secondary)
+          // Create secondary row container
+          const secondaryRow = document.createElement('div');
+          secondaryRow.className = 'secondary-row';
+
+          // Upload new data card (secondary, half width)
           const uploadCard = document.createElement('div');
           uploadCard.className = 'action-card fade-in';
           uploadCard.innerHTML = `
           <span class="action-icon">📤</span>
           <h3>Upload New Data</h3>
           <p>Add a new ChatGPT export to your collection</p>
-          <a href="upload.html" class="btn btn-outline">Upload ZIP File</a>
+          <button onclick="window.location.href='upload.html'" class="btn btn-outline">Upload ZIP File</button>
         `;
-          actionsGrid.appendChild(uploadCard);
+          secondaryRow.appendChild(uploadCard);
 
-          // Add session management card if multiple sessions
+          // Add session management card if multiple sessions, otherwise add placeholder
           if (sessionsCount > 1) {
             const manageCard = document.createElement('div');
             manageCard.className = 'action-card fade-in';
@@ -240,17 +250,32 @@
             <p>Delete or manage your existing conversation sessions</p>
             <button onclick="selectSession()" class="btn btn-outline">Manage Sessions</button>
           `;
-            actionsGrid.appendChild(manageCard);
+            secondaryRow.appendChild(manageCard);
+          } else {
+            // Add an info card when only one session exists
+            const infoCard = document.createElement('div');
+            infoCard.className = 'action-card fade-in';
+            infoCard.innerHTML = `
+            <span class="action-icon">📊</span>
+            <h3>Session Stats</h3>
+            <p>You have one active session with conversation data ready to explore</p>
+          `;
+            secondaryRow.appendChild(infoCard);
           }
+
+          actionsGrid.appendChild(secondaryRow);
         } else {
+          // Set grid layout for no data scenario
+          actionsGrid.className = 'actions-grid no-data';
+
           // Upload card (primary when no data exists)
           const uploadCard = document.createElement('div');
           uploadCard.className = 'action-card primary fade-in';
           uploadCard.innerHTML = `
           <span class="action-icon">📤</span>
-          <h3>Upload Your First Data</h3>
+          <h3>Upload Your Data</h3>
           <p>Get started by uploading your ChatGPT export file</p>
-          <a href="upload.html" class="btn btn-primary">Upload ZIP File</a>
+          <button onclick="window.location.href='upload.html'" class="btn btn-primary">Upload ZIP File</button>
         `;
           actionsGrid.appendChild(uploadCard);
 

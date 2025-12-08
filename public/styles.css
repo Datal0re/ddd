@@ -343,7 +343,7 @@ li {
 }
 
 .message.user .author {
-  color: rgba(59, 130, 246, 0.9); /* Semi-transparent white on blue background */
+  color: var(--message-user-text); /* Semi-transparent white on blue background */
   text-align: right;
 }
 
@@ -996,9 +996,32 @@ img {
 /* Action Cards (for landing page) */
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
   margin-top: 2rem;
+}
+
+/* Layout for when data exists - full width primary card, half-width secondary cards */
+.actions-grid.with-data {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+}
+
+.actions-grid.with-data .action-card.primary {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.actions-grid.with-data .secondary-row {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Layout for when no data exists - single column */
+.actions-grid.no-data {
+  grid-template-columns: 1fr;
 }
 
 .action-card {
@@ -1010,7 +1033,7 @@ img {
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
-  cursor: pointer;
+  /* cursor: pointer; */
 }
 
 .action-card:hover {
@@ -1535,7 +1558,7 @@ img {
 
 /* Page Layout with Navigation */
 .page-with-nav {
-  padding-top: 60px;
+  padding-top: 0px;
 }
 
 .page-header-with-nav {
