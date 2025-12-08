@@ -158,6 +158,8 @@ jobs:
             platform: linux
             arch: x64
             artifact_name: '*.AppImage'
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -201,6 +203,8 @@ jobs:
     needs: [quality, build]
     runs-on: ubuntu-latest
     if: success()
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -300,6 +304,8 @@ jobs:
     needs: [quality, build, release]
     runs-on: ubuntu-latest
     if: needs.quality.outputs.is_alpha == 'true'
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
