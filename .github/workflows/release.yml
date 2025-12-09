@@ -176,6 +176,7 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install
+        shell: bash
 
       - name: Verify build tools
         run: |
