@@ -101,6 +101,7 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install
+        shell: bash
 
       - name: Test build process
         run: |
@@ -199,6 +200,7 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install
+        shell: bash
 
       - name: Check bundle size
         run: |
