@@ -173,7 +173,16 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Verify build tools
+        run: |
+          echo "Verifying build tools..."
+          npm list electron-builder
+          npm list dmg-builder || echo "dmg-builder not found (expected)"
+          echo "Build tools verification completed"
 
       - name: Build for ${{ matrix.platform }} (${{ matrix.arch }})
         run: |
@@ -216,12 +225,27 @@ jobs:
         with:
           path: artifacts
 
-      - name: Prepare release assets
+      - name: Verify build artifacts
         run: |
+          echo "Verifying build artifacts before release..."
           mkdir -p release-assets
+
+          # Check for artifacts from all platforms
+          DMG_FILES=$(find artifacts -name "*.dmg" | wc -l)
+          EXE_FILES=$(find artifacts -name "*.exe" | wc -l)
+          APPIMAGE_FILES=$(find artifacts -name "*.AppImage" | wc -l)
+
+          echo "Found artifacts:"
+          echo "  - DMG files: $DMG_FILES"
+          echo "  - EXE files: $EXE_FILES" 
+          echo "  - AppImage files: $APPIMAGE_FILES"
+
+          # Copy artifacts to release directory
           find artifacts -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" | while read file; do
             cp "$file" release-assets/
           done
+
+          echo "Release assets prepared:"
           ls -la release-assets/
 
       - name: Generate release notes
@@ -295,8 +319,21 @@ jobs:
           draft: false
           prerelease: ${{ needs.quality.outputs.is_alpha == 'true' }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Status Check
+        if: always()
+        run: |
+          echo "Release creation status: ${{ job.status }}"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Release created successfully"
+          else
+            echo "❌ Release creation failed"
+            echo "Checking for release artifacts..."
+            ls -la release-assets/ || echo "No release assets found"
+          fi
 
   # Update Alpha Release Summary (for alpha releases only)
   update-alpha-summary:

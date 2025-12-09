@@ -53,7 +53,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Run pre-release checks
         if: github.event.inputs.skip_tests != 'true'
@@ -103,6 +105,21 @@ jobs:
           path: dist/
           retention-days: 30
 
+      - name: Verify build artifacts before release
+        run: |
+          echo "Verifying build artifacts before release creation..."
+          ls -la dist/
+
+          # Count artifacts by type
+          DMG_COUNT=$(find dist -name "*.dmg" | wc -l)
+          EXE_COUNT=$(find dist -name "*.exe" | wc -l)
+          APPIMAGE_COUNT=$(find dist -name "*.AppImage" | wc -l)
+
+          echo "Found artifacts:"
+          echo "  - DMG files: $DMG_COUNT"
+          echo "  - EXE files: $EXE_COUNT"
+          echo "  - AppImage files: $APPIMAGE_COUNT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -133,8 +150,21 @@ jobs:
           draft: false
           prerelease: true
           generate_release_notes: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Status Check
+        if: always()
+        run: |
+          echo "Alpha release status: ${{ job.status }}"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Alpha release created successfully"
+          else
+            echo "❌ Alpha release creation failed"
+            echo "Checking for build artifacts..."
+            ls -la dist/ || echo "No dist directory found"
+          fi
 
       - name: Push changes (if tags were created)
         if: github.event.inputs.create_git_tag == 'true'
