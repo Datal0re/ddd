@@ -592,44 +592,61 @@
 
     <script>
       let hasExistingData = false;
-      let sessionsCount = 0;
-      let sessions = [];
+      let exportsCount = 0;
+      let exports = [];
+      let hasMigratableSessions = false;
+      let migrationStats = null;
 
-      // Check for existing sessions
+      // Check for existing exports
       async function checkExistingData() {
         try {
           // For Electron, we need to check via IPC
           if (window.electronAPI) {
-            // This will be implemented in main.js
-            console.log('Checking for sessions via Electron API...');
-            const result = await window.electronAPI.getAllSessions();
-            console.log('Sessions result:', result);
+            console.log('Checking for exports and sessions via Electron API...');
 
-            if (result && result.success) {
-              sessions = result.sessions || [];
-              sessionsCount = sessions.length;
-              hasExistingData = sessionsCount > 0;
-              console.log(`Found ${sessionsCount} sessions`);
+            // Check for exports
+            const exportsResult = await window.electronAPI.getAllExports();
+            console.log('Exports result:', exportsResult);
+
+            if (exportsResult && exportsResult.success) {
+              exports = exportsResult.exports || [];
+              exportsCount = exports.length;
+              hasExistingData = exportsCount > 0;
+              console.log(`Found ${exportsCount} exports`);
             } else {
-              console.log('No sessions found or API call failed');
-              sessions = [];
-              sessionsCount = 0;
-              hasExistingData = false;
+              console.log('No exports found or API call failed');
+              exports = [];
+              exportsCount = 0;
+            }
+
+            // Check for migratable sessions
+            try {
+              const migrationResult = await window.electronAPI.getMigratableSessions();
+              if (
+                migrationResult &&
+                migrationResult.success &&
+                migrationResult.hasMigratable
+              ) {
+                hasMigratableSessions = true;
+                console.log(`Found ${migrationResult.count} migratable sessions`);
+              }
+            } catch (error) {
+              console.log('No migratable sessions found:', error.message);
             }
           } else {
             // For Express, we'll get this from the server-side rendering
             // The data will be embedded in the page
             console.log('Running in web mode, checking window variables...');
             hasExistingData = window.hasExistingData || false;
-            sessionsCount = window.sessionsCount || 0;
+            exportsCount = window.exportsCount || 0;
             console.log(
-              `Web mode: hasExistingData=${hasExistingData}, sessionsCount=${sessionsCount}`
+              `Web mode: hasExistingData=${hasExistingData}, exportsCount=${exportsCount}`
             );
           }
         } catch (error) {
           console.error('Error checking for existing data:', error);
-          sessions = [];
-          sessionsCount = 0;
+          exports = [];
+          exportsCount = 0;
           hasExistingData = false;
         }
       }
@@ -641,7 +658,10 @@
 
         if (hasExistingData) {
           indicator.className = 'status-indicator has-data';
-          statusText.textContent = `Data available (${sessionsCount} session${sessionsCount !== 1 ? 's' : ''})`;
+          statusText.textContent = `Data available (${exportsCount} export${exportsCount !== 1 ? 's' : ''})${hasMigratableSessions ? ' (Legacy sessions available)' : ''}`;
+        } else if (hasMigratableSessions) {
+          indicator.className = 'status-indicator has-data';
+          statusText.textContent = 'Legacy sessions available for migration';
         } else {
           indicator.className = 'status-indicator no-data';
           statusText.textContent = 'No data found';
@@ -653,7 +673,35 @@
         const actionsGrid = document.getElementById('actions-grid');
         actionsGrid.innerHTML = '';
 
-        if (hasExistingData) {
+        // Show migration prompt if there are migratable sessions but no exports
+        if (hasMigratableSessions && !hasExistingData) {
+          // Set grid layout for migration scenario
+          actionsGrid.className = 'actions-grid no-data';
+
+          // Migration prompt card (primary)
+          const migrationCard = document.createElement('div');
+          migrationCard.className = 'action-card primary fade-in';
+          migrationCard.innerHTML = `
+          <span class="action-icon">🔄</span>
+          <h3>Migrate Legacy Sessions</h3>
+          <p>We found existing session data that can be migrated to the new export format for better accessibility and organization.</p>
+          <div class="flex gap-0_5 mt-1">
+            <button onclick="showMigrationModal()" class="btn btn-primary">View Sessions</button>
+            <button onclick="getMigrationStats()" class="btn btn-outline">📊 View Stats</button>
+          </div>
+        `;
+          actionsGrid.appendChild(migrationCard);
+
+          // Info card about migration
+          const infoCard = document.createElement('div');
+          infoCard.className = 'action-card fade-in';
+          infoCard.innerHTML = `
+          <span class="action-icon">ℹ️</span>
+          <h3>Why Migrate?</h3>
+          <p>The new export system provides direct file access, better organization, and no auto-deletion. Your existing sessions will be preserved during migration.</p>
+        `;
+          actionsGrid.appendChild(infoCard);
+        } else if (hasExistingData) {
           // Set grid layout for data exists scenario
           actionsGrid.className = 'actions-grid with-data';
 
@@ -661,24 +709,24 @@
           const exploreCard = document.createElement('div');
           exploreCard.className = 'action-card primary fade-in';
 
-          if (sessionsCount === 1) {
-            // Direct link if only one session
+          if (exportsCount === 1) {
+            // Direct link if only one export
             exploreCard.innerHTML = `
             <span class="action-icon">🔍</span>
             <h3>Explore Conversations</h3>
             <p>Browse through your existing ChatGPT conversations and media assets</p>
             <div class="flex gap-0_5 mt-1">
-              <button onclick="window.location.href='conversations.html'" class="btn btn-primary">Start Exploring</button>
-              <button onclick="deleteSession('${sessions[0].id}')" class="btn btn-danger btn-sm">🗑️ Delete Session</button>
+              <button onclick="window.location.href='conversations.html?export=${encodeURIComponent(exports[0].name)}'" class="btn btn-primary">Start Exploring</button>
+              <button onclick="deleteExport('${exports[0].name}')" class="btn btn-danger btn-sm">🗑️ Delete Export</button>
             </div>
           `;
           } else {
-            // Session selection if multiple sessions
+            // Export selection if multiple exports
             exploreCard.innerHTML = `
             <span class="action-icon">🔍</span>
             <h3>Explore Conversations</h3>
             <p>Browse through your existing ChatGPT conversations and media assets</p>
-            <button onclick="selectSession()" class="btn btn-primary">Select Session</button>
+            <button onclick="selectExport()" class="btn btn-primary">Select Export</button>
           `;
           }
           actionsGrid.appendChild(exploreCard);
@@ -698,27 +746,42 @@
         `;
           secondaryRow.appendChild(uploadCard);
 
-          // Add session management card if multiple sessions, otherwise add placeholder
-          if (sessionsCount > 1) {
+          // Add export management card
+          if (exportsCount > 0) {
             const manageCard = document.createElement('div');
             manageCard.className = 'action-card fade-in';
             manageCard.innerHTML = `
             <span class="action-icon">⚙️</span>
-            <h3>Manage Sessions</h3>
-            <p>Delete or manage your existing conversation sessions</p>
-            <button onclick="selectSession()" class="btn btn-outline">Manage Sessions</button>
-          `;
+            <h3>Manage Exports</h3>
+            <p>Organize, rename, and manage your conversation exports</p>
+            <button onclick="window.location.href='exports.html'" class="btn btn-outline">Manage Exports</button>
+            `;
             secondaryRow.appendChild(manageCard);
+          }
+
+          // Add migration card if there are migratable sessions
+          if (hasMigratableSessions) {
+            const migrationCard = document.createElement('div');
+            migrationCard.className = 'action-card fade-in';
+            migrationCard.innerHTML = `
+            <span class="action-icon">🔄</span>
+            <h3>Migrate Sessions</h3>
+            <p>Convert legacy sessions to the new export format</p>
+            <button onclick="showMigrationModal()" class="btn btn-outline">Migrate</button>
+            `;
+            secondaryRow.appendChild(migrationCard);
           } else {
-            // Add an info card when only one session exists
-            const infoCard = document.createElement('div');
-            infoCard.className = 'action-card fade-in';
-            infoCard.innerHTML = `
-            <span class="action-icon">📊</span>
-            <h3>Session Stats</h3>
-            <p>You have one active session with conversation data ready to explore</p>
-          `;
-            secondaryRow.appendChild(infoCard);
+            // Add an info card when only one export exists and no migratable sessions
+            if (exportsCount === 1) {
+              const infoCard = document.createElement('div');
+              infoCard.className = 'action-card fade-in';
+              infoCard.innerHTML = `
+              <span class="action-icon">📊</span>
+              <h3>Export Stats</h3>
+              <p>You have one active export with conversation data ready to explore</p>
+              `;
+              secondaryRow.appendChild(infoCard);
+            }
           }
 
           actionsGrid.appendChild(secondaryRow);
@@ -778,171 +841,277 @@
         }
       }
 
-      // Create backup function
-      async function createBackup(sessionId) {
-        try {
-          const result = await window.electronAPI.createBackup(sessionId);
-          if (result.success) {
-            alert(
-              `Backup created successfully!\n\nLocation: ${result.data.backupPath}`
-            );
-          } else {
-            alert(`Failed to create backup: ${result.error || 'Unknown error'}`);
-          }
-        } catch (error) {
-          console.error('Error creating backup:', error);
-          alert(`Error creating backup: ${error.message || 'Unknown error'}`);
-        }
-      }
-
-      // View backups function
-      async function viewBackups(sessionId) {
-        try {
-          const result = await window.electronAPI.listBackups(sessionId);
-          if (result.success) {
-            const backups = result.data.backups;
-            if (backups.length === 0) {
-              alert('No backups found for this session.');
-              return;
-            }
-
-            // Create backup selection modal
-            const backupModal = document.createElement('div');
-            backupModal.className = 'session-modal';
-
-            const backupContent = document.createElement('div');
-            backupContent.className = 'session-modal-content';
-
-            backupContent.innerHTML = `
-            <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Available Backups</h3>
-            <div style="margin-bottom: 1.5rem;">
-              ${backups
-                .map(
-                  backup => `
-              <div class="backup-item" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 0.375rem; padding: 1rem; margin-bottom: 0.75rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <div style="font-weight: 600; color: var(--text-primary);">${backup.filename}</div>
-                    <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
-                      ${new Date(backup.timestamp).toLocaleString()}
-                    </div>
-                  </div>
-                  <button onclick="restoreFromBackup('${sessionId}', '${backup.filename}')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                    🔄 Restore
-                  </button>
-                </div>
-              </div>
-              `
-                )
-                .join('')}
-            </div>
-            <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary" style="width: 100%;">Close</button>
-          `;
-
-            backupModal.appendChild(backupContent);
-            document.body.appendChild(backupModal);
-
-            // Close modal when clicking outside
-            backupModal.addEventListener('click', e => {
-              if (e.target === backupModal) {
-                backupModal.remove();
-              }
-            });
-          } else {
-            alert(`Failed to list backups: ${result.error || 'Unknown error'}`);
-          }
-        } catch (error) {
-          console.error('Error listing backups:', error);
-          alert(`Error listing backups: ${error.message || 'Unknown error'}`);
-        }
-      }
-
-      // Restore from backup function
-      async function restoreFromBackup(sessionId, backupFile) {
+      // Delete export function
+      async function deleteExport(exportName) {
         if (
           !confirm(
-            `Are you sure you want to restore from backup "${backupFile}"? This will replace all current data for this session.`
+            `Are you sure you want to delete export "${exportName}"? This action cannot be undone and will permanently remove all conversation data and media files.`
           )
         ) {
           return;
         }
 
         try {
-          const result = await window.electronAPI.restoreBackup(sessionId, backupFile);
+          const result = await window.electronAPI.deleteExport(exportName);
           if (result.success) {
-            alert(
-              'Session restored successfully! The page will refresh to show the restored data.'
-            );
-            // Close backup modal
-            const modal = document.querySelector('.session-modal');
-            if (modal) modal.remove();
-            // Close session modal too
-            const sessionModal = document.querySelector('.session-modal');
-            if (sessionModal) sessionModal.remove();
-          } else {
-            alert(`Failed to restore backup: ${result.error || 'Unknown error'}`);
-          }
-        } catch (error) {
-          console.error('Error restoring backup:', error);
-          alert(`Error restoring backup: ${error.message || 'Unknown error'}`);
-        }
-      }
-
-      // Delete session function
-      async function deleteSession(sessionId) {
-        if (
-          !confirm(
-            'Are you sure you want to delete this session? This action cannot be undone and will permanently remove all conversation data and media files.'
-          )
-        ) {
-          return;
-        }
-
-        try {
-          const result = await window.electronAPI.deleteSession(sessionId);
-          if (result.success) {
-            // Remove session from local array
-            sessions = sessions.filter(s => s.id !== sessionId);
-            sessionsCount = sessions.length;
-            hasExistingData = sessionsCount > 0;
+            // Remove export from local array
+            exports = exports.filter(e => e.name !== exportName);
+            exportsCount = exports.length;
+            hasExistingData = exportsCount > 0;
 
             // Update UI
             updateStatusIndicator();
 
-            // Close modal and refresh if no sessions left
+            // Close modal and refresh if no exports left
             const modal = document.querySelector('.session-modal');
             if (modal) modal.remove();
 
-            // If no sessions left, refresh page
-            if (sessionsCount === 0) {
+            // If no exports left, refresh page
+            if (exportsCount === 0) {
               initializePage();
             } else {
               // Refresh modal content
-              selectSession();
+              selectExport();
             }
           } else {
-            alert(`Failed to delete session: ${result.error || 'Unknown error'}`);
+            alert(`Failed to delete export: ${result.error || 'Unknown error'}`);
           }
         } catch (error) {
-          console.error('Error deleting session:', error);
-          alert(`Error deleting session: ${error.message || 'Unknown error'}`);
+          console.error('Error deleting export:', error);
+          alert(`Error deleting export: ${error.message || 'Unknown error'}`);
         }
       }
 
-      // Session selection function
-      async function selectSession() {
-        if (sessions.length === 0) {
-          alert('No sessions available');
+      // Migration functions
+      async function showMigrationModal() {
+        try {
+          const result = await window.electronAPI.getMigratableSessions();
+
+          if (!result.success || result.sessions.length === 0) {
+            alert('No migratable sessions found.');
+            return;
+          }
+
+          const sessions = result.sessions;
+
+          // Create migration modal
+          const modal = document.createElement('div');
+          modal.className = 'session-modal';
+
+          const modalContent = document.createElement('div');
+          modalContent.className = 'session-modal-content';
+
+          modalContent.innerHTML = `
+          <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Migrate Legacy Sessions</h2>
+          <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Select sessions to migrate to the new export format. This will preserve all your conversation data and make it easily accessible via Finder.
+          </p>
+          <div style="margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto;">
+            ${sessions
+              .map(
+                session => `
+              <div class="session-item" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="flex: 1;">
+                  <div class="session-item-id">Session: ${session.id.substring(0, 12)}...</div>
+                  <div class="session-item-date">
+                    Created: ${new Date(session.uploadedAt).toLocaleString()}
+                  </div>
+                  <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+                    ${session.stats.conversationCount} conversations • ${(session.stats.totalSize / 1024 / 1024).toFixed(1)} MB
+                  </div>
+                  <div style="color: ${session.canMigrate ? 'var(--success-green)' : 'var(--warning-orange)'}; font-size: 0.875rem; margin-top: 0.25rem;">
+                    ${session.canMigrate ? '✅ Ready to migrate' : '⚠️ Incomplete data'}
+                  </div>
+                </div>
+                ${
+                  session.canMigrate
+                    ? `
+                <div class="session-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                  <input type="text" id="export-name-${session.id}" placeholder="Export name" value="${session.name}" 
+                    style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; background: var(--input-bg); color: var(--text-primary); width: 200px; margin-right: 0.5rem;">
+                  <button onclick="migrateSession('${session.id}')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                    🔄 Migrate
+                  </button>
+                </div>
+                `
+                    : ''
+                }
+              </div>
+            `
+              )
+              .join('')}
+          </div>
+          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button onclick="migrateAllSessions()" class="btn btn-primary">🚀 Migrate All</button>
+            <button onclick="this.closest('.session-modal').remove()" class="btn btn-secondary">Cancel</button>
+          </div>
+        `;
+
+          modal.appendChild(modalContent);
+          document.body.appendChild(modal);
+
+          // Close modal when clicking outside
+          modal.addEventListener('click', e => {
+            if (e.target === modal) {
+              modal.remove();
+            }
+          });
+        } catch (error) {
+          console.error('Error loading migratable sessions:', error);
+          alert('Error loading migratable sessions. Please try again.');
+        }
+      }
+
+      async function migrateSession(sessionId) {
+        const exportNameInput = document.getElementById(`export-name-${sessionId}`);
+        const exportName = exportNameInput.value.trim();
+
+        if (!exportName) {
+          alert('Please enter an export name.');
+          exportNameInput.focus();
           return;
         }
 
-        if (sessions.length === 1) {
-          // Direct navigation if only one session
-          window.location.href = `conversations.html?session=${sessions[0].id}`;
+        if (
+          !confirm(
+            `Migrate session ${sessionId} to export "${exportName}"? This will not delete the original session.`
+          )
+        ) {
           return;
         }
 
-        // Create session selection modal
+        try {
+          // Show loading state
+          const button = event.target;
+          const originalText = button.textContent;
+          button.textContent = '⏳ Migrating...';
+          button.disabled = true;
+
+          const result = await window.electronAPI.migrateSession(sessionId, exportName);
+
+          if (result.success) {
+            alert(
+              `Migration completed successfully!\n\nExport: ${result.exportName}\nConversations: ${result.stats.conversations.conversationCount}`
+            );
+            // Close modal and refresh page
+            document.querySelector('.session-modal').remove();
+            initializePage();
+          } else {
+            throw new Error(result.error || 'Migration failed');
+          }
+        } catch (error) {
+          console.error('Migration error:', error);
+          alert(`Migration failed: ${error.message}`);
+
+          // Restore button
+          const button = event.target;
+          button.textContent = originalText;
+          button.disabled = false;
+        }
+      }
+
+      async function migrateAllSessions() {
+        try {
+          const result = await window.electronAPI.getMigratableSessions();
+
+          if (!result.success || result.sessions.length === 0) {
+            alert('No migratable sessions found.');
+            return;
+          }
+
+          const migratableSessions = result.sessions.filter(s => s.canMigrate);
+
+          if (migratableSessions.length === 0) {
+            alert('No sessions ready for migration.');
+            return;
+          }
+
+          if (
+            !confirm(
+              `Migrate all ${migratableSessions.length} sessions? This will create exports with auto-generated names.`
+            )
+          ) {
+            return;
+          }
+
+          // Close modal
+          document.querySelector('.session-modal').remove();
+
+          // Show progress
+          let completed = 0;
+          let failed = 0;
+
+          for (const session of migratableSessions) {
+            try {
+              const exportName = session.name || `Migrated_${completed + 1}`;
+              console.log(`Migrating ${session.id} to ${exportName}...`);
+
+              const result = await window.electronAPI.migrateSession(
+                session.id,
+                exportName
+              );
+
+              if (result.success) {
+                completed++;
+                console.log(`✅ Migration completed: ${result.exportName}`);
+              } else {
+                failed++;
+                console.error(`❌ Migration failed: ${result.error}`);
+              }
+            } catch (error) {
+              failed++;
+              console.error(`❌ Migration error for ${session.id}:`, error);
+            }
+          }
+
+          alert(
+            `Bulk migration completed!\n\nSuccessful: ${completed}\nFailed: ${failed}\n\nPage will refresh to show new exports.`
+          );
+          initializePage();
+        } catch (error) {
+          console.error('Bulk migration error:', error);
+          alert(`Bulk migration failed: ${error.message}`);
+        }
+      }
+
+      async function getMigrationStats() {
+        try {
+          const result = await window.electronAPI.getMigrationStats();
+
+          if (result.success) {
+            const stats = result.stats;
+            alert(
+              `Migration Statistics:\n\n` +
+                `Total Sessions: ${stats.totalSessions}\n` +
+                `Migratable Sessions: ${stats.migratableSessions}\n` +
+                `Total Conversations: ${stats.totalConversations.toLocaleString()}\n` +
+                `Total Media Files: ${stats.totalMediaFiles.toLocaleString()}\n` +
+                `Total Data Size: ${(stats.totalSize / 1024 / 1024).toFixed(1)} MB\n\n` +
+                `Use "View Sessions" to see detailed information.`
+            );
+          } else {
+            alert('Failed to get migration statistics.');
+          }
+        } catch (error) {
+          console.error('Error getting migration stats:', error);
+          alert('Error getting migration statistics. Please try again.');
+        }
+      }
+
+      // Export selection function
+      async function selectExport() {
+        if (exports.length === 0) {
+          alert('No exports available');
+          return;
+        }
+
+        if (exports.length === 1) {
+          // Direct navigation if only one export
+          window.location.href = `conversations.html?export=${encodeURIComponent(exports[0].name)}`;
+          return;
+        }
+
+        // Create export selection modal
         const modal = document.createElement('div');
         modal.className = 'session-modal';
 
@@ -950,27 +1119,28 @@
         modalContent.className = 'session-modal-content';
 
         modalContent.innerHTML = `
-        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Manage Sessions</h2>
+        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">Manage Exports</h2>
         <div style="margin-bottom: 1.5rem;">
-          ${sessions
-            .filter(session => session && session.id && session.uploadedAt)
+          ${exports
+            .filter(exportItem => exportItem && exportItem.name && exportItem.createdAt)
             .map(
-              session => `
+              exportItem => `
             <div class="session-item" style="display: flex; justify-content: space-between; align-items: center;">
-              <div onclick="window.location.href='conversations.html?session=${session.id}'" style="flex: 1; cursor: pointer;">
-                <div class="session-item-id">Session ID: ${session.id.substring(0, 8)}...</div>
+              <div onclick="window.location.href='conversations.html?export=${encodeURIComponent(exportItem.name)}'" style="flex: 1; cursor: pointer;">
+                <div class="session-item-id" style="font-family: 'FiraCode Nerd Font', system-ui, sans-serif;">${exportItem.name}</div>
                 <div class="session-item-date">
-                  Uploaded: ${new Date(session.uploadedAt).toLocaleString()}
+                  Created: ${new Date(exportItem.createdAt).toLocaleString()}
                 </div>
+                ${
+                  exportItem.conversationCount
+                    ? `<div style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem;">
+                  ${exportItem.conversationCount} conversations
+                </div>`
+                    : ''
+                }
               </div>
               <div class="session-actions" style="display: flex; gap: 0.5rem; margin-left: 1rem;">
-                <button onclick="createBackup('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Create backup">
-                  💾 Backup
-                </button>
-                <button onclick="viewBackups('${session.id}')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="View backups">
-                  📁 Backups
-                </button>
-                <button onclick="deleteSession('${session.id}')" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Delete session">
+                <button onclick="deleteExport('${exportItem.name}')" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" title="Delete export">
                   🗑️ Delete
                 </button>
               </div>

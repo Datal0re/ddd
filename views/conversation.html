@@ -397,7 +397,7 @@
 
     <script>
       let conversationData = null;
-      let sessionId = '';
+      let exportName = '';
       let conversationId = '';
 
       // Load conversation on page load
@@ -414,11 +414,11 @@
         console.log('electronAPI available:', Object.keys(window.electronAPI));
 
         const urlParams = new URLSearchParams(window.location.search);
-        sessionId = urlParams.get('session');
+        exportName = urlParams.get('export');
         conversationId = urlParams.get('id');
 
-        if (!sessionId || !conversationId) {
-          showError('Missing session or conversation ID');
+        if (!exportName || !conversationId) {
+          showError('Missing export or conversation ID');
           return;
         }
 
@@ -427,7 +427,7 @@
         backLinks.forEach(linkId => {
           const link = document.getElementById(linkId);
           if (link) {
-            link.href = `conversations.html?session=${sessionId}`;
+            link.href = `conversations.html?export=${encodeURIComponent(exportName)}`;
           }
         });
 
@@ -440,7 +440,7 @@
           console.log('Attempting to load conversation...');
 
           const result = await window.electronAPI.getConversation(
-            sessionId,
+            exportName,
             conversationId
           );
           console.log('API call result:', result);
@@ -563,7 +563,7 @@
 
         if (e.key === 'b' && e.ctrlKey) {
           e.preventDefault();
-          window.location.href = `conversations.html?session=${sessionId}`;
+          window.location.href = `conversations.html?export=${encodeURIComponent(exportName)}`;
         }
       });
 

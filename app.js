@@ -1,23 +1,26 @@
 const express = require('express');
 const path = require('path');
 const logger = require('./utils/logger').createLogger({ module: 'api-server' });
-const { SessionManager } = require('./utils/SessionManager.js');
+const { ExportManager } = require('./utils/ExportManager.js');
+const { MigrationManager } = require('./utils/MigrationManager.js');
+const { ExportBackupManager } = require('./utils/ExportBackupManager.js');
 const { getProgressManager } = require('./utils/ProgressManager.js');
 const multer = require('multer');
 
 const app = express();
 const port = process.env.API_PORT || 3001;
 
-// Initialize session manager and progress manager
-const sessionManager = new SessionManager(__dirname);
+// Initialize managers
+const exportManager = new ExportManager(__dirname);
+const migrationManager = new MigrationManager(__dirname);
+const backupManager = new ExportBackupManager();
 const progressManager = getProgressManager();
 
 // Async initialization function
 async function initializeApp() {
-  await sessionManager.initialize();
-
-  // Periodically clean up old sessions
-  setInterval(() => sessionManager.cleanupOldSessions(), 24 * 60 * 60 * 1000); // Daily cleanup
+  await exportManager.initialize();
+  await migrationManager.initialize();
+  await backupManager.initialize();
 
   // Start server
   app.listen(port, () => {
@@ -32,8 +35,8 @@ initializeApp().catch(logger.error);
 app.use(express.json({ limit: '50mb' })); // Support large conversation data
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static media files
-app.use('/media', express.static(path.join(__dirname, 'public', 'media')));
+// Serve static media files from exports directory
+app.use('/media', express.static(path.join(__dirname, 'data', 'exports')));
 
 // Enable CORS for Electron app
 app.use((req, res, next) => {
@@ -55,29 +58,57 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // ===== API ROUTES =====
 
-// Session Management APIs
-app.get('/api/sessions', async (req, res) => {
+// Export Management APIs
+app.get('/api/exports', async (req, res) => {
   try {
-    const sessions = sessionManager.getAllSessions();
-    const sessionArray = Array.from(sessions.entries()).map(([id, info]) => ({
-      id,
-      uploadedAt: info.uploadedAt,
+    const exports = exportManager.getAllExports();
+    const exportArray = Array.from(exports.entries()).map(([name, info]) => ({
+      name,
+      createdAt: info.createdAt,
+      conversationCount: info.conversationCount,
     }));
-    res.json({ success: true, sessions: sessionArray });
+    res.json({ success: true, exports: exportArray });
   } catch (err) {
-    logger.error('Error getting sessions:', err);
+    logger.error('Error getting exports:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/api/sessions/:sessionId/conversations', async (req, res) => {
+app.get('/api/exports/:exportName', async (req, res) => {
   try {
-    const { sessionId } = req.params;
-    if (!sessionManager.hasSession(sessionId)) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+    const { exportName } = req.params;
+    if (!exportManager.hasExport(exportName)) {
+      return res.status(404).json({ success: false, error: 'Export not found' });
     }
 
-    const conversations = await sessionManager.getConversations(sessionId);
+    const exportInfo = await exportManager.getExportStats(exportName);
+    res.json({ success: true, export: exportInfo });
+  } catch (err) {
+    logger.error('Error getting export:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/exports/:exportName', async (req, res) => {
+  try {
+    const { exportName } = req.params;
+    const deleted = await exportManager.deleteExport(exportName);
+    res.json({ success: true, deleted });
+  } catch (err) {
+    logger.error('Error deleting export:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Conversation APIs
+app.get('/api/conversations/:exportName', async (req, res) => {
+  try {
+    const { exportName } = req.params;
+    if (!exportManager.hasExport(exportName)) {
+      return res.status(404).json({ success: false, error: 'Export not found' });
+    }
+
+    const conversations = await exportManager.getConversations(exportName);
     res.json({ success: true, conversations });
   } catch (err) {
     logger.error('Error getting conversations:', err);
@@ -85,15 +116,15 @@ app.get('/api/sessions/:sessionId/conversations', async (req, res) => {
   }
 });
 
-app.get('/api/sessions/:sessionId/conversations/:conversationId', async (req, res) => {
+app.get('/api/conversations/:exportName/:conversationId', async (req, res) => {
   try {
-    const { sessionId, conversationId } = req.params;
-    if (!sessionManager.hasSession(sessionId)) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+    const { exportName, conversationId } = req.params;
+    if (!exportManager.hasExport(exportName)) {
+      return res.status(404).json({ success: false, error: 'Export not found' });
     }
 
-    const conversation = await sessionManager.getConversation(
-      sessionId,
+    const conversation = await exportManager.getConversation(
+      exportName,
       conversationId
     );
     res.json({ success: true, ...conversation });
@@ -103,81 +134,26 @@ app.get('/api/sessions/:sessionId/conversations/:conversationId', async (req, re
   }
 });
 
-app.delete('/api/sessions/:sessionId', async (req, res) => {
+// Media file serving
+app.get('/api/media/:exportName/*', async (req, res) => {
   try {
-    const { sessionId } = req.params;
-    const deleted = await sessionManager.deleteSession(sessionId);
-    res.json({ success: true, deleted });
-  } catch (err) {
-    logger.error('Error deleting session:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+    const { exportName } = req.params;
+    const mediaPath = req.params[0];
 
-app.post('/api/sessions/cleanup', async (req, res) => {
-  try {
-    const deletedCount = await sessionManager.cleanupOldSessions();
-    res.json({ success: true, deletedCount });
-  } catch (err) {
-    logger.error('Error cleaning up sessions:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Backup Management APIs
-app.post('/api/sessions/:sessionId/backup', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Validate session exists before processing
-    if (!sessionManager.hasSession(sessionId)) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+    if (!exportManager.hasExport(exportName)) {
+      return res.status(404).json({ success: false, error: 'Export not found' });
     }
 
-    const backupPath = await sessionManager.createBackup(sessionId);
-    res.json({ success: true, data: { backupPath } });
-  } catch (err) {
-    logger.error('Error creating backup:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+    const filePath = exportManager.getMediaPath(exportName, mediaPath);
+    const exists = await exportManager.mediaExists(exportName, mediaPath);
 
-app.get('/api/sessions/:sessionId/backups', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Validate session exists before processing
-    if (!sessionManager.hasSession(sessionId)) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Media file not found' });
     }
 
-    const backups = await sessionManager.listBackups(sessionId);
-    res.json({ success: true, data: { backups } });
+    res.sendFile(filePath);
   } catch (err) {
-    logger.error('Error listing backups:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/sessions/:sessionId/restore', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-    const { backupFile } = req.body;
-
-    // Validate session exists before processing
-    if (!sessionManager.hasSession(sessionId)) {
-      return res.status(404).json({ success: false, error: 'Session not found' });
-    }
-
-    // Validate backupFile parameter
-    if (!backupFile || typeof backupFile !== 'string') {
-      return res.status(400).json({ success: false, error: 'Backup file is required' });
-    }
-
-    const success = await sessionManager.restoreBackup(sessionId, backupFile);
-    res.json({ success: true, data: { restored: success } });
-  } catch (err) {
-    logger.error('Error restoring backup:', err);
+    logger.error('Error serving media file:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -201,17 +177,21 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
+    // Get export name from request body or use filename
+    const exportName = req.body.exportName || req.file.originalname.replace('.zip', '');
+
     // Generate upload ID and create progress entry
     uploadId = progressManager.generateUploadId();
     progressManager.createProgress(uploadId);
 
     logger.info(
-      'Calling sessionManager.createSession with buffer size:',
+      'Calling exportManager.createExport with buffer size:',
       req.file.buffer.length
     );
 
-    const sessionId = await sessionManager.createSession(
+    const createdExportName = await exportManager.createExport(
       req.file.buffer,
+      exportName,
       true, // true = buffer
       progressUpdate => {
         // Update progress manager with backend progress
@@ -228,10 +208,10 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
     );
 
     // Mark progress as completed
-    progressManager.completeProgress(uploadId, sessionId);
-    logger.info('Session created successfully:', sessionId);
+    progressManager.completeProgress(uploadId, createdExportName);
+    logger.info('Export created successfully:', createdExportName);
 
-    res.json({ success: true, sessionId, uploadId });
+    res.json({ success: true, exportName: createdExportName, uploadId });
   } catch (err) {
     logger.error('Upload error:', {
       message: err.message,
@@ -304,11 +284,11 @@ app.get('/api/upload-progress/:uploadId', (req, res) => {
 
 app.post('/api/ai/analyze-conversation', async (req, res) => {
   try {
-    const { sessionId, conversationId, analysisType } = req.body;
+    const { exportName, conversationId, analysisType } = req.body;
 
     // Placeholder: Simulate AI analysis
     logger.debug(
-      `AI Analysis requested for conversation ${conversationId} in session ${sessionId}`
+      `AI Analysis requested for conversation ${conversationId} in export ${exportName}`
     );
     logger.info(`Analysis type: ${analysisType}`);
 
@@ -341,10 +321,10 @@ app.post('/api/ai/analyze-conversation', async (req, res) => {
 
 app.post('/api/ai/search-conversations', async (req, res) => {
   try {
-    const { sessionId, query, searchType } = req.body;
+    const { exportName, query, searchType } = req.body;
 
     // Placeholder: Simulate AI-powered semantic search
-    logger.info(`AI Search requested in session ${sessionId}`);
+    logger.info(`AI Search requested in export ${exportName}`);
     logger.info(`Query: ${query}, Search type: ${searchType}`);
 
     // Simulate processing delay
@@ -376,12 +356,12 @@ app.post('/api/ai/search-conversations', async (req, res) => {
   }
 });
 
-app.post('/api/ai/summarize-session', async (req, res) => {
+app.post('/api/ai/summarize-export', async (req, res) => {
   try {
-    const { sessionId, summaryType } = req.body;
+    const { exportName, summaryType } = req.body;
 
-    // Placeholder: Simulate AI session summarization
-    logger.info(`AI Summary requested for session ${sessionId}`);
+    // Placeholder: Simulate AI export summarization
+    logger.info(`AI Summary requested for export ${exportName}`);
     logger.info(`Summary type: ${summaryType}`);
 
     // Simulate processing delay
@@ -391,14 +371,14 @@ app.post('/api/ai/summarize-session', async (req, res) => {
       totalConversations: 42,
       mainTopics: ['programming', 'web development', 'problem solving'],
       overview:
-        'This session contains primarily technical discussions about programming concepts, web development, and problem-solving approaches.',
+        'This export contains primarily technical discussions about programming concepts, web development, and problem-solving approaches.',
       keyInsights: [
         'Focus on modern JavaScript frameworks',
         'Regular discussion of best practices',
         'Collaborative problem-solving approaches',
       ],
       timeline: 'Conversations span from January to March 2024',
-      message: 'Session summary completed (placeholder implementation)',
+      message: 'Export summary completed (placeholder implementation)',
     };
 
     res.json({
@@ -412,17 +392,224 @@ app.post('/api/ai/summarize-session', async (req, res) => {
   }
 });
 
+// ===== MIGRATION ENDPOINTS =====
+
+// Get migratable sessions
+app.get('/api/migration/sessions', async (req, res) => {
+  try {
+    const sessions = await migrationManager.getMigratableSessions();
+    const hasMigratable = await migrationManager.hasMigratableSessions();
+
+    res.json({
+      success: true,
+      sessions,
+      hasMigratable,
+      count: sessions.length,
+    });
+  } catch (err) {
+    logger.error('Error getting migratable sessions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get migration statistics
+app.get('/api/migration/stats', async (req, res) => {
+  try {
+    const stats = await migrationManager.getMigrationStats();
+    const hasMigratable = await migrationManager.hasMigratableSessions();
+
+    res.json({
+      success: true,
+      stats: { ...stats, hasMigratable },
+    });
+  } catch (err) {
+    logger.error('Error getting migration stats:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Migrate a single session
+app.post('/api/migration/session', async (req, res) => {
+  try {
+    const { sessionId, exportName } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ success: false, error: 'sessionId is required' });
+    }
+
+    if (!exportName) {
+      return res.status(400).json({ success: false, error: 'exportName is required' });
+    }
+
+    // Progress tracking
+    const progressCallbacks = new Map();
+    const migrationId = sessionId + '_' + Date.now();
+
+    const onProgress = progress => {
+      progressCallbacks.set(migrationId, progress);
+    };
+
+    // Start migration in background
+    migrateSession(sessionId, exportName, onProgress)
+      .then(result => {
+        progressCallbacks.set(migrationId, { ...result, status: 'completed' });
+      })
+      .catch(error => {
+        progressCallbacks.set(migrationId, {
+          status: 'error',
+          error: error.message,
+        });
+      });
+
+    res.json({
+      success: true,
+      migrationId,
+      message: 'Migration started',
+    });
+  } catch (err) {
+    logger.error('Error starting migration:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get migration progress
+app.get('/api/migration/progress/:migrationId', (req, res) => {
+  try {
+    const { migrationId } = req.params;
+    // This is a simplified progress tracking
+    // In a real implementation, you'd want a more robust progress tracking system
+    res.json({
+      success: true,
+      migrationId,
+      status: 'processing',
+      message: 'Migration in progress',
+    });
+  } catch (err) {
+    logger.error('Error getting migration progress:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.5',
+    version: '2.0.0', // Updated version for Phase 2
   });
+});
+
+// =============================================
+// BACKUP API ENDPOINTS
+// =============================================
+
+// List backups for an export
+app.get('/api/exports/:exportName/backups', async (req, res) => {
+  try {
+    const { exportName } = req.params;
+    const backups = await backupManager.listBackups(exportName);
+    res.json({ success: true, data: backups });
+  } catch (error) {
+    logger.error('Failed to list backups', {
+      exportName: req.params.exportName,
+      error: error.message,
+    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create backup for an export
+app.post('/api/exports/:exportName/backups', async (req, res) => {
+  try {
+    const { exportName } = req.params;
+    const { incremental = false, cloudSync = false } = req.body;
+
+    const backupInfo = await backupManager.createBackup(exportName, {
+      incremental,
+      cloudSync,
+    });
+
+    res.json({ success: true, data: backupInfo });
+  } catch (error) {
+    logger.error('Failed to create backup', {
+      exportName: req.params.exportName,
+      error: error.message,
+    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Restore backup for an export
+app.post('/api/exports/:exportName/backups/:backupId/restore', async (req, res) => {
+  try {
+    const { exportName, backupId } = req.params;
+
+    const result = await backupManager.restoreBackup(exportName, backupId);
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    logger.error('Failed to restore backup', {
+      exportName: req.params.exportName,
+      backupId: req.params.backupId,
+      error: error.message,
+    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete backup
+app.delete('/api/exports/:exportName/backups/:backupId', async (req, res) => {
+  try {
+    const { exportName, backupId } = req.params;
+
+    await backupManager.deleteBackup(exportName, backupId);
+
+    res.json({ success: true, message: 'Backup deleted successfully' });
+  } catch (error) {
+    logger.error('Failed to delete backup', {
+      exportName: req.params.exportName,
+      backupId: req.params.backupId,
+      error: error.message,
+    });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get backup statistics
+app.get('/api/backups/stats', async (req, res) => {
+  try {
+    const stats = await backupManager.getBackupStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    logger.error('Failed to get backup stats', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Cleanup old backups for an export
+app.post('/api/exports/:exportName/backups/cleanup', async (req, res) => {
+  try {
+    const { exportName } = req.params;
+
+    await backupManager.cleanupOldBackups(exportName);
+
+    res.json({ success: true, message: 'Backup cleanup completed' });
+  } catch (error) {
+    logger.error('Failed to cleanup backups', {
+      exportName: req.params.exportName,
+      error: error.message,
+    });
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // 404 handler for API routes
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, error: 'API endpoint not found' });
 });
+
+// Helper function to migrate session (extracted for async use)
+async function migrateSession(sessionId, exportName, onProgress) {
+  return await migrationManager.migrateSession(sessionId, exportName, onProgress);
+}
