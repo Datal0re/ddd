@@ -20,8 +20,6 @@
     "migrate": "node data/migration.js data/conversations.json",
     "extract-assets": "node data/extract-assets-json.js",
     "migrate-sessions": "node scripts/migrate-sessions-to-exports.js",
-    "manage-backups": "node scripts/manage-export-backups.js",
-    "backup-stats": "node scripts/manage-export-backups.js stats",
     "dev-full": "API_PORT=3001 npm run web & API_PORT=3001 electron .",
     "build": "electron-builder",
     "build-mac": "electron-builder --mac",

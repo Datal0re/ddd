@@ -3,14 +3,14 @@ const path = require('path');
 const axios = require('axios');
 const fs = require('fs').promises;
 const { createLogger } = require('./utils/logger');
-const { MigrationManager } = require('./utils/MigrationManager');
+// const { MigrationManager } = require('./utils/MigrationManager');
 const { getProgressManager } = require('./utils/ProgressManager');
 const logger = createLogger({ module: path.basename(__filename, '.js') });
 
 let mainWindow;
 const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3001}/api`;
 const progressManager = getProgressManager();
-const migrationManager = new MigrationManager(__dirname);
+// const migrationManager = new MigrationManager(__dirname);
 
 logger.info('Electron: API_BASE_URL =', API_BASE_URL);
 logger.info('Electron: process.env.API_PORT =', process.env.API_PORT);
@@ -40,7 +40,7 @@ app.whenReady().then(async () => {
   logger.info('Electron app ready, waiting for API server...');
 
   // Initialize migration manager
-  await migrationManager.initialize();
+  // await migrationManager.initialize();
 
   // Wait for API server with retry mechanism
   const apiReady = await waitForApiServer();
@@ -480,184 +480,6 @@ ipcMain.handle('ai-summarize-export', async (_, exportName, summaryType) => {
     return response;
   } catch (err) {
     return { success: false, error: err.message || 'AI summarization failed.' };
-  }
-});
-
-// ===== MIGRATION IPC HANDLERS =====
-
-// IPC handler for getting migratable sessions
-ipcMain.handle('get-migratable-sessions', async () => {
-  try {
-    logger.debug('IPC: get-migratable-sessions called');
-    const sessions = await migrationManager.getMigratableSessions();
-    const hasMigratable = await migrationManager.hasMigratableSessions();
-
-    return {
-      success: true,
-      sessions,
-      hasMigratable,
-      count: sessions.length,
-    };
-  } catch (err) {
-    logger.error('IPC: get-migratable-sessions error:', err);
-    return {
-      success: false,
-      error: err.message || 'Error getting migratable sessions.',
-    };
-  }
-});
-
-// IPC handler for getting migration statistics
-ipcMain.handle('get-migration-stats', async () => {
-  try {
-    logger.debug('IPC: get-migration-stats called');
-    const stats = await migrationManager.getMigrationStats();
-    const hasMigratable = await migrationManager.hasMigratableSessions();
-
-    return {
-      success: true,
-      stats: { ...stats, hasMigratable },
-    };
-  } catch (err) {
-    logger.error('IPC: get-migration-stats error:', err);
-    return { success: false, error: err.message || 'Error getting migration stats.' };
-  }
-});
-
-// IPC handler for migrating a session
-ipcMain.handle('migrate-session', async (_, sessionId, exportName) => {
-  try {
-    logger.debug(`IPC: migrate-session called for ${sessionId} to ${exportName}`);
-
-    let migrationResult = null;
-    const onProgress = progress => {
-      // Send progress to renderer
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('migration-progress', {
-          sessionId,
-          exportName,
-          ...progress,
-        });
-      }
-    };
-
-    // Start migration
-    migrationResult = await migrationManager.migrateSession(
-      sessionId,
-      exportName,
-      onProgress
-    );
-
-    logger.info(`Migration completed for session ${sessionId}`);
-    return migrationResult;
-  } catch (err) {
-    logger.error('IPC: migrate-session error:', err);
-    return { success: false, error: err.message || 'Migration failed.' };
-  }
-});
-
-// =============================================
-// BACKUP IPC HANDLERS
-// =============================================
-
-// IPC handler for getting backups for an export
-ipcMain.handle('get-backups', async (_, exportName) => {
-  try {
-    logger.debug(`IPC: get-backups called for ${exportName}`);
-    const response = await axios.get(
-      `${API_BASE_URL}/exports/${encodeURIComponent(exportName)}/backups`
-    );
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: get-backups error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error getting backups.',
-    };
-  }
-});
-
-// IPC handler for creating a backup
-ipcMain.handle('create-backup', async (_, exportName, options = {}) => {
-  try {
-    logger.debug(`IPC: create-backup called for ${exportName}`, options);
-    const response = await axios.post(
-      `${API_BASE_URL}/exports/${encodeURIComponent(exportName)}/backups`,
-      options
-    );
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: create-backup error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error creating backup.',
-    };
-  }
-});
-
-// IPC handler for restoring a backup
-ipcMain.handle('restore-backup', async (_, exportName, backupId) => {
-  try {
-    logger.debug(`IPC: restore-backup called for ${exportName}, backup ${backupId}`);
-    const response = await axios.post(
-      `${API_BASE_URL}/exports/${encodeURIComponent(exportName)}/backups/${backupId}/restore`
-    );
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: restore-backup error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error restoring backup.',
-    };
-  }
-});
-
-// IPC handler for deleting a backup
-ipcMain.handle('delete-backup', async (_, exportName, backupId) => {
-  try {
-    logger.debug(`IPC: delete-backup called for ${exportName}, backup ${backupId}`);
-    const response = await axios.delete(
-      `${API_BASE_URL}/exports/${encodeURIComponent(exportName)}/backups/${backupId}`
-    );
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: delete-backup error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error deleting backup.',
-    };
-  }
-});
-
-// IPC handler for getting backup statistics
-ipcMain.handle('get-backup-stats', async () => {
-  try {
-    logger.debug('IPC: get-backup-stats called');
-    const response = await axios.get(`${API_BASE_URL}/backups/stats`);
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: get-backup-stats error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error getting backup stats.',
-    };
-  }
-});
-
-// IPC handler for cleaning up old backups
-ipcMain.handle('cleanup-backups', async (_, exportName) => {
-  try {
-    logger.debug(`IPC: cleanup-backups called for ${exportName}`);
-    const response = await axios.post(
-      `${API_BASE_URL}/exports/${encodeURIComponent(exportName)}/backups/cleanup`
-    );
-    return response.data;
-  } catch (err) {
-    logger.error('IPC: cleanup-backups error:', err);
-    return {
-      success: false,
-      error: err.response?.data?.error || err.message || 'Error cleaning up backups.',
-    };
   }
 });
 

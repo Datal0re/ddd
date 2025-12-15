@@ -15,7 +15,7 @@ A desktop application for exploring and visualizing your ChatGPT conversation da
 - **📱 Beautiful Interface**: Modern dark mode with smooth animations and responsive design
 - **⚡ Fast Performance**: Optimized for handling large conversation datasets
 - **🎨 Rich Display**: Markdown rendering, code highlighting, and media embedding
-- **💾 Backup & Restore**: Automatic session backups with easy restoration
+
 - **⌨️ Keyboard Friendly**: Full keyboard navigation and shortcuts
 - **📊 Progress Tracking**: Real-time upload progress with detailed status updates
 
@@ -119,7 +119,7 @@ ddd/
 ├── public/                    # Static assets (styles, fonts, scripts)
 ├── data/                      # Data storage and sessions
 ├── scripts/                   # Maintenance and utility scripts
-├── backups/                   # Session backups
+
 ├── docs/                      # Documentation
 ├── LICENSE                    # MIT License
 └── AGENTS.md                  # Development guidelines

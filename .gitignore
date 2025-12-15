@@ -66,6 +66,7 @@ cookies*.txt
 
 # Project-specific data (generated/user content)
 sessions/
+exports/
 backups/
 public/media/
 data/sessions.json

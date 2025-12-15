@@ -27,25 +27,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiSummarizeExport: (exportName, summaryType) =>
     ipcRenderer.invoke('ai-summarize-export', exportName, summaryType),
 
-  // Migration management methods
-  getMigratableSessions: () => ipcRenderer.invoke('get-migratable-sessions'),
-  getMigrationStats: () => ipcRenderer.invoke('get-migration-stats'),
-  migrateSession: (sessionId, exportName) =>
-    ipcRenderer.invoke('migrate-session', sessionId, exportName),
-  getMigrationProgress: migrationId =>
-    ipcRenderer.invoke('get-migration-progress', migrationId),
-
-  // Backup management methods
-  getBackups: exportName => ipcRenderer.invoke('get-backups', exportName),
-  createBackup: (exportName, options = {}) =>
-    ipcRenderer.invoke('create-backup', exportName, options),
-  restoreBackup: (exportName, backupId) =>
-    ipcRenderer.invoke('restore-backup', exportName, backupId),
-  deleteBackup: (exportName, backupId) =>
-    ipcRenderer.invoke('delete-backup', exportName, backupId),
-  getBackupStats: () => ipcRenderer.invoke('get-backup-stats'),
-  cleanupBackups: exportName => ipcRenderer.invoke('cleanup-backups', exportName),
-
   // Progress management methods
   onUploadProgress: callback => {
     ipcRenderer.on('upload-progress', (_, progress) => {

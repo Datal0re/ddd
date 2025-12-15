@@ -267,33 +267,33 @@ async function processDirectory(inputDir, outputDir, options = {}) {
 /**
  * Legacy function for session-based processing (backward compatibility)
  */
-async function extractAssetsJson(sessionId, baseDir) {
-  logger.warn(
-    'Using legacy session-based function. Consider using direct file processing.'
-  );
+// async function extractAssetsJson(sessionId, baseDir) {
+//   logger.warn(
+//     'Using legacy session-based function. Consider using direct file processing.'
+//   );
 
-  const chatHtmlPath = path.join(
-    baseDir,
-    'data',
-    'sessions',
-    sessionId,
-    'Test-Chat-Combine',
-    'chat.html'
-  );
+//   const chatHtmlPath = path.join(
+//     baseDir,
+//     'data',
+//     'sessions',
+//     sessionId,
+//     'Test-Chat-Combine',
+//     'chat.html'
+//   );
 
-  const assetsJsonPath = path.join(
-    baseDir,
-    'data',
-    'sessions',
-    sessionId,
-    'assets.json'
-  );
+//   const assetsJsonPath = path.join(
+//     baseDir,
+//     'data',
+//     'sessions',
+//     sessionId,
+//     'assets.json'
+//   );
 
-  const result = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
-    overwrite: true,
-  });
-  return result.success;
-}
+//   const result = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
+//     overwrite: true,
+//   });
+//   return result.success;
+// }
 
 /**
  * Main function for CLI usage
@@ -388,6 +388,6 @@ module.exports = {
   extractAssetsFromHtml,
   processDirectory,
   findHtmlFiles,
-  extractAssetsJson, // Legacy function
+  // extractAssetsJson, // Legacy function
   parseArguments,
 };

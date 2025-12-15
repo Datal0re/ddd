@@ -2,8 +2,8 @@ const express = require('express');
 const path = require('path');
 const logger = require('./utils/logger').createLogger({ module: 'api-server' });
 const { ExportManager } = require('./utils/ExportManager.js');
-const { MigrationManager } = require('./utils/MigrationManager.js');
-const { ExportBackupManager } = require('./utils/ExportBackupManager.js');
+// const { MigrationManager } = require('./utils/MigrationManager.js');
+
 const { getProgressManager } = require('./utils/ProgressManager.js');
 const multer = require('multer');
 
@@ -12,19 +12,19 @@ const port = process.env.API_PORT || 3001;
 
 // Initialize managers
 const exportManager = new ExportManager(__dirname);
-const migrationManager = new MigrationManager(__dirname);
-const backupManager = new ExportBackupManager();
+// const migrationManager = new MigrationManager(__dirname);
+
 const progressManager = getProgressManager();
 
 // Async initialization function
 async function initializeApp() {
   await exportManager.initialize();
-  await migrationManager.initialize();
-  await backupManager.initialize();
+  // await migrationManager.initialize();
 
   // Start server
   app.listen(port, () => {
-    logger.info('Data Dumpster Diver API server listening on port ${port}');
+    console.log(`Data Dumpster Diver API server listening on port ${port}`);
+    logger.info(`Data Dumpster Diver API server listening on port ${port}`);
   });
 }
 
@@ -134,29 +134,29 @@ app.get('/api/conversations/:exportName/:conversationId', async (req, res) => {
   }
 });
 
-// Media file serving
-app.get('/api/media/:exportName/*', async (req, res) => {
-  try {
-    const { exportName } = req.params;
-    const mediaPath = req.params[0];
-
-    if (!exportManager.hasExport(exportName)) {
-      return res.status(404).json({ success: false, error: 'Export not found' });
-    }
-
-    const filePath = exportManager.getMediaPath(exportName, mediaPath);
-    const exists = await exportManager.mediaExists(exportName, mediaPath);
-
-    if (!exists) {
-      return res.status(404).json({ success: false, error: 'Media file not found' });
-    }
-
-    res.sendFile(filePath);
-  } catch (err) {
-    logger.error('Error serving media file:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// Media file serving - TODO: Fix wildcard route issue
+// app.get('/api/media/:exportName/*', async (req, res) => {
+//   try {
+//     const { exportName } = req.params;
+//     const mediaPath = req.path.replace(`/api/media/${exportName}/`, '');
+//
+//     if (!exportManager.hasExport(exportName)) {
+//       return res.status(404).json({ success: false, error: 'Export not found' });
+//     }
+//
+//     const filePath = exportManager.getMediaPath(exportName, mediaPath);
+//     const exists = await exportManager.mediaExists(exportName, mediaPath);
+//
+//     if (!exists) {
+//       return res.status(404).json({ success: false, error: 'Media file not found' });
+//     }
+//
+//     res.sendFile(filePath);
+//   } catch (err) {
+//     logger.error('Error serving media file:', err);
+//     res.status(500).json({ success: false, error: err.message });
+//   }
+// });
 
 // File Upload API
 app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
@@ -213,7 +213,7 @@ app.post('/api/upload', upload.single('chatgpt-export'), async (req, res) => {
 
     res.json({ success: true, exportName: createdExportName, uploadId });
   } catch (err) {
-    logger.error('Upload error:', {
+    logger.error('Upload error: ', {
       message: err.message,
       stack: err.stack,
       code: err.code,
@@ -392,224 +392,19 @@ app.post('/api/ai/summarize-export', async (req, res) => {
   }
 });
 
-// ===== MIGRATION ENDPOINTS =====
-
-// Get migratable sessions
-app.get('/api/migration/sessions', async (req, res) => {
-  try {
-    const sessions = await migrationManager.getMigratableSessions();
-    const hasMigratable = await migrationManager.hasMigratableSessions();
-
-    res.json({
-      success: true,
-      sessions,
-      hasMigratable,
-      count: sessions.length,
-    });
-  } catch (err) {
-    logger.error('Error getting migratable sessions:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Get migration statistics
-app.get('/api/migration/stats', async (req, res) => {
-  try {
-    const stats = await migrationManager.getMigrationStats();
-    const hasMigratable = await migrationManager.hasMigratableSessions();
-
-    res.json({
-      success: true,
-      stats: { ...stats, hasMigratable },
-    });
-  } catch (err) {
-    logger.error('Error getting migration stats:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Migrate a single session
-app.post('/api/migration/session', async (req, res) => {
-  try {
-    const { sessionId, exportName } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ success: false, error: 'sessionId is required' });
-    }
-
-    if (!exportName) {
-      return res.status(400).json({ success: false, error: 'exportName is required' });
-    }
-
-    // Progress tracking
-    const progressCallbacks = new Map();
-    const migrationId = sessionId + '_' + Date.now();
-
-    const onProgress = progress => {
-      progressCallbacks.set(migrationId, progress);
-    };
-
-    // Start migration in background
-    migrateSession(sessionId, exportName, onProgress)
-      .then(result => {
-        progressCallbacks.set(migrationId, { ...result, status: 'completed' });
-      })
-      .catch(error => {
-        progressCallbacks.set(migrationId, {
-          status: 'error',
-          error: error.message,
-        });
-      });
-
-    res.json({
-      success: true,
-      migrationId,
-      message: 'Migration started',
-    });
-  } catch (err) {
-    logger.error('Error starting migration:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Get migration progress
-app.get('/api/migration/progress/:migrationId', (req, res) => {
-  try {
-    const { migrationId } = req.params;
-    // This is a simplified progress tracking
-    // In a real implementation, you'd want a more robust progress tracking system
-    res.json({
-      success: true,
-      migrationId,
-      status: 'processing',
-      message: 'Migration in progress',
-    });
-  } catch (err) {
-    logger.error('Error getting migration progress:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '2.0.0', // Updated version for Phase 2
+    version: '1.0.11-alpha', // Updated version for current release
   });
 });
 
 // =============================================
-// BACKUP API ENDPOINTS
-// =============================================
-
-// List backups for an export
-app.get('/api/exports/:exportName/backups', async (req, res) => {
-  try {
-    const { exportName } = req.params;
-    const backups = await backupManager.listBackups(exportName);
-    res.json({ success: true, data: backups });
-  } catch (error) {
-    logger.error('Failed to list backups', {
-      exportName: req.params.exportName,
-      error: error.message,
-    });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Create backup for an export
-app.post('/api/exports/:exportName/backups', async (req, res) => {
-  try {
-    const { exportName } = req.params;
-    const { incremental = false, cloudSync = false } = req.body;
-
-    const backupInfo = await backupManager.createBackup(exportName, {
-      incremental,
-      cloudSync,
-    });
-
-    res.json({ success: true, data: backupInfo });
-  } catch (error) {
-    logger.error('Failed to create backup', {
-      exportName: req.params.exportName,
-      error: error.message,
-    });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Restore backup for an export
-app.post('/api/exports/:exportName/backups/:backupId/restore', async (req, res) => {
-  try {
-    const { exportName, backupId } = req.params;
-
-    const result = await backupManager.restoreBackup(exportName, backupId);
-
-    res.json({ success: true, data: result });
-  } catch (error) {
-    logger.error('Failed to restore backup', {
-      exportName: req.params.exportName,
-      backupId: req.params.backupId,
-      error: error.message,
-    });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Delete backup
-app.delete('/api/exports/:exportName/backups/:backupId', async (req, res) => {
-  try {
-    const { exportName, backupId } = req.params;
-
-    await backupManager.deleteBackup(exportName, backupId);
-
-    res.json({ success: true, message: 'Backup deleted successfully' });
-  } catch (error) {
-    logger.error('Failed to delete backup', {
-      exportName: req.params.exportName,
-      backupId: req.params.backupId,
-      error: error.message,
-    });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get backup statistics
-app.get('/api/backups/stats', async (req, res) => {
-  try {
-    const stats = await backupManager.getBackupStats();
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    logger.error('Failed to get backup stats', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Cleanup old backups for an export
-app.post('/api/exports/:exportName/backups/cleanup', async (req, res) => {
-  try {
-    const { exportName } = req.params;
-
-    await backupManager.cleanupOldBackups(exportName);
-
-    res.json({ success: true, message: 'Backup cleanup completed' });
-  } catch (error) {
-    logger.error('Failed to cleanup backups', {
-      exportName: req.params.exportName,
-      error: error.message,
-    });
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // 404 handler for API routes
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, error: 'API endpoint not found' });
 });
-
-// Helper function to migrate session (extracted for async use)
-async function migrateSession(sessionId, exportName, onProgress) {
-  return await migrationManager.migrateSession(sessionId, exportName, onProgress);
-}
