@@ -39,7 +39,7 @@ module.exports = [
     rules: {
       'linebreak-style': ['error', 'unix'],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-console': 'warn',
+      // 'no-console': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
     },

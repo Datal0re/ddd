@@ -145,11 +145,43 @@ class ExportManager {
   }
 
   /**
+   * List all exports
+   * @returns {Promise<Array>} Array of export objects
+   */
+  async listExports() {
+    const exports = [];
+
+    for (const [name, data] of this.exports.entries()) {
+      try {
+        const stats = await fs.stat(path.join(this.exportsDir, name));
+        exports.push({
+          name,
+          createdAt: new Date(data.createdAt).toISOString(),
+          size: data.size || 'unknown',
+          conversationCount: await this.getConversationCount(name),
+        });
+      } catch (error) {
+        // Skip exports that don't exist on disk
+        exports.push({
+          name,
+          createdAt: new Date(data.createdAt).toISOString(),
+          size: 'unknown',
+          conversationCount: 'unknown',
+          status: 'missing',
+        });
+      }
+    }
+
+    return exports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  /**
    * Get conversations for an export
    * @param {string} exportName - Export name
+   * @param {number} limit - Maximum number of conversations to return (optional)
    * @returns {Promise<Array>} Array of conversation objects
    */
-  async getConversations(exportName) {
+  async getConversations(exportName, limit = null) {
     if (!this.exports.has(exportName)) {
       throw new Error('Export not found');
     }
@@ -175,6 +207,11 @@ class ExportManager {
 
       // Sort by date (newest first)
       conversations.sort((a, b) => b.id.localeCompare(a.id));
+
+      // Apply limit if specified
+      if (limit && limit > 0) {
+        return conversations.slice(0, limit);
+      }
 
       return conversations;
     } catch (error) {

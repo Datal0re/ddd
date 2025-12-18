@@ -1,114 +1,39 @@
 {
   "name": "data-dumpster-diver",
-  "version": "1.0.11-alpha",
-  "description": "A desktop app to explore and visualize exported ChatGPT conversation data.",
+  "version": "2.0.0-alpha",
+  "description": "A CLI tool to process and explore exported ChatGPT conversation data.",
   "license": "MIT",
   "author": "Ethan Thomason",
-  "main": "main.js",
+  "main": "cli.js",
   "type": "commonjs",
+  "bin": {
+    "ddd": "./cli.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "test-run": "echo \"Error: no test specified\" && exit 1",
-    "lint-and-fix": "npm run lint:fix && npm run format",
-    "start": "electron .",
-    "dev": "electron .",
-    "web": "API_PORT=3001 node app.js",
+    "start": "node cli.js",
+    "dev": "nodemon cli.js",
     "lint": "eslint . --ext .js,.mjs",
     "lint:fix": "eslint . --ext .js,.mjs --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "migrate": "node data/migration.js data/conversations.json",
     "extract-assets": "node data/extract-assets-json.js",
-    "migrate-sessions": "node scripts/migrate-sessions-to-exports.js",
-    "dev-full": "API_PORT=3001 npm run web & API_PORT=3001 electron .",
-    "build": "electron-builder",
-    "build-mac": "electron-builder --mac",
-    "build-win": "electron-builder --win",
-    "build-linux": "electron-builder --linux",
-    "build-all": "npm run build-mac && npm run build-win && npm run build-linux",
-    "alpha-release": "node scripts/create-alpha-release.js",
-    "update-changelog": "node scripts/update-changelog.js",
-    "update-alpha-summary": "node scripts/update-alpha-summary.js",
-    "generate-release-notes": "node scripts/generate-release-notes.js",
-    "ci": "npm run lint && npm run format:check && npm run build",
-    "ci-full": "npm run lint && npm run format:check && npm run build-all",
-    "release:alpha": "node scripts/create-alpha-release.js --commit --tag",
-    "release:stable": "npm run ci-full && npm version patch && npm run build-all",
-    "dist": "npm run build"
+    "migrate-sessions": "node scripts/migrate-sessions-to-exports.js"
   },
   "dependencies": {
-    "axios": "^1.6.0",
+    "commander": "^12.0.0",
     "decompress": "^4.2.1",
-    "electron-log": "^5.4.3",
-    "eventsource": "^4.1.0",
-    "express": "^5.1.0",
-    "fs": "^0.0.1-security",
     "marked": "^17.0.0",
-    "multer": "^2.0.2",
-    "path": "^0.12.7",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.3",
     "sanitize-html": "^2.17.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "chalk": "^4.1.2"
   },
   "devDependencies": {
-    "electron": "^35.7.5",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
-    "prettier": "^3.7.4"
-  },
-  "build": {
-    "appId": "com.ethanthomason.data-dumpster-diver",
-    "productName": "Data Dumpster Diver",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "app.js",
-      "renderer.js",
-      "package.json",
-      "utils/**/*",
-      "views/**/*",
-      "public/**/*",
-      "data/**/*",
-      "scripts/**/*",
-      "enhanced-design.css",
-      "LICENSE",
-      "node_modules/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    }
+    "prettier": "^3.7.4",
+    "nodemon": "^3.1.0"
   }
 }
