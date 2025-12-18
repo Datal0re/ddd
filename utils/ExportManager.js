@@ -5,7 +5,8 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('../utils/logger').createLogger({ module: 'ExportManager' });
+const { createLogger } = require('./logger');
+const logger = createLogger({ context: 'ExportManager' });
 const { ensureDir, removeDirectories } = require('./fileUtils.js');
 const { processExport } = require('../data/process-export.js');
 
@@ -153,7 +154,7 @@ class ExportManager {
 
     for (const [name, data] of this.exports.entries()) {
       try {
-        const stats = await fs.stat(path.join(this.exportsDir, name));
+        await fs.stat(path.join(this.exportsDir, name));
         exports.push({
           name,
           createdAt: new Date(data.createdAt).toISOString(),

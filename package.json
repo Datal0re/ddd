@@ -17,8 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "migrate": "node data/migration.js data/conversations.json",
-    "extract-assets": "node data/extract-assets-json.js",
-    "migrate-sessions": "node scripts/migrate-sessions-to-exports.js"
+    "extract-assets": "node data/extract-assets-json.js"
   },
   "dependencies": {
     "commander": "^12.0.0",
