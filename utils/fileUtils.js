@@ -1,8 +1,7 @@
 /*
- * Common file utilities for export management
- * Eliminates code duplication between main.js and app.js
- * Enhanced with security, validation, and best practices
- * Refactored from session-based to direct file-based architecture
+ * Common file utilities for CLI export management
+ * Handles file operations, validation, and security
+ * Supports direct file-based export architecture
  */
 const fs = require('fs').promises;
 const path = require('path');

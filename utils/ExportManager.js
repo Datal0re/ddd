@@ -161,7 +161,7 @@ class ExportManager {
           size: data.size || 'unknown',
           conversationCount: await this.getConversationCount(name),
         });
-      } catch (error) {
+      } catch {
         // Skip exports that don't exist on disk
         exports.push({
           name,
