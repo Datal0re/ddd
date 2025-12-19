@@ -14,16 +14,13 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('../utils/logger');
 const {
   ensureDir,
   removeDirectories,
   validateAndExtractZip,
 } = require('../utils/fileUtils');
-const { migrateConversations } = require('./migration.js');
+const { dumpConversations } = require('./dump.js');
 const { extractAssetsFromHtml } = require('./extract-assets-json.js');
-
-const logger = createLogger({ module: 'process-export' });
 
 /**
  * Parse command line arguments
@@ -132,7 +129,7 @@ async function moveMediaFiles(tempDir, exportMediaDir, options = {}) {
       await fs.access(tempMediaDir);
     } catch {
       if (verbose) {
-        logger.debug('No media directory found in temp files');
+        console.debug('No media directory found in temp files');
       }
       return { moved: 0, errors: 0 };
     }
@@ -166,21 +163,21 @@ async function moveMediaFiles(tempDir, exportMediaDir, options = {}) {
         moved++;
 
         if (verbose) {
-          logger.debug(`Moved media: ${item}`);
+          console.debug(`Moved media: ${item}`);
         }
       } catch (error) {
-        logger.error(`Error moving media item ${item}: ${error.message}`);
+        console.error(`Error moving media item ${item}: ${error.message}`);
         errors++;
       }
     }
 
     if (verbose) {
-      logger.info(`Media files moved: ${moved}, errors: ${errors}`);
+      console.log(`Media files moved: ${moved}, errors: ${errors}`);
     }
 
     return { moved, errors };
   } catch (error) {
-    logger.error(`Error moving media files: ${error.message}`);
+    console.error(`Error moving media files: ${error.message}`);
     throw error;
   }
 }
@@ -226,18 +223,18 @@ async function copyEssentialFiles(tempDir, exportMediaDir, options = {}) {
       copied++;
 
       if (verbose) {
-        logger.debug(`Copied essential file: ${file}`);
+        console.debug(`Copied essential file: ${file}`);
       }
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        logger.error(`Error copying essential file ${file}: ${error.message}`);
+        console.error(`Error copying essential file ${file}: ${error.message}`);
         errors++;
       }
     }
   }
 
   if (verbose) {
-    logger.info(`Essential files copied: ${copied}, errors: ${errors}`);
+    console.log(`Essential files copied: ${copied}, errors: ${errors}`);
   }
 
   return { copied, errors };
@@ -290,7 +287,7 @@ async function processExport(
         onProgress({ stage, progress, message });
       }
       if (verbose) {
-        logger.info(`${stage}: ${progress}% - ${message}`);
+        console.log(`${stage}: ${progress}% - ${message}`);
       }
     };
 
@@ -298,10 +295,10 @@ async function processExport(
     if (overwrite) {
       try {
         await removeDirectories(exportDir);
-        logger.info(`Removed existing export directory: ${sanitizedExportName}`);
+        console.log(`Removed existing export directory: ${sanitizedExportName}`);
       } catch (error) {
         if (error.code !== 'ENOENT') {
-          logger.warn(`Failed to remove existing directory: ${error.message}`);
+          console.warn(`Failed to remove existing directory: ${error.message}`);
         }
       }
     }
@@ -319,7 +316,7 @@ async function processExport(
 
     progressCallback('migrating', 40, 'Migrating conversations...');
 
-    // Migrate conversations
+    // Dump conversations
     const conversationsInput = path.join(
       tempDir,
       'Test-Chat-Combine',
@@ -327,7 +324,7 @@ async function processExport(
     );
     const conversationsOutput = path.join(exportDir, 'conversations');
 
-    const migrationResult = await migrateConversations(
+    const migrationResult = await dumpConversations(
       conversationsInput,
       conversationsOutput,
       {
@@ -339,7 +336,7 @@ async function processExport(
     );
 
     if (migrationResult.errors > 0) {
-      logger.warn(`Migration completed with ${migrationResult.errors} errors`);
+      console.warn(`Migration completed with ${migrationResult.errors} errors`);
     }
 
     progressCallback('extracting-assets', 70, 'Extracting media assets...');
@@ -354,9 +351,9 @@ async function processExport(
     });
 
     if (assetResult.success) {
-      logger.info(`Extracted ${assetResult.assetCount} assets`);
+      console.log(`Extracted ${assetResult.assetCount} assets`);
     } else {
-      logger.warn('No assets found or asset extraction failed');
+      console.warn('No assets found or asset extraction failed');
     }
 
     progressCallback('organizing', 85, 'Organizing media files...');
@@ -380,8 +377,8 @@ async function processExport(
 
     progressCallback('completed', 100, 'Export processing complete!');
 
-    logger.info(`Export "${sanitizedExportName}" created successfully`);
-    logger.info(
+    console.log(`Export "${sanitizedExportName}" created successfully`);
+    console.log(
       `Conversations: ${migrationResult.processed}, Assets: ${assetResult.assetCount || 0}`
     );
 
@@ -397,17 +394,17 @@ async function processExport(
       },
     };
   } catch (error) {
-    logger.error(`Export processing failed: ${error.message}`);
+    console.error(`Export processing failed: ${error.message}`);
     throw error;
   } finally {
     // Always clean up temporary directory
     try {
       await removeDirectories(tempDir);
       if (verbose) {
-        logger.debug('Cleaned up temporary directory');
+        console.debug('Cleaned up temporary directory');
       }
     } catch (cleanupError) {
-      logger.warn(`Failed to cleanup temp directory: ${cleanupError.message}`);
+      console.warn(`Failed to cleanup temp directory: ${cleanupError.message}`);
     }
   }
 }
@@ -476,7 +473,7 @@ async function main() {
     const options = parseArguments();
 
     if (!options.zipPath || !options.exportName) {
-      logger.error('zipPath and exportName are required');
+      console.error('zipPath and exportName are required');
       showHelp();
       process.exit(1);
     }
@@ -485,7 +482,7 @@ async function main() {
     try {
       await fs.access(options.zipPath);
     } catch {
-      logger.error(`ZIP file not found: ${options.zipPath}`);
+      console.error(`ZIP file not found: ${options.zipPath}`);
       process.exit(1);
     }
 
@@ -510,7 +507,7 @@ async function main() {
 
     console.log('Export completed successfully!');
   } catch (error) {
-    logger.error('Export processing failed:', error);
+    console.error('Export processing failed:', error);
     process.exit(1);
   }
 }

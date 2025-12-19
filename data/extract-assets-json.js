@@ -21,9 +21,6 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('../utils/logger');
-
-const logger = createLogger({ module: 'extract-assets-json' });
 
 /**
  * Parse command line arguments
@@ -127,7 +124,7 @@ async function findHtmlFiles(dirPath, recursive = false) {
         }
       }
     } catch (error) {
-      logger.warn(`Error accessing directory ${currentPath}: ${error.message}`);
+      console.warn(`Error accessing directory ${currentPath}: ${error.message}`);
     }
   }
 
@@ -147,7 +144,7 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
       try {
         await fs.access(outputPath);
         if (verbose) {
-          logger.info(`Skipping existing file: ${outputPath}`);
+          console.log(`Skipping existing file: ${outputPath}`);
         }
         return { success: false, reason: 'exists' };
       } catch {
@@ -159,7 +156,7 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
     const htmlContent = await fs.readFile(htmlPath, 'utf8');
 
     if (verbose) {
-      logger.info(`Processing HTML file: ${htmlPath}`);
+      console.log(`Processing HTML file: ${htmlPath}`);
     }
 
     // Look for assetsJson variable with robust regex
@@ -174,11 +171,11 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
       try {
         assetJsonData = JSON.parse(assetJsonString);
       } catch (parseError) {
-        logger.error(
+        console.error(
           `Failed to parse assetsJson in ${htmlPath}: ${parseError.message}`
         );
         if (verbose) {
-          logger.debug(`Asset JSON preview: ${assetJsonString.substring(0, 200)}...`);
+          console.debug(`Asset JSON preview: ${assetJsonString.substring(0, 200)}...`);
         }
         return { success: false, reason: 'parse_error', error: parseError.message };
       }
@@ -193,7 +190,7 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
         ? assetJsonData.length
         : Object.keys(assetJsonData).length;
 
-      logger.info(`Extracted ${assetCount} assets to ${outputPath}`);
+      console.log(`Extracted ${assetCount} assets to ${outputPath}`);
 
       return {
         success: true,
@@ -203,12 +200,12 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
       };
     } else {
       if (verbose) {
-        logger.debug(`No assetsJson found in ${htmlPath}`);
+        console.debug(`No assetsJson found in ${htmlPath}`);
       }
       return { success: false, reason: 'not_found' };
     }
   } catch (error) {
-    logger.error(`Error processing ${htmlPath}: ${error.message}`);
+    console.error(`Error processing ${htmlPath}: ${error.message}`);
     return { success: false, reason: 'error', error: error.message };
   }
 }
@@ -223,11 +220,11 @@ async function processDirectory(inputDir, outputDir, options = {}) {
     const htmlFiles = await findHtmlFiles(inputDir, recursive);
 
     if (htmlFiles.length === 0) {
-      logger.warn(`No HTML files found in ${inputDir}`);
+      console.warn(`No HTML files found in ${inputDir}`);
       return { processed: 0, skipped: 0, errors: 0 };
     }
 
-    logger.info(`Found ${htmlFiles.length} HTML files to process`);
+    console.log(`Found ${htmlFiles.length} HTML files to process`);
 
     let processed = 0;
     let skipped = 0;
@@ -253,47 +250,16 @@ async function processDirectory(inputDir, outputDir, options = {}) {
       }
     }
 
-    logger.info(
+    console.log(
       `Directory processing complete: ${processed} processed, ${skipped} skipped, ${errors} errors`
     );
 
     return { processed, skipped, errors };
   } catch (error) {
-    logger.error(`Error processing directory ${inputDir}: ${error.message}`);
+    console.error(`Error processing directory ${inputDir}: ${error.message}`);
     throw error;
   }
 }
-
-/**
- * Legacy function for session-based processing (backward compatibility)
- */
-// async function extractAssetsJson(sessionId, baseDir) {
-//   logger.warn(
-//     'Using legacy session-based function. Consider using direct file processing.'
-//   );
-
-//   const chatHtmlPath = path.join(
-//     baseDir,
-//     'data',
-//     'sessions',
-//     sessionId,
-//     'Test-Chat-Combine',
-//     'chat.html'
-//   );
-
-//   const assetsJsonPath = path.join(
-//     baseDir,
-//     'data',
-//     'sessions',
-//     sessionId,
-//     'assets.json'
-//   );
-
-//   const result = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
-//     overwrite: true,
-//   });
-//   return result.success;
-// }
 
 /**
  * Main function for CLI usage
@@ -303,7 +269,7 @@ async function main() {
     const options = parseArguments();
 
     if (!options.inputPath) {
-      logger.error('Input path is required');
+      console.error('Input path is required');
       showHelp();
       process.exit(1);
     }
@@ -325,7 +291,7 @@ async function main() {
       }
 
       if (options.verbose) {
-        logger.info(
+        console.log(
           `Processing single file: ${resolvedInputPath} -> ${resolvedOutputPath}`
         );
       }
@@ -337,10 +303,10 @@ async function main() {
       );
 
       if (result.success) {
-        logger.info('Extraction completed successfully');
+        console.log('Extraction completed successfully');
         process.exit(0);
       } else {
-        logger.error('Extraction failed');
+        console.error('Extraction failed');
         process.exit(1);
       }
     } else if (stats.isDirectory()) {
@@ -351,7 +317,7 @@ async function main() {
       }
 
       if (options.verbose) {
-        logger.info(
+        console.log(
           `Processing directory: ${resolvedInputPath} -> ${resolvedOutputPath}`
         );
       }
@@ -363,18 +329,18 @@ async function main() {
       );
 
       if (result.errors > 0) {
-        logger.warn(`Processing completed with ${result.errors} errors`);
+        console.warn(`Processing completed with ${result.errors} errors`);
         process.exit(1);
       } else {
-        logger.info('Directory processing completed successfully');
+        console.log('Directory processing completed successfully');
         process.exit(0);
       }
     } else {
-      logger.error('Input path is not a file or directory');
+      console.error('Input path is not a file or directory');
       process.exit(1);
     }
   } catch (error) {
-    logger.error('Script failed:', error);
+    console.error('Script failed:', error);
     process.exit(1);
   }
 }
@@ -388,6 +354,5 @@ module.exports = {
   extractAssetsFromHtml,
   processDirectory,
   findHtmlFiles,
-  // extractAssetsJson, // Legacy function
   parseArguments,
 };

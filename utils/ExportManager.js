@@ -5,8 +5,6 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('./logger');
-const logger = createLogger({ context: 'ExportManager' });
 const { ensureDir, removeDirectories } = require('./fileUtils.js');
 const { processExport } = require('../data/process-export.js');
 
@@ -28,7 +26,7 @@ class ExportManager {
     await this.loadExports();
     await this.ensureDataDirectories();
     await this.cleanupTempDirectory(); // Clean any leftover temp files
-    logger.info('ExportManager initialized');
+    console.log('ExportManager initialized');
   }
 
   /**
@@ -50,7 +48,7 @@ class ExportManager {
       );
     }
 
-    logger.info(`Creating export "${sanitizedName}" with isBuffer=${isBuffer}`);
+    console.log(`Creating export "${sanitizedName}" with isBuffer=${isBuffer}`);
 
     const exportDir = path.join(this.exportsDir, sanitizedName);
     await ensureDir(exportDir);
@@ -58,7 +56,7 @@ class ExportManager {
     try {
       // Process the export using our unified processor
       await processExport(zipData, sanitizedName, this.baseDir, isBuffer, progress => {
-        logger.info(
+        console.log(
           `Export progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`
         );
         onProgress?.(progress);
@@ -74,10 +72,10 @@ class ExportManager {
       });
       await this.saveExports();
 
-      logger.info(`Export created successfully: "${sanitizedName}"`);
+      console.log(`Export created successfully: "${sanitizedName}"`);
       return sanitizedName;
     } catch (error) {
-      logger.error('Export creation failed:', {
+      console.error('Export creation failed:', {
         message: error.message,
         stack: error.stack,
         code: error.code,
@@ -87,9 +85,9 @@ class ExportManager {
       // Clean up on failure
       try {
         await removeDirectories(exportDir);
-        logger.info('Cleanup completed after export failure');
+        console.log('Cleanup completed after export failure');
       } catch (cleanupError) {
-        logger.error('Cleanup failed:', cleanupError);
+        console.error('Cleanup failed:', cleanupError);
       }
 
       throw error;
@@ -141,7 +139,7 @@ class ExportManager {
     this.exports.delete(exportName);
     await this.saveExports();
 
-    logger.info(`Deleted export: "${exportName}"`);
+    console.log(`Deleted export: "${exportName}"`);
     return true;
   }
 
@@ -216,7 +214,7 @@ class ExportManager {
 
       return conversations;
     } catch (error) {
-      logger.error(`Error loading conversations for export ${exportName}:`, error);
+      console.error(`Error loading conversations for export ${exportName}:`, error);
       throw new Error('Error loading conversations');
     }
   }
@@ -253,7 +251,7 @@ class ExportManager {
         exportName,
       };
     } catch (error) {
-      logger.error(`Error loading conversation ${conversationId}:`, error);
+      console.error(`Error loading conversation ${conversationId}:`, error);
       throw new Error('Error loading conversation');
     }
   }
@@ -336,7 +334,7 @@ class ExportManager {
         totalSize,
       };
     } catch (error) {
-      logger.error(`Error getting stats for export ${exportName}:`, error);
+      console.error(`Error getting stats for export ${exportName}:`, error);
       return exportInfo;
     }
   }
@@ -404,7 +402,7 @@ class ExportManager {
       await removeDirectories(this.tempDir);
       await ensureDir(this.tempDir);
     } catch (error) {
-      logger.warn('Failed to cleanup temp directory:', error.message);
+      console.warn('Failed to cleanup temp directory:', error.message);
     }
   }
 
@@ -424,13 +422,13 @@ class ExportManager {
           },
         ])
       );
-      logger.info(`Loaded ${this.exports.size} exports from disk`);
+      console.log(`Loaded ${this.exports.size} exports from disk`);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        logger.warn('Failed to load exports:', error.message);
+        console.warn('Failed to load exports:', error.message);
       }
       this.exports = new Map();
-      logger.info('Starting with empty exports');
+      console.log('Starting with empty exports');
     }
   }
 
@@ -442,7 +440,7 @@ class ExportManager {
       const data = JSON.stringify([...this.exports.entries()], null, 2);
       await fs.writeFile(this.exportsFile, data);
     } catch (error) {
-      logger.error('Failed to save exports:', error.message);
+      console.error('Failed to save exports:', error.message);
       throw error;
     }
   }

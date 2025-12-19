@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-// migration.js - Enhanced version for direct file processing
+// dump.js - Enhanced version for direct file processing
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('../utils/logger');
-const logger = createLogger({ module: 'migration' });
 
 /**
  * Configuration options
@@ -60,25 +58,25 @@ function parseArguments() {
 
 function showHelp() {
   console.log(`
-Usage: node migration.js [inputPath] [outputDir] [options]
+Usage: node dump.js [inputPath] [outputDir] [options]
 
 Arguments:
   inputPath    Path to conversations.json file (default: conversations.json)
   outputDir    Directory to save individual conversation files (default: ./conversations)
 
 Options:
-  --create-subdirs    Create a 'conversations' subdirectory in outputDir
+  --create-subdirs   Create a 'conversations' subdirectory in outputDir
   --preserve         Keep original conversations.json file
   --overwrite        Overwrite existing files (default: skip existing)
   --verbose          Enable verbose logging
   --help             Show this help message
 
 Examples:
-  node migration.js                                    # Use defaults
-  node migration.js /path/to/conversations.json       # Custom input path
-  node migration.js data.json ./output                # Custom input and output
-  node migration.js data.json ./out --create-subdirs   # Create conversations subdirectory
-  node migration.js data.json ./out --overwrite       # Overwrite existing files
+  node dump.js                                   # Use defaults
+  node dump.js /path/to/conversations.json       # Custom input path
+  node dump.js data.json ./output                # Custom input and output
+  node dump.js data.json ./out --create-subdirs  # Create conversations subdirectory
+  node dump.js data.json ./out --overwrite       # Overwrite existing files
 `);
 }
 
@@ -114,9 +112,9 @@ function formatDateFromTimestamp(ts) {
 }
 
 /**
- * Enhanced migration function for direct file processing
+ * Enhanced dump function for direct file processing
  */
-async function migrateConversations(inputPath, outputDir, options = {}) {
+async function dumpConversations(inputPath, outputDir, options = {}) {
   const {
     createSubdirs = false,
     preserveOriginal = false,
@@ -134,7 +132,7 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
     ? path.join(outputDir, 'conversations')
     : outputDir;
 
-  logger.info(`Migrating conversations from ${resolvedInputPath} to ${finalOutputDir}`);
+  console.log(`Dumping conversations from ${resolvedInputPath} to ${finalOutputDir}`);
 
   try {
     // Read and validate input file
@@ -145,7 +143,7 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
       throw new Error('Expected an array of conversations in input file');
     }
 
-    logger.info(`Found ${conversations.length} conversations to process`);
+    console.log(`Found ${conversations.length} conversations to process`);
 
     // Sort newest first
     conversations.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
@@ -172,7 +170,7 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
           try {
             await fs.access(filepath);
             if (verbose) {
-              logger.info(`Skipping existing file: ${filename}`);
+              console.log(`Skipping existing file: ${filename}`);
             }
             skipped++;
             continue;
@@ -186,10 +184,10 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
         processed++;
 
         if (verbose) {
-          logger.info(`Processed: ${filename}`);
+          console.log(`Processed: ${filename}`);
         }
       } catch (err) {
-        logger.error(`Error processing conversation: ${err.message}`);
+        console.error(`Error processing conversation: ${err.message}`);
         errors++;
       }
     }
@@ -198,14 +196,14 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
     if (!preserveOriginal && processed > 0) {
       try {
         await fs.unlink(resolvedInputPath);
-        logger.info('Removed original conversations.json file');
+        console.log('Removed original conversations.json file');
       } catch (err) {
-        logger.warn(`Failed to remove original file: ${err.message}`);
+        console.warn(`Failed to remove original file: ${err.message}`);
       }
     }
 
-    logger.info(
-      `Migration completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
+    console.log(
+      `dump completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
     );
 
     return {
@@ -215,7 +213,7 @@ async function migrateConversations(inputPath, outputDir, options = {}) {
       total: conversations.length,
     };
   } catch (err) {
-    logger.error(`Migration failed: ${err.message}`);
+    console.error(`dump failed: ${err.message}`);
     throw err;
   }
 }
@@ -228,24 +226,24 @@ async function main() {
     const options = parseArguments();
 
     if (options.verbose) {
-      logger.info('Starting migration with options:', options);
+      console.log('Starting dump with options: ', options);
     }
 
-    const result = await migrateConversations(
+    const result = await dumpConversations(
       options.inputPath,
       options.outputDir,
       options
     );
 
     if (result.errors > 0) {
-      logger.warn(`Migration completed with ${result.errors} errors`);
+      console.warn(`dump completed with ${result.errors} errors`);
       process.exit(1);
     } else {
-      logger.info('Migration completed successfully');
+      console.log('dump completed successfully');
       process.exit(0);
     }
   } catch (err) {
-    logger.error('Migration failed:', err);
+    console.error('dump failed:', err);
     process.exit(1);
   }
 }
@@ -254,7 +252,7 @@ async function main() {
  * Export function for programmatic usage
  */
 module.exports = {
-  migrateConversations,
+  dumpConversations,
   sanitizeFilename,
   extractTimestamp,
   formatDateFromTimestamp,
@@ -263,7 +261,7 @@ module.exports = {
 // Ensure the script runs only when executed directly, not when imported
 if (require.main === module) {
   main().catch(err => {
-    logger.error('Migration failed:', err);
+    console.error('dump failed:', err);
     process.exit(1);
   });
 }

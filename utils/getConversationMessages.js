@@ -2,8 +2,6 @@ const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
 const fs = require('fs').promises;
 const path = require('path');
-const { createLogger } = require('./logger');
-const logger = createLogger({ module: 'getConversationMessages' });
 
 /**
  * Validate required parameters for a function
@@ -135,7 +133,7 @@ function buildAssetUrl(filePath, baseDir) {
  */
 function handleFileError(error, operation, context = '') {
   const message = context ? `${operation}: ${context}` : operation;
-  logger.warn(`Error ${message}:`, error.message);
+  console.warn(`Error ${message}:`, error.message);
 }
 
 /**
@@ -156,7 +154,7 @@ async function loadAssetMapping(exportName, baseDir) {
     validateNonEmptyString(exportName, 'exportName');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
-    logger.warn('Invalid parameters for loadAssetMapping:', {
+    console.warn('Invalid parameters for loadAssetMapping:', {
       exportName,
       baseDir,
       error: error.message,
@@ -176,13 +174,13 @@ async function loadAssetMapping(exportName, baseDir) {
   try {
     const assetsContent = await fs.readFile(assetsJsonPath, 'utf8');
     const assetMapping = JSON.parse(assetsContent);
-    logger.debug(
+    console.debug(
       `Loaded asset mapping from assets.json for export ${exportName} with ${Object.keys(assetMapping).length} assets`
     );
     return assetMapping;
   } catch (error) {
     if (error.code !== 'ENOENT') {
-      logger.warn('Error reading assets.json:', error.message);
+      console.warn('Error reading assets.json:', error.message);
     }
   }
 
@@ -207,12 +205,12 @@ async function loadAssetMapping(exportName, baseDir) {
     if (assetJsonMatch && assetJsonMatch[1]) {
       // Parse JSON string
       const assetJsonString = assetJsonMatch[1];
-      logger.debug(
+      console.debug(
         `Found asset mapping in chat.html for export ${exportName} (fallback method)`
       );
       return JSON.parse(assetJsonString);
     } else {
-      logger.debug(`No asset mapping found in chat.html for export ${exportName}`);
+      console.debug(`No asset mapping found in chat.html for export ${exportName}`);
     }
   } catch (error) {
     handleFileError(error, 'loading asset mapping from chat.html', exportName);
@@ -231,7 +229,7 @@ async function loadAssetMapping(exportName, baseDir) {
  */
 async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {}) {
   if (!assetPointer || !exportName || !baseDir) {
-    logger.warn('Invalid parameters for findAssetFile:', {
+    console.warn('Invalid parameters for findAssetFile:', {
       assetPointer,
       exportName,
       baseDir,
@@ -262,7 +260,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
       try {
         const files = await cachedRecursivelyFindFiles(mediaDir, filename);
         if (files.length > 0) {
-          logger.debug(`Found mapped asset: ${assetPointer} -> ${filename}`);
+          console.debug(`Found mapped asset: ${assetPointer} -> ${filename}`);
           return buildAssetUrl(files[0], baseDir);
         }
       } catch (error) {
@@ -289,7 +287,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
       try {
         const files = await cachedRecursivelyFindFiles(searchDir, name);
         if (files.length > 0) {
-          logger.debug(
+          console.debug(
             `Found asset by pattern search: ${assetPointer} -> ${name} in ${searchDir}`
           );
           return buildAssetUrl(files[0], baseDir);
@@ -303,16 +301,16 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
 
   // Fallback to original search if mapping fails
   try {
-    logger.debug(`Searching for asset: ${assetKey} in directory: ${mediaDir}`);
+    console.debug(`Searching for asset: ${assetKey} in directory: ${mediaDir}`);
     const files = await cachedRecursivelyFindFiles(mediaDir, assetKey);
-    logger.debug(`Found ${files.length} files matching ${assetKey}:`, files);
+    console.debug(`Found ${files.length} files matching ${assetKey}:`, files);
     if (files.length > 0) {
-      logger.debug(`Found asset by filename search: ${assetKey}`);
+      console.debug(`Found asset by filename search: ${assetKey}`);
       return buildAssetUrl(files[0], baseDir);
     }
   } catch (error) {
     handleFileError(error, 'finding asset file', assetKey);
-    logger.error(`Failed to find asset ${assetPointer}:`, {
+    console.error(`Failed to find asset ${assetPointer}:`, {
       error: error.message,
       mediaDir,
       assetKey,
@@ -320,7 +318,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
     });
   }
 
-  logger.debug(`Asset not found: ${assetPointer}`);
+  console.debug(`Asset not found: ${assetPointer}`);
   return null;
 }
 
@@ -332,7 +330,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
  */
 async function recursivelyFindFiles(dir, filename) {
   if (!dir || !filename) {
-    logger.warn('Invalid parameters for recursivelyFindFiles:', { dir, filename });
+    console.warn('Invalid parameters for recursivelyFindFiles:', { dir, filename });
     return [];
   }
 
@@ -359,7 +357,7 @@ async function recursivelyFindFiles(dir, filename) {
   } catch (error) {
     // Directory might not exist or be inaccessible
     // Log at debug level as this is expected for non-existent directories
-    logger.debug(`Directory not accessible during file search: ${dir}`, error.message);
+    console.debug(`Directory not accessible during file search: ${dir}`, error.message);
   }
 
   return results;
@@ -375,7 +373,7 @@ async function recursivelyFindFiles(dir, filename) {
  */
 async function generateAssetUrl(assetPointer, exportName, baseDir, assetMapping = {}) {
   if (!assetPointer || !exportName || !baseDir) {
-    logger.warn('Invalid parameters for generateAssetUrl:', {
+    console.warn('Invalid parameters for generateAssetUrl:', {
       assetPointer,
       exportName,
       baseDir,
@@ -407,7 +405,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
     validateNonEmptyString(exportName, 'exportName');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
-    logger.warn('Invalid parameters for generateAssetHtml:', {
+    console.warn('Invalid parameters for generateAssetHtml:', {
       asset: asset ? 'present' : 'missing',
       exportName,
       baseDir,
@@ -419,7 +417,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
   // Extract asset pointer and content type from asset object
   const assetPointer = asset.asset_pointer || asset.pointer || '';
   const contentType = asset.content_type || '';
-  logger.debug(`Processing asset: ${assetPointer}, content type: ${contentType}`);
+  console.debug(`Processing asset: ${assetPointer}, content type: ${contentType}`);
 
   const assetUrl = await generateAssetUrl(
     assetPointer,
@@ -428,7 +426,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
     assetMapping
   );
   if (!assetUrl) {
-    logger.debug(`Asset URL not found for: ${assetPointer}`);
+    console.debug(`Asset URL not found for: ${assetPointer}`);
     // File not found - show helpful message
     return {
       html: `<div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem; color: #856404;">
@@ -439,7 +437,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
     };
   }
 
-  logger.debug(`Generated asset URL: ${assetPointer} -> ${assetUrl}`);
+  console.debug(`Generated asset URL: ${assetPointer} -> ${assetUrl}`);
 
   // Generate HTML based on content type
   switch (contentType) {
@@ -530,7 +528,7 @@ async function getConversationMessages(
       validateNonEmptyString(baseDir, 'baseDir');
     }
   } catch (error) {
-    logger.warn('Invalid parameters for getConversationMessages:', error.message);
+    console.warn('Invalid parameters for getConversationMessages:', error.message);
     return [];
   }
 
@@ -596,17 +594,17 @@ async function getConversationMessages(
           p.content_type
         )
       ) {
-        logger.debug(
+        console.debug(
           `Processing asset: ${p.asset_pointer}, content_type: ${p.content_type}`
         );
         const assetHtml = await generateAssetHtml(p, exportName, baseDir, assetMapping);
         if (assetHtml) {
-          logger.debug(
+          console.debug(
             `Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`
           );
           parts.push(assetHtml);
         } else {
-          logger.warn(`Failed to process asset: ${p.asset_pointer}`);
+          console.warn(`Failed to process asset: ${p.asset_pointer}`);
           parts.push({ asset: p }); // Fallback to original behavior
         }
       } else if (p.video_container_asset_pointer) {

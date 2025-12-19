@@ -7,8 +7,8 @@
 This is a focused CLI tool for processing ChatGPT conversation data:
 
 ```text
-┌─────────────┐    ZIP     ┌──────────────┐
-│  CLI User   │ ◄─────────► │  Processing  │
+┌─────────────┐    ZIP    ┌──────────────┐
+│  CLI User   │ ◄───────► │  Processing  │
 │  Interface  │           │  Engine      │
 └─────────────┘           └──────────────┘
 ```
@@ -19,19 +19,18 @@ This is a focused CLI tool for processing ChatGPT conversation data:
 - **utils/ExportManager.js**: Core export lifecycle management
 - **utils/fileUtils.js**: File operations and validation
 - **utils/getConversationMessages.js**: Message processing and asset handling
-- **utils/logger.js**: Simple logging utilities
 - **data/**: Processing scripts for migration and extraction
 
 ## Development Commands
 
 ```bash
 # Development
-npm run dev          # Start CLI with nodemon
+npm run dev           # Start CLI with nodemon
 npm run lint          # Run ESLint
 npm run format        # Format code with Prettier
 
 # Core functionality
-npm run migrate       # Migrate old conversation format
+npm run dump           # Dump old conversation format
 npm run extract-assets # Extract assets from chat.html
 ```
 

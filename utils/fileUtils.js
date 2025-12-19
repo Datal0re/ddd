@@ -8,8 +8,6 @@ const path = require('path');
 const { spawn } = require('child_process');
 const os = require('os');
 const crypto = require('crypto');
-const { createLogger } = require('./logger');
-const logger = createLogger({ module: 'fileUtils' });
 
 // Security and performance constants
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500MB limit
@@ -54,7 +52,7 @@ async function cleanupTempDir(tempDir) {
     await fs.rm(tempDir, { recursive: true, force: true });
   } catch (error) {
     // Ignore cleanup errors - temp dirs may be locked by OS
-    logger.warn(`Failed to cleanup temp dir ${tempDir}:`, error.message);
+    console.warn(`Failed to cleanup temp dir ${tempDir}:`, error.message);
   }
 }
 
@@ -96,10 +94,10 @@ async function validateUpload(fileData, maxSize = MAX_UPLOAD_SIZE) {
     // Skip detailed validation here since we'll validate during extraction
     // This prevents recursive calls and potential issues with decompress module
 
-    logger.info(`Upload validation passed: ${Math.round(size / 1024 / 1024)}MB`);
+    console.log(`Upload validation passed: ${Math.round(size / 1024 / 1024)}MB`);
     return true;
   } catch (error) {
-    logger.error('Upload validation failed:', error);
+    console.error('Upload validation failed:', error);
     throw error;
   }
 }
@@ -149,7 +147,7 @@ async function validateZipStructure(zipBuffer) {
       }
     }
 
-    logger.debug(
+    console.debug(
       `Zip structure validation passed: ${files.length} files, ${Math.round(compressionRatio)}:1 ratio`
     );
   } finally {
@@ -186,7 +184,7 @@ async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
     tempDir = await createTempDir();
     tempZipPath = path.join(tempDir, 'extract.zip');
 
-    logger.info(`Validating and extracting ZIP: isBuffer=${isBuffer}`);
+    console.log(`Validating and extracting ZIP: isBuffer=${isBuffer}`);
 
     // Validate upload before processing
     await validateUpload(zipData);
@@ -198,18 +196,18 @@ async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
       await fs.copyFile(zipData, tempZipPath);
     }
 
-    logger.info('Starting ZIP extraction...');
+    console.log('Starting ZIP extraction...');
 
     // Extract zip to target directory
     const files = await decompress(tempZipPath, targetDir);
 
-    logger.debug(
+    console.debug(
       `Extracted ${files.length} files:`,
       files.map(f => ({ path: f.path, type: f.type }))
     );
 
     if (!files || files.length === 0) {
-      logger.error('No files extracted from zip archive');
+      console.error('No files extracted from zip archive');
       throw new Error('No files found in zip archive or extraction failed');
     }
 
@@ -224,9 +222,9 @@ async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
       );
     }
 
-    logger.info(`ZIP extraction completed: ${files.length} files extracted`);
+    console.log(`ZIP extraction completed: ${files.length} files extracted`);
   } catch (error) {
-    logger.error('ZIP validation and extraction failed:', {
+    console.error('ZIP validation and extraction failed:', {
       message: error.message,
       stack: error.stack,
       code: error.code,
@@ -279,11 +277,11 @@ async function runMigration(exportName, outputDir, baseDir) {
 
     child.on('close', code => {
       if (code === 0) {
-        logger.debug('Migration stdout:', stdout);
+        console.debug('Migration stdout:', stdout);
         resolve();
       } else {
-        logger.error('Migration stderr:', stderr);
-        logger.error('Migration stdout:', stdout);
+        console.error('Migration stderr:', stderr);
+        console.error('Migration stdout:', stdout);
         reject(new Error(`Migration exited with code ${code}: ${stderr}`));
       }
     });
@@ -319,11 +317,11 @@ async function runAssetExtraction(exportName, baseDir) {
 
     child.on('close', code => {
       if (code === 0) {
-        logger.debug('Asset extraction stdout:', stdout);
+        console.debug('Asset extraction stdout:', stdout);
         resolve();
       } else {
-        logger.warn('Asset extraction failed (non-critical):', stderr);
-        logger.debug('Asset extraction stdout:', stdout);
+        console.warn('Asset extraction failed (non-critical):', stderr);
+        console.debug('Asset extraction stdout:', stdout);
         // Don't reject - asset extraction is non-critical
         resolve();
       }
@@ -359,7 +357,7 @@ async function processZipUpload(
     tempDir = await createTempDir();
     tempZipPath = path.join(tempDir, 'upload.zip');
 
-    logger.info(
+    console.log(
       `Processing zip upload: isBuffer=${isBuffer}, exportName=${exportName}`
     );
 
@@ -369,10 +367,10 @@ async function processZipUpload(
 
     // Save or copy zip file to temp location
     if (isBuffer) {
-      logger.debug('Writing buffer to temp file:', tempZipPath);
+      console.debug('Writing buffer to temp file:', tempZipPath);
       await fs.writeFile(tempZipPath, zipData);
     } else {
-      logger.debug('Copying file to temp location:', tempZipPath);
+      console.debug('Copying file to temp location:', tempZipPath);
       await fs.copyFile(zipData, tempZipPath);
     }
 
@@ -381,18 +379,18 @@ async function processZipUpload(
       progress: 10,
       message: 'Extracting archive...',
     });
-    logger.info('Starting zip extraction...');
+    console.log('Starting zip extraction...');
 
     // Extract zip to temp directory first (security)
     const files = await decompress(tempZipPath, tempDir);
 
-    logger.debug(
+    console.debug(
       `Extracted ${files.length} files:`,
       files.map(f => ({ path: f.path, type: f.type }))
     );
 
     if (!files || files.length === 0) {
-      logger.error('No files extracted from zip archive');
+      console.error('No files extracted from zip archive');
       throw new Error('No files found in zip archive or extraction failed');
     }
 
@@ -422,7 +420,7 @@ async function processZipUpload(
       files
     );
 
-    logger.info('Files moved, conversationsPath:', conversationsPath);
+    console.log('Files moved, conversationsPath:', conversationsPath);
 
     if (!conversationsPath) {
       throw new Error('conversations.json not found in uploaded zip.');
@@ -431,9 +429,9 @@ async function processZipUpload(
     // Verify conversations.json exists
     try {
       await fs.access(conversationsPath);
-      logger.info('conversations.json verified at:', conversationsPath);
+      console.log('conversations.json verified at:', conversationsPath);
     } catch {
-      logger.error('conversations.json not found at expected path:', conversationsPath);
+      console.error('conversations.json not found at expected path:', conversationsPath);
       throw new Error(
         'conversations.json not found at expected path: ' + conversationsPath
       );
@@ -446,7 +444,7 @@ async function processZipUpload(
     });
     return conversationsPath;
   } catch (error) {
-    logger.error('Zip upload processing failed:', {
+    console.error('Zip upload processing failed:', {
       message: error.message,
       stack: error.stack,
       code: error.code,
@@ -479,19 +477,19 @@ async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
     }
   }
 
-  logger.debug('Top-level directories found:', [...topLevelDirs]);
+  console.debug('Top-level directories found:', [...topLevelDirs]);
 
   const hasSingleTopLevel = topLevelDirs.size === 1;
   const topLevelFolder = hasSingleTopLevel ? [...topLevelDirs][0] : '';
 
-  logger.debug('Has single top level:', hasSingleTopLevel);
-  logger.debug('Top level folder:', topLevelFolder);
+  console.debug('Has single top level:', hasSingleTopLevel);
+  console.debug('Top level folder:', topLevelFolder);
 
   // Process each file
   for (const file of files) {
     // Validate file path to prevent path traversal
     if (!validatePath(file.path)) {
-      logger.warn(`Skipping file with dangerous path: ${file.path}`);
+      console.warn(`Skipping file with dangerous path: ${file.path}`);
       continue;
     }
 
@@ -521,7 +519,7 @@ async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
 
       // Validate the relative path as well
       if (!validatePath(relativePath)) {
-        logger.warn(
+        console.warn(
           `Skipping media file with dangerous relative path: ${relativePath}`
         );
         continue;
@@ -530,7 +528,7 @@ async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
       const destPath = path.join(mediaDir, relativePath);
       await ensureDir(path.dirname(destPath));
       await fs.copyFile(src, destPath);
-      logger.debug(`Copied media file: ${file.path} -> ${relativePath}`);
+      console.debug(`Copied media file: ${file.path} -> ${relativePath}`);
     }
 
     // Move other files to export directory
@@ -543,7 +541,7 @@ async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
 
       // Validate the relative path as well
       if (!validatePath(relativePath)) {
-        logger.warn(`Skipping file with dangerous relative path: ${relativePath}`);
+        console.warn(`Skipping file with dangerous relative path: ${relativePath}`);
         continue;
       }
 
@@ -559,7 +557,7 @@ async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
     try {
       await fs.rmdir(nestedDir, { recursive: true });
     } catch (error) {
-      logger.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
+      console.warn(`Failed to delete nested directory ${nestedDir}:`, error.message);
     }
   }
 
@@ -628,7 +626,7 @@ async function removeDirectories(...dirs) {
     } catch (error) {
       // Ignore errors if directories don't exist
       if (error.code !== 'ENOENT') {
-        logger.warn(`Failed to remove directory ${dir}:`, error.message);
+        console.warn(`Failed to remove directory ${dir}:`, error.message);
       }
     }
   }

@@ -3,9 +3,6 @@
 const { Command } = require('commander');
 const chalk = require('chalk');
 const path = require('path');
-const { createLogger } = require('./utils/logger');
-
-const logger = createLogger({ context: 'CLI' });
 
 const program = new Command();
 
@@ -15,14 +12,14 @@ program
   .version('2.0.0-alpha');
 
 program
-  .command('upload')
+  .command('dump')
   .description('Upload and process a ChatGPT export ZIP file')
   .argument('<file>', 'path to the ZIP file')
   .option('-n, --name <name>', 'custom name for the export', 'default')
   .option('-v, --verbose', 'verbose output')
   .action(async (file, options) => {
     try {
-      logger.info(`Processing ChatGPT export: ${chalk.blue(file)}`);
+      console.log(`Processing ChatGPT export: ${chalk.blue(file)}`);
 
       const { ExportManager } = require('./utils/ExportManager');
       const exportManager = new ExportManager(__dirname);
