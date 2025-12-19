@@ -2,7 +2,6 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
-const path = require('path');
 
 const program = new Command();
 
@@ -15,15 +14,15 @@ program
   .command('dump')
   .description('Upload and process a ChatGPT export ZIP file')
   .argument('<file>', 'path to the ZIP file')
-  .option('-n, --name <name>', 'custom name for the export', 'default')
+  .option('-n, --name <name>', 'custom name for the dumpster', 'default')
   .option('-v, --verbose', 'verbose output')
   .action(async (file, options) => {
     try {
-      console.log(`Processing ChatGPT export: ${chalk.blue(file)}`);
+      console.log(`Dumping ChatGPT export: ${chalk.blue(file)}`);
 
-      const { ExportManager } = require('./utils/ExportManager');
-      const exportManager = new ExportManager(__dirname);
-      await exportManager.initialize();
+      const { DumpsterManager } = require('./utils/ExportManager');
+      const dumpsterManager = new DumpsterManager(__dirname);
+      await dumpsterManager.initialize();
 
       // Check if file exists
       const fs = require('fs');
@@ -31,10 +30,13 @@ program
         throw new Error(`File not found: ${file}`);
       }
 
-      await exportManager.createExport(file, options.name);
+      const onProgress = progress => {
+        console.log(`${progress.stage}: ${progress.progress}% - ${progress.message}`);
+      };
+      await dumpsterManager.createDumpster(file, options.name, false, onProgress);
 
-      console.log(chalk.green('✅ Export processed successfully!'));
-      console.log(chalk.dim(`Export name: ${options.name}`));
+      console.log(chalk.green('✅ Dumpster created successfully!'));
+      console.log(chalk.dim(`Dumpster name: ${options.name}`));
     } catch (error) {
       console.error(chalk.red('❌ Error:'), error.message);
       if (options.verbose) {
@@ -45,30 +47,30 @@ program
   });
 
 program
-  .command('list')
-  .description('List all processed exports')
+  .command('inventory')
+  .description('List all processed dumpsters')
   .option('-v, --verbose', 'show detailed information')
   .action(async options => {
     try {
-      const { ExportManager } = require('./utils/ExportManager');
-      const exportManager = new ExportManager(__dirname);
-      await exportManager.initialize();
+      const { DumpsterManager } = require('./utils/ExportManager');
+      const dumpsterManager = new DumpsterManager(__dirname);
+      await dumpsterManager.initialize();
 
-      const exports = await exportManager.listExports();
+      const dumpsters = await dumpsterManager.listDumpsters();
 
-      if (exports.length === 0) {
+      if (dumpsters.length === 0) {
         console.log(
-          chalk.yellow('No exports found. Use "ddd upload" to process a ZIP file.')
+          chalk.yellow('No dumpsters found. Use "ddd dump" to process a ZIP file.')
         );
         return;
       }
 
-      console.log(chalk.blue('📁 Available exports:'));
-      exports.forEach(exp => {
+      console.log(chalk.blue('🗑️ Available dumpsters:'));
+      dumpsters.forEach(dumpster => {
         const details = options.verbose
-          ? ` (${new Date(exp.createdAt).toLocaleDateString()}, ${exp.conversationCount} conversations)`
+          ? ` (${new Date(dumpster.createdAt).toLocaleDateString()}, ${dumpster.chatCount} chats)`
           : '';
-        console.log(`  ${chalk.green(exp.name)}${details}`);
+        console.log(`  ${chalk.green(dumpster.name)}${details}`);
       });
     } catch (error) {
       console.error(chalk.red('❌ Error listing exports:'), error.message);
@@ -77,65 +79,33 @@ program
   });
 
 program
-  .command('view')
-  .description('View conversations in an export')
+  .command('rummage')
+  .description('Rummage through chats in a dumpster')
   .argument('<export-name>', 'name of the export to view')
   .option('-l, --limit <number>', 'number of conversations to show', '10')
-  .action(async (exportName, options) => {
+  .action(async (dumpsterName, options) => {
     try {
-      const { ExportManager } = require('./utils/ExportManager');
-      const exportManager = new ExportManager(__dirname);
-      await exportManager.initialize();
+      const { DumpsterManager } = require('./utils/ExportManager');
+      const dumpsterManager = new DumpsterManager(__dirname);
+      await dumpsterManager.initialize();
 
-      const conversations = await exportManager.getConversations(
-        exportName,
+      const chats = await dumpsterManager.getChats(
+        dumpsterName,
         parseInt(options.limit)
       );
 
-      if (conversations.length === 0) {
-        console.log(chalk.yellow('No conversations found in this export.'));
+      if (chats.length === 0) {
+        console.log(chalk.yellow('No chats found in this dumpster.'));
         return;
       }
 
-      console.log(chalk.blue(`💬 Conversations in ${exportName}:`));
-      conversations.forEach((conv, index) => {
-        const title = conv.title || `Conversation ${index + 1}`;
+      console.log(chalk.blue(`💬 Chats in ${dumpsterName}:`));
+      chats.forEach((chat, index) => {
+        const title = chat.title || `Chat ${index + 1}`;
         console.log(`  ${index + 1}. ${chalk.green(title)}`);
       });
     } catch (error) {
-      console.error(chalk.red('❌ Error viewing export:'), error.message);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('migrate')
-  .description('Migrate old conversations.json format to new export format')
-  .argument('[file]', 'path to conversations.json file', 'data/conversations.json')
-  .action(async file => {
-    try {
-      console.log(chalk.blue('🔄 Migrating conversations...'));
-
-      // This will call the migration script
-      const { spawn } = require('child_process');
-      const migration = spawn(
-        'node',
-        [path.join(__dirname, 'data', 'migration.js'), file],
-        {
-          stdio: 'inherit',
-        }
-      );
-
-      migration.on('close', code => {
-        if (code === 0) {
-          console.log(chalk.green('✅ Migration completed successfully!'));
-        } else {
-          console.error(chalk.red('❌ Migration failed'));
-          process.exit(code);
-        }
-      });
-    } catch (error) {
-      console.error(chalk.red('❌ Migration error:'), error.message);
+      console.error(chalk.red('❌ Error rummaging dumpster:'), error.message);
       process.exit(1);
     }
   });

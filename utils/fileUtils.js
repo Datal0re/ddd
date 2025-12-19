@@ -239,18 +239,18 @@ async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
 }
 
 /**
- * Runs migration script on a given conversations.json file
- * @param {string} exportName - Export name
- * @param {string} outputDir - Output directory for migrated conversations
+ * Runs dump script on a given conversations.json file
+ * @param {string} dumpsterName - Dumpster name
+ * @param {string} outputDir - Output directory for dumped conversations
  * @param {string} baseDir - Base directory of the application
  * @returns {Promise<void>}
  */
-async function runMigration(exportName, outputDir, baseDir) {
+async function runDump(dumpsterName, outputDir, baseDir) {
   const inputPath = path.join(
     baseDir,
     'data',
-    'exports',
-    exportName,
+    'dumpsters',
+    dumpsterName,
     'conversations.json'
   );
   await ensureDir(outputDir);
@@ -258,7 +258,7 @@ async function runMigration(exportName, outputDir, baseDir) {
   return new Promise((resolve, reject) => {
     const child = spawn(
       'node',
-      [path.join(baseDir, 'data', 'migration.js'), inputPath, outputDir],
+      [path.join(baseDir, 'data', 'dump.js'), inputPath, outputDir],
       {
         stdio: 'pipe',
       }
@@ -277,12 +277,12 @@ async function runMigration(exportName, outputDir, baseDir) {
 
     child.on('close', code => {
       if (code === 0) {
-        console.debug('Migration stdout:', stdout);
+        console.debug('Dump stdout:', stdout);
         resolve();
       } else {
-        console.error('Migration stderr:', stderr);
-        console.error('Migration stdout:', stdout);
-        reject(new Error(`Migration exited with code ${code}: ${stderr}`));
+        console.error('Dump stderr:', stderr);
+        console.error('Dump stdout:', stdout);
+        reject(new Error(`Dump exited with code ${code}: ${stderr}`));
       }
     });
   });
@@ -290,15 +290,15 @@ async function runMigration(exportName, outputDir, baseDir) {
 
 /**
  * Runs asset extraction for an export
- * @param {string} exportName - Export name
+ * @param {string} dumpsterName - Dumpster name
  * @param {string} baseDir - Base directory of the application
  * @returns {Promise<void>}
  */
-async function runAssetExtraction(exportName, baseDir) {
+async function runAssetExtraction(dumpsterName, baseDir) {
   return new Promise((resolve, _reject) => {
     const child = spawn(
       'node',
-      [path.join(baseDir, 'data', 'extract-assets-json.js'), exportName],
+      [path.join(baseDir, 'data', 'extract-assets-json.js'), dumpsterName],
       {
         stdio: 'pipe',
       }
@@ -332,8 +332,8 @@ async function runAssetExtraction(exportName, baseDir) {
 /**
  * Processes uploaded zip file with enhanced security and validation
  * @param {Buffer|string} zipData - Zip file buffer or path
- * @param {string} exportName - Export name
- * @param {string} exportDir - Export directory path
+ * @param {string} dumpsterName - Dumpster name
+ * @param {string} exportDir - Dumpster directory path
  * @param {string} mediaDir - Media directory path
  * @param {boolean} isBuffer - True if zipData is buffer, false if path
  * @param {Function} onProgress - Optional progress callback
@@ -341,7 +341,7 @@ async function runAssetExtraction(exportName, baseDir) {
  */
 async function processZipUpload(
   zipData,
-  exportName,
+  dumpsterName,
   exportDir,
   mediaDir,
   isBuffer = true,
@@ -358,7 +358,7 @@ async function processZipUpload(
     tempZipPath = path.join(tempDir, 'upload.zip');
 
     console.log(
-      `Processing zip upload: isBuffer=${isBuffer}, exportName=${exportName}`
+      `Processing zip upload: isBuffer=${isBuffer}, dumpsterName=${dumpsterName}`
     );
 
     // Validate upload before processing
@@ -431,7 +431,10 @@ async function processZipUpload(
       await fs.access(conversationsPath);
       console.log('conversations.json verified at:', conversationsPath);
     } catch {
-      console.error('conversations.json not found at expected path:', conversationsPath);
+      console.error(
+        'conversations.json not found at expected path:',
+        conversationsPath
+      );
       throw new Error(
         'conversations.json not found at expected path: ' + conversationsPath
       );
@@ -634,7 +637,7 @@ async function removeDirectories(...dirs) {
 
 module.exports = {
   ensureDir,
-  runMigration,
+  runDump,
   runAssetExtraction,
   processZipUpload,
   removeDirectories,

@@ -3,7 +3,7 @@
 /**
  * Unified Export Processor for ChatGPT Data Exports
  *
- * This script combines ZIP extraction, conversation migration, and asset extraction
+ * This script combines ZIP extraction, conversation dumping, and asset extraction
  * into a single streamlined process for the new direct file-based architecture.
  *
  * Usage:
@@ -245,7 +245,7 @@ async function copyEssentialFiles(tempDir, exportMediaDir, options = {}) {
  */
 async function processExport(
   zipData,
-  exportName,
+  dumpsterName,
   baseDir,
   isBuffer = false,
   onProgress = null,
@@ -254,24 +254,37 @@ async function processExport(
   const { overwrite = false, verbose = false } = options;
 
   // Validate inputs
-  if (!zipData || !exportName || !baseDir) {
-    throw new Error('zipData, exportName, and baseDir are required');
+  if (!zipData || !dumpsterName || !baseDir) {
+    throw new Error('zipData, dumpsterName, and baseDir are required');
   }
 
-  // Sanitize export name
-  const sanitizedExportName = exportName
-    .replace(/[<>:"/\\|?*]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const exportDir = path.join(baseDir, 'data', 'exports', sanitizedExportName);
+  // Progress callback
+  const progressCallback = (stage, progress, message) => {
+    onProgress?.({ stage, progress, message });
+    if (verbose) {
+      console.info(`${stage}: ${progress}% - ${message}`);
+    }
+  };
+
+  progressCallback('initializing', 0, 'Initializing dumpster processing...');
+
+  // Sanitize dumpster name
+  const sanitizedDumpsterName = dumpsterName
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/^[^a-zA-Z]/, '_')
+    .toLowerCase();
+
+  // Create base directories
+  await ensureDir(baseDir);
+  const dumpsterDir = path.join(baseDir, 'data', 'dumpsters', sanitizedDumpsterName);
   const tempDir = generateTempDir(baseDir);
 
   // Check if export already exists
   if (!overwrite) {
     try {
-      await fs.access(exportDir);
+      await fs.access(dumpsterDir);
       throw new Error(
-        `Export "${sanitizedExportName}" already exists. Use --overwrite to replace it.`
+        `Dumpster "${sanitizedDumpsterName}" already exists. Use --overwrite to replace it.`
       );
     } catch (error) {
       if (error.code !== 'ENOENT') {
@@ -294,8 +307,8 @@ async function processExport(
     // Clean up existing export directory if overwriting
     if (overwrite) {
       try {
-        await removeDirectories(exportDir);
-        console.log(`Removed existing export directory: ${sanitizedExportName}`);
+        await removeDirectories(dumpsterDir);
+        console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
       } catch (error) {
         if (error.code !== 'ENOENT') {
           console.warn(`Failed to remove existing directory: ${error.message}`);
@@ -307,14 +320,14 @@ async function processExport(
 
     // Ensure directories exist
     await ensureDir(tempDir);
-    await ensureDir(exportDir);
+    await ensureDir(dumpsterDir);
 
     progressCallback('extracting', 10, 'Extracting ZIP file...');
 
     // Extract ZIP file
     await validateAndExtractZip(zipData, tempDir, isBuffer);
 
-    progressCallback('migrating', 40, 'Migrating conversations...');
+    progressCallback('dumping', 40, 'Dumping conversations...');
 
     // Dump conversations
     const conversationsInput = path.join(
@@ -322,9 +335,9 @@ async function processExport(
       'Test-Chat-Combine',
       'conversations.json'
     );
-    const conversationsOutput = path.join(exportDir, 'conversations');
+    const conversationsOutput = path.join(dumpsterDir, 'conversations');
 
-    const migrationResult = await dumpConversations(
+    const dumpResult = await dumpConversations(
       conversationsInput,
       conversationsOutput,
       {
@@ -335,15 +348,15 @@ async function processExport(
       }
     );
 
-    if (migrationResult.errors > 0) {
-      console.warn(`Migration completed with ${migrationResult.errors} errors`);
+    if (dumpResult.errors > 0) {
+      console.warn(`Dump completed with ${dumpResult.errors} errors`);
     }
 
     progressCallback('extracting-assets', 70, 'Extracting media assets...');
 
     // Extract assets
     const chatHtmlPath = path.join(tempDir, 'Test-Chat-Combine', 'chat.html');
-    const assetsJsonPath = path.join(exportDir, 'assets.json');
+    const assetsJsonPath = path.join(dumpsterDir, 'assets.json');
 
     const assetResult = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
       overwrite: true,
@@ -359,35 +372,35 @@ async function processExport(
     progressCallback('organizing', 85, 'Organizing media files...');
 
     // Create media directory and move files
-    const exportMediaDir = path.join(exportDir, 'media');
+    const exportMediaDir = path.join(dumpsterDir, 'media');
 
     const mediaResult = await moveMediaFiles(tempDir, exportMediaDir, { verbose });
     const essentialResult = await copyEssentialFiles(tempDir, exportMediaDir, {
       verbose,
     });
 
-    progressCallback('validating', 95, 'Validating export...');
+    progressCallback('validating', 95, 'Validating dumpster...');
 
-    // Validate export structure
-    const validation = await validateExport(exportDir);
+    // Validate dumpster structure
+    const validation = await validateDumpster(dumpsterDir);
 
     if (!validation.isValid) {
-      throw new Error(`Export validation failed: ${validation.errors.join(', ')}`);
+      throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
     }
 
     progressCallback('completed', 100, 'Export processing complete!');
 
-    console.log(`Export "${sanitizedExportName}" created successfully`);
+    console.log(`Dumpster "${sanitizedDumpsterName}" created successfully`);
     console.log(
-      `Conversations: ${migrationResult.processed}, Assets: ${assetResult.assetCount || 0}`
+      `Conversations: ${dumpResult.processed}, Assets: ${assetResult.assetCount || 0}`
     );
 
     return {
       success: true,
-      exportName: sanitizedExportName,
-      exportDir,
+      dumpsterName: sanitizedDumpsterName,
+      dumpsterDir,
       stats: {
-        conversations: migrationResult.processed,
+        conversations: dumpResult.processed,
         assets: assetResult.assetCount || 0,
         mediaFiles: mediaResult.moved,
         essentialFiles: essentialResult.copied,
@@ -412,7 +425,7 @@ async function processExport(
 /**
  * Validate export structure
  */
-async function validateExport(exportDir) {
+async function validateDumpster(dumpsterDir) {
   const errors = [];
   const warnings = [];
 
@@ -420,7 +433,7 @@ async function validateExport(exportDir) {
     // Check required directories
     const requiredDirs = ['conversations', 'media'];
     for (const dir of requiredDirs) {
-      const dirPath = path.join(exportDir, dir);
+      const dirPath = path.join(dumpsterDir, dir);
       try {
         await fs.access(dirPath);
       } catch {
@@ -429,7 +442,7 @@ async function validateExport(exportDir) {
     }
 
     // Check conversation files
-    const conversationsDir = path.join(exportDir, 'conversations');
+    const conversationsDir = path.join(dumpsterDir, 'conversations');
     try {
       const files = await fs.readdir(conversationsDir);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
@@ -442,7 +455,7 @@ async function validateExport(exportDir) {
     }
 
     // Check assets.json
-    const assetsPath = path.join(exportDir, 'assets.json');
+    const assetsPath = path.join(dumpsterDir, 'assets.json');
     try {
       await fs.access(assetsPath);
       const content = await fs.readFile(assetsPath, 'utf8');
@@ -519,7 +532,7 @@ if (require.main === module) {
 
 module.exports = {
   processExport,
-  validateExport,
+  validateDumpster,
   generateTempDir,
   moveMediaFiles,
   copyEssentialFiles,

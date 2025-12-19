@@ -16,7 +16,6 @@
     "lint:fix": "eslint . --ext .js,.mjs --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dump": "node data/dump.js data/conversations.json",
     "extract-assets": "node data/extract-assets-json.js"
   },
   "dependencies": {

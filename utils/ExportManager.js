@@ -1,279 +1,192 @@
-/*
- * Export Manager
- * Direct file-based export management system
- * Replaces session-based architecture with user-accessible exports
+/**
+ * Dumpster Manager
+ * Direct file-based dumpster management system
+ * Replaces session-based architecture with user-accessible dumpsters
  */
 const fs = require('fs').promises;
 const path = require('path');
 const { ensureDir, removeDirectories } = require('./fileUtils.js');
-const { processExport } = require('../data/process-export.js');
 
-class ExportManager {
+class DumpsterManager {
   constructor(baseDir) {
     this.baseDir = baseDir;
-    this.exports = new Map();
-    this.exportsFile = path.join(baseDir, 'data', 'exports.json');
-    this.exportsDir = path.join(baseDir, 'data', 'exports');
+    this.dumpsters = new Map();
+    this.dumpstersFile = path.join(baseDir, 'data', 'dumpsters.json');
+    this.dumpstersDir = path.join(baseDir, 'data', 'dumpsters');
     this.tempDir = path.join(baseDir, 'data', 'temp');
-    this.mediaDir = path.join(baseDir, 'data'); // Media is stored with exports
+    this.mediaDir = path.join(baseDir, 'data'); // Media is stored with dumpsters
   }
 
   /**
-   * Initialize the export manager
-   * Loads existing exports and ensures directories exist
+   * Initialize the dumpster manager
+   * @returns {Promise<void>}
    */
   async initialize() {
-    await this.loadExports();
-    await this.ensureDataDirectories();
-    await this.cleanupTempDirectory(); // Clean any leftover temp files
-    console.log('ExportManager initialized');
+    await this.loadDumpsters();
   }
 
   /**
-   * Create a new export from uploaded zip data
-   * @param {Buffer|string} zipData - Zip file buffer or path
-   * @param {string} exportName - User-chosen export name
-   * @param {boolean} isBuffer - True if zipData is buffer, false if path
-   * @param {Function} onProgress - Optional progress callback
-   * @returns {Promise<string>} Export name
+   * List all dumpsters
+   * @returns {Promise<Array>} Array of dumpster objects
    */
-  async createExport(zipData, exportName, isBuffer = true, onProgress = null) {
-    // Validate export name
-    const sanitizedName = this.sanitizeExportName(exportName);
-
-    // Check if export already exists
-    if (this.exports.has(sanitizedName)) {
-      throw new Error(
-        `Export "${sanitizedName}" already exists. Please choose a different name.`
-      );
+  async listDumpsters() {
+    const dumpsterInfo = [];
+    for (const [name, data] of this.dumpsters) {
+      try {
+        const stats = await this.getDumpsterStats(name);
+        dumpsterInfo.push({
+          name,
+          createdAt: data.createdAt,
+          chatCount: stats.chatCount,
+          totalSize: stats.totalSize,
+        });
+      } catch (error) {
+        console.warn(`Error getting stats for dumpster ${name}:`, error.message);
+        dumpsterInfo.push({
+          name,
+          createdAt: data.createdAt,
+          chatCount: 'unknown',
+          totalSize: 'unknown',
+        });
+      }
     }
 
-    console.log(`Creating export "${sanitizedName}" with isBuffer=${isBuffer}`);
+    return dumpsterInfo;
+  }
 
-    const exportDir = path.join(this.exportsDir, sanitizedName);
-    await ensureDir(exportDir);
+  /**
+   * Get dumpster information
+   * @param {string} dumpsterName - Dumpster name
+   * @returns {Object|null} Dumpster info or null if not found
+   */
+  getDumpster(dumpsterName) {
+    return this.dumpsters.get(dumpsterName) || null;
+  }
+
+  /**
+   * Delete a dumpster and all its associated files
+   * @param {string} dumpsterName - Name of dumpster to delete
+   * @returns {Promise<boolean>} True if deleted successfully
+   */
+  async deleteDumpster(dumpsterName) {
+    const sanitizedName = this.sanitizeDumpsterName(dumpsterName);
+
+    if (!this.dumpsters.has(sanitizedName)) {
+      throw new Error(`Dumpster "${sanitizedName}" not found`);
+    }
+
+    const dumpsterDir = path.join(this.dumpstersDir, sanitizedName);
 
     try {
-      // Process the export using our unified processor
-      await processExport(zipData, sanitizedName, this.baseDir, isBuffer, progress => {
-        console.log(
-          `Export progress: ${progress.stage} - ${progress.progress}% - ${progress.message}`
-        );
-        onProgress?.(progress);
-      });
+      // Remove dumpster directory and all contents
+      await removeDirectories(dumpsterDir);
 
-      // Store export info
-      this.exports.set(sanitizedName, {
-        name: sanitizedName,
-        createdAt: new Date(),
-        size: Buffer.isBuffer(zipData) ? zipData.length : 0,
-        status: 'completed',
-        conversationCount: await this.getConversationCount(sanitizedName),
-      });
-      await this.saveExports();
+      // Remove from metadata
+      this.dumpsters.delete(dumpsterName);
+      await this.saveDumpsters();
 
-      console.log(`Export created successfully: "${sanitizedName}"`);
-      return sanitizedName;
-    } catch (error) {
-      console.error('Export creation failed:', {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-        name: error.name,
-      });
-
-      // Clean up on failure
-      try {
-        await removeDirectories(exportDir);
-        console.log('Cleanup completed after export failure');
-      } catch (cleanupError) {
-        console.error('Cleanup failed:', cleanupError);
-      }
-
-      throw error;
+      console.log(`Deleted dumpster: "${dumpsterName}"`);
+      return true;
+    } catch {
+      // continue
     }
   }
 
   /**
-   * Get export information
-   * @param {string} exportName - Export name
-   * @returns {Object|null} Export info or null if not found
+   * Get chats from a dumpster
+   * @param {string} dumpsterName - Name of dumpster
+   * @param {number|null} limit - Maximum number of chats to return
+   * @returns {Promise<Array>} Array of chat objects
    */
-  getExport(exportName) {
-    return this.exports.get(exportName) || null;
-  }
+  async getChats(dumpsterName, limit = null) {
+    await this.loadDumpsters();
 
-  /**
-   * Check if export exists
-   * @param {string} exportName - Export name
-   * @returns {boolean} True if export exists
-   */
-  hasExport(exportName) {
-    return this.exports.has(exportName);
-  }
-
-  /**
-   * Get all exports
-   * @returns {Map} All exports
-   */
-  getAllExports() {
-    return new Map(this.exports);
-  }
-
-  /**
-   * Delete an export and all its data
-   * @param {string} exportName - Export name to delete
-   * @returns {Promise<boolean>} True if export was deleted
-   */
-  async deleteExport(exportName) {
-    if (!this.exports.has(exportName)) {
-      return false;
+    if (!this.dumpsters.has(dumpsterName)) {
+      throw new Error(`Dumpster "${dumpsterName}" not found`);
     }
 
-    const exportDir = path.join(this.exportsDir, exportName);
+    const dumpsterDir = path.join(this.dumpstersDir, dumpsterName);
+    const conversationsDir = path.join(dumpsterDir, 'conversations');
 
-    // Remove export directory
-    await removeDirectories(exportDir);
-
-    // Remove from memory
-    this.exports.delete(exportName);
-    await this.saveExports();
-
-    console.log(`Deleted export: "${exportName}"`);
-    return true;
-  }
-
-  /**
-   * List all exports
-   * @returns {Promise<Array>} Array of export objects
-   */
-  async listExports() {
-    const exports = [];
-
-    for (const [name, data] of this.exports.entries()) {
-      try {
-        await fs.stat(path.join(this.exportsDir, name));
-        exports.push({
-          name,
-          createdAt: new Date(data.createdAt).toISOString(),
-          size: data.size || 'unknown',
-          conversationCount: await this.getConversationCount(name),
-        });
-      } catch {
-        // Skip exports that don't exist on disk
-        exports.push({
-          name,
-          createdAt: new Date(data.createdAt).toISOString(),
-          size: 'unknown',
-          conversationCount: 'unknown',
-          status: 'missing',
-        });
-      }
-    }
-
-    return exports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  /**
-   * Get conversations for an export
-   * @param {string} exportName - Export name
-   * @param {number} limit - Maximum number of conversations to return (optional)
-   * @returns {Promise<Array>} Array of conversation objects
-   */
-  async getConversations(exportName, limit = null) {
-    if (!this.exports.has(exportName)) {
-      throw new Error('Export not found');
-    }
-
-    const conversationsDir = path.join(this.exportsDir, exportName, 'conversations');
     try {
       const files = await fs.readdir(conversationsDir);
-      const conversations = [];
 
-      for (const file of files) {
-        if (file.endsWith('.json')) {
+      // Filter for JSON files and sort by filename (which includes date)
+      const jsonFiles = files
+        .filter(file => file.endsWith('.json'))
+        .sort((a, b) => b.localeCompare(a)); // Reverse chronological order
+
+      const chats = [];
+      for (const file of limit ? jsonFiles.slice(0, limit) : jsonFiles) {
+        try {
           const filePath = path.join(conversationsDir, file);
           const content = await fs.readFile(filePath, 'utf8');
-          const conv = JSON.parse(content);
-          conversations.push({
-            id: file,
-            title: conv.title || 'Untitled',
-            date: file.split('_')[0],
-            exportName,
+          const conversation = JSON.parse(content);
+          chats.push({
+            filename: file,
+            ...conversation,
           });
+        } catch (error) {
+          console.warn(`Error reading chat file ${file}:`, error.message);
         }
       }
 
-      // Sort by date (newest first)
-      conversations.sort((a, b) => b.id.localeCompare(a.id));
-
-      // Apply limit if specified
-      if (limit && limit > 0) {
-        return conversations.slice(0, limit);
-      }
-
-      return conversations;
+      return chats;
     } catch (error) {
-      console.error(`Error loading conversations for export ${exportName}:`, error);
-      throw new Error('Error loading conversations');
+      console.error(`Error loading chats for dumpster ${dumpsterName}:`, error);
+      throw new Error('Error loading chats');
     }
   }
 
   /**
-   * Get specific conversation details
-   * @param {string} exportName - Export name
-   * @param {string} conversationId - Conversation file ID
-   * @returns {Promise<Object>} Conversation details
+   * Get a specific chat from a dumpster
+   * @param {string} dumpsterName - Name of dumpster
+   * @param {string} chatId - ID/filename of chat
+   * @returns {Promise<Object>} Chat object
    */
-  async getConversation(exportName, conversationId) {
-    if (!this.exports.has(exportName)) {
-      throw new Error('Export not found');
+  async getChat(dumpsterName, chatId) {
+    await this.loadDumpsters();
+
+    if (!this.dumpsters.has(dumpsterName)) {
+      throw new Error(`Dumpster "${dumpsterName}" not found`);
     }
 
-    const filePath = path.join(
-      this.exportsDir,
-      exportName,
-      'conversations',
-      conversationId
-    );
+    const dumpsterDir = path.join(this.dumpstersDir, dumpsterName);
+    const conversationsDir = path.join(dumpsterDir, 'conversations');
+    const chatFile = path.join(conversationsDir, chatId);
 
     try {
-      const content = await fs.readFile(filePath, 'utf8');
-      const conv = JSON.parse(content);
-
-      // Import getConversationMessages function
-      const { getConversationMessages } = require('./getConversationMessages.js');
-      const messages = await getConversationMessages(conv, exportName, this.baseDir);
-
+      const content = await fs.readFile(chatFile, 'utf8');
+      const conversation = JSON.parse(content);
       return {
-        title: conv.title || 'Untitled',
-        messages,
-        exportName,
+        dumpsterName,
+        filename: chatId,
+        ...conversation,
       };
     } catch (error) {
-      console.error(`Error loading conversation ${conversationId}:`, error);
-      throw new Error('Error loading conversation');
+      console.error(`Error loading chat ${chatId}:`, error);
+      throw new Error('Error loading chat');
     }
   }
 
   /**
-   * Get media file path for an export
-   * @param {string} exportName - Export name
+   * Get media file path for a dumpster
+   * @param {string} dumpsterName - Dumpster name
    * @param {string} mediaPath - Relative media path
    * @returns {string} Full path to media file
    */
-  getMediaPath(exportName, mediaPath) {
-    return path.join(this.exportsDir, exportName, 'media', mediaPath);
+  getMediaPath(dumpsterName, mediaPath) {
+    return path.join(this.dumpstersDir, dumpsterName, 'media', mediaPath);
   }
 
   /**
    * Check if media file exists
-   * @param {string} exportName - Export name
+   * @param {string} dumpsterName - Dumpster name
    * @param {string} mediaPath - Relative media path
    * @returns {Promise<boolean>} True if file exists
    */
-  async mediaExists(exportName, mediaPath) {
-    const filePath = this.getMediaPath(exportName, mediaPath);
+  async mediaExists(dumpsterName, mediaPath) {
+    const filePath = this.getMediaPath(dumpsterName, mediaPath);
     try {
       await fs.access(filePath);
       return true;
@@ -283,59 +196,56 @@ class ExportManager {
   }
 
   /**
-   * Get export statistics
-   * @param {string} exportName - Export name
-   * @returns {Promise<Object>} Export statistics
+   * Get statistics for a dumpster
+   * @param {string} dumpsterName - Name of dumpster
+   * @returns {Promise<Object>} Dumpster statistics
    */
-  async getExportStats(exportName) {
-    if (!this.exports.has(exportName)) {
-      throw new Error('Export not found');
-    }
-
-    const exportInfo = this.exports.get(exportName);
-    const exportDir = path.join(this.exportsDir, exportName);
-
-    let totalSize = 0;
-    let conversationCount = 0;
-    let mediaCount = 0;
+  async getDumpsterStats(dumpsterName) {
+    const dumpsterDir = path.join(this.dumpstersDir, dumpsterName);
 
     try {
-      // Count conversations and calculate size
-      const conversationsDir = path.join(exportDir, 'conversations');
-      const conversations = await fs.readdir(conversationsDir);
-      conversationCount = conversations.filter(f => f.endsWith('.json')).length;
+      let totalSize = 0;
+      let chatCount = 0;
 
-      for (const file of conversations) {
+      const conversationsDir = path.join(dumpsterDir, 'conversations');
+      const files = await fs.readdir(conversationsDir);
+
+      for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(conversationsDir, file);
           const stats = await fs.stat(filePath);
           totalSize += stats.size;
+          chatCount++;
         }
       }
 
-      // Count media files
-      const mediaDir = path.join(exportDir, 'media');
+      // Check if media directory exists and count files
+      const mediaDir = path.join(dumpsterDir, 'media');
       try {
-        const mediaFiles = await this.getAllFiles(mediaDir);
-        mediaCount = mediaFiles.length;
-
+        const mediaFiles = await fs.readdir(mediaDir);
         for (const file of mediaFiles) {
-          const stats = await fs.stat(file);
-          totalSize += stats.size;
+          const mediaFilePath = path.join(mediaDir, file);
+          try {
+            const mediaStats = await fs.stat(mediaFilePath);
+            if (mediaStats.isFile()) {
+              totalSize += mediaStats.size;
+            }
+          } catch {
+            // Skip files that can't be accessed
+          }
         }
       } catch {
-        // Media directory might not exist
+        // Media directory doesn't exist, which is fine
       }
 
       return {
-        ...exportInfo,
-        conversationCount,
-        mediaCount,
+        dumpsterName,
         totalSize,
+        chatCount,
       };
     } catch (error) {
-      console.error(`Error getting stats for export ${exportName}:`, error);
-      return exportInfo;
+      console.error(`Error getting stats for dumpster ${dumpsterName}:`, error);
+      return null;
     }
   }
 
@@ -353,13 +263,17 @@ class ExportManager {
   }
 
   /**
-   * Get count of conversations in an export
-   * @param {string} exportName - Export name
+   * Get conversation count for a dumpster
+   * @param {string} dumpsterName - Dumpster name
    * @returns {Promise<number>} Number of conversations
    */
-  async getConversationCount(exportName) {
+  async getConversationCount(dumpsterName) {
     try {
-      const conversationsDir = path.join(this.exportsDir, exportName, 'conversations');
+      const conversationsDir = path.join(
+        this.dumpstersDir,
+        dumpsterName,
+        'conversations'
+      );
       const files = await fs.readdir(conversationsDir);
       return files.filter(f => f.endsWith('.json')).length;
     } catch {
@@ -407,13 +321,33 @@ class ExportManager {
   }
 
   /**
-   * Load exports from disk
+   * Ensure required data directories exist
    */
-  async loadExports() {
+  async ensureDataDirectories() {
+    await ensureDir(this.dumpstersDir);
+    await ensureDir(this.tempDir);
+  }
+
+  /**
+   * Sanitize dumpster name for filesystem safety
+   * @param {string} name - Dumpster name to sanitize
+   * @returns {string} Sanitized name
+   */
+  sanitizeDumpsterName(name) {
+    return name
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/^[^a-zA-Z]/, '_')
+      .toLowerCase();
+  }
+
+  /**
+   * Load dumpsters from disk
+   */
+  async loadDumpsters() {
     try {
-      const data = await fs.readFile(this.exportsFile, 'utf8');
+      const data = await fs.readFile(this.dumpstersFile, 'utf8');
       const parsed = JSON.parse(data);
-      this.exports = new Map(
+      this.dumpsters = new Map(
         parsed.map(([name, info]) => [
           name,
           {
@@ -422,36 +356,28 @@ class ExportManager {
           },
         ])
       );
-      console.log(`Loaded ${this.exports.size} exports from disk`);
+      console.log(`Loaded ${this.dumpsters.size} dumpsters from disk`);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.warn('Failed to load exports:', error.message);
+        console.warn('Failed to load dumpsters:', error.message);
       }
-      this.exports = new Map();
-      console.log('Starting with empty exports');
+      this.dumpsters = new Map();
+      console.log('Starting with empty dumpsters');
     }
   }
 
   /**
-   * Save exports to disk
+   * Save dumpsters to disk
    */
-  async saveExports() {
+  async saveDumpsters() {
     try {
-      const data = JSON.stringify([...this.exports.entries()], null, 2);
-      await fs.writeFile(this.exportsFile, data);
+      const data = JSON.stringify([...this.dumpsters.entries()], null, 2);
+      await fs.writeFile(this.dumpstersFile, data);
     } catch (error) {
-      console.error('Failed to save exports:', error.message);
+      console.error('Failed to save dumpsters:', error.message);
       throw error;
     }
   }
-
-  /**
-   * Ensure required data directories exist
-   */
-  async ensureDataDirectories() {
-    await ensureDir(this.exportsDir);
-    await ensureDir(this.tempDir);
-  }
 }
 
-module.exports = { ExportManager };
+module.exports = { DumpsterManager };

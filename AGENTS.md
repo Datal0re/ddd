@@ -16,10 +16,10 @@ This is a focused CLI tool for processing ChatGPT conversation data:
 ## Core Components
 
 - **cli.js**: Command-line interface with Commander.js
-- **utils/ExportManager.js**: Core export lifecycle management
+- **utils/ExportManager.js**: Core dumpster lifecycle management
 - **utils/fileUtils.js**: File operations and validation
-- **utils/getConversationMessages.js**: Message processing and asset handling
-- **data/**: Processing scripts for migration and extraction
+- **utils/getConversationMessages.js**: Chat message processing and asset handling
+- **data/**: Processing scripts for dumping and extraction
 
 ## Development Commands
 
@@ -65,14 +65,14 @@ npm run extract-assets # Extract assets from chat.html
 data-dumpster-diver/
 ├── cli.js              # Main CLI entry point
 ├── utils/              # Core utilities
-│   ├── ExportManager.js # Export management
+│   ├── ExportManager.js # Dumpster management
 │   ├── fileUtils.js     # File operations
-│   ├── getConversationMessages.js # Message processing
+│   ├── getConversationMessages.js # Chat message processing
 │   └── logger.js       # Logging
 ├── data/               # Data processing
-│   ├── migration.js     # Data migration
+│   ├── dump.js         # Data dump
 │   ├── extract-assets-json.js # Asset extraction
-│   └── process-export.js # Export processing
+│   └── process-export.js # Dumpster processing
 ├── package.json        # Dependencies and scripts
 ├── README.md           # User documentation
 └── LICENSE             # MIT License
@@ -85,12 +85,12 @@ Currently no test suite. For hobby project, manual testing is acceptable:
 ```bash
 # Test basic functionality
 node cli.js --help
-node cli.js list
-node cli.js upload --help
+node cli.js inventory
+node cli.js dump --help
 
 # Test with real data (when available)
-node cli.js upload path/to/chatgpt-export.zip --name "test"
-node cli.js view test
+node cli.js dump path/to/chatgpt-export.zip --name "test"
+node cli.js rummage test
 ```
 
 ## Dependency Management
