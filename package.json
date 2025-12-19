@@ -16,7 +16,7 @@
     "lint:fix": "eslint . --ext .js,.mjs --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "extract-assets": "node data/extract-assets-json.js"
+    "extract-assets": "node data/extract-assets.js"
   },
   "dependencies": {
     "commander": "^12.0.0",

@@ -323,10 +323,10 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
 }
 
 /**
- * Recursively search for files matching a pattern
+ * Recursively find files by filename prefix
  * @param {string} dir - Directory to search
- * @param {string} filename - Filename pattern to match
- * @returns {Array} Array of matching file paths
+ * @param {string} filename - Filename to search for (prefix)
+ * @returns {Promise<Array>} Array of file paths
  */
 async function recursivelyFindFiles(dir, filename) {
   if (!dir || !filename) {
@@ -337,30 +337,15 @@ async function recursivelyFindFiles(dir, filename) {
   validateNonEmptyString(dir, 'dir');
   validateNonEmptyString(filename, 'filename');
 
-  const results = [];
+  const { findFilesByPrefix } = require('./fileUtils');
 
   try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        // Recursively search subdirectories
-        const subResults = await recursivelyFindFiles(fullPath, filename);
-        results.push(...subResults);
-      } else if (entry.isFile() && entry.name.startsWith(filename)) {
-        // Found a matching file (files may have UUID suffixes)
-        results.push(fullPath);
-      }
-    }
+    const results = await findFilesByPrefix(dir, filename, true);
+    return results;
   } catch (error) {
-    // Directory might not exist or be inaccessible
-    // Log at debug level as this is expected for non-existent directories
-    console.debug(`Directory not accessible during file search: ${dir}`, error.message);
+    console.error(`Error searching directory ${dir}:`, error);
+    return [];
   }
-
-  return results;
 }
 
 /**

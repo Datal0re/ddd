@@ -7,9 +7,9 @@
  * into a single streamlined process for the new direct file-based architecture.
  *
  * Usage:
- *   node process-export.js [zipPath] [exportName] [baseDir] [options]
- *   node process-export.js ./chatgpt-export.zip "my-chat-history" ./ --verbose
- *   node process-export.js --help
+ *   node dumpster-processor.js [zipPath] [exportName] [baseDir] [options]
+ *   node dumpster-processor.js ./chatgpt-export.zip "my-chat-history" ./ --verbose
+ *   node dumpster-processor.js --help
  */
 
 const fs = require('fs').promises;
@@ -18,65 +18,48 @@ const {
   ensureDir,
   removeDirectories,
   validateAndExtractZip,
+  createProgressTracker,
 } = require('../utils/fileUtils');
-const { dumpConversations } = require('./dump.js');
-const { extractAssetsFromHtml } = require('./extract-assets-json.js');
+const { dumpConversations } = require('./conversation-dumper.js');
+const { extractAssetsFromHtml } = require('./extract-assets.js');
 
 /**
  * Parse command line arguments
  */
 function parseArguments() {
-  const args = process.argv.slice(2);
-  const options = {
-    zipPath: null,
-    exportName: null,
-    baseDir: null,
-    tempDir: null,
-    isBuffer: false,
-    preserveOriginal: false,
-    overwrite: false,
-    verbose: false,
+  const { parseCLIArguments, COMMON_FLAGS } = require('../utils/fileUtils');
+
+  const config = {
+    defaults: {
+      tempDir: null,
+      isBuffer: false,
+      preserveOriginal: false,
+      overwrite: false,
+      verbose: false,
+      baseDir: path.resolve(__dirname, '..'),
+    },
+    flags: [
+      COMMON_FLAGS.preserve,
+      COMMON_FLAGS.overwrite,
+      COMMON_FLAGS.verbose,
+      COMMON_FLAGS.help,
+    ],
+    positional: ['zipPath', 'exportName', 'baseDir'],
   };
 
-  // Parse arguments
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  const options = parseCLIArguments(config);
 
-    switch (arg) {
-      case '--preserve':
-        options.preserveOriginal = true;
-        break;
-      case '--overwrite':
-        options.overwrite = true;
-        break;
-      case '--verbose':
-        options.verbose = true;
-        break;
-      case '--help':
-        showHelp();
-        process.exit(0);
-        break;
-      default:
-        if (!options.zipPath) {
-          options.zipPath = arg;
-        } else if (!options.exportName) {
-          options.exportName = arg;
-        } else if (!options.baseDir) {
-          options.baseDir = arg;
-        }
-        break;
-    }
+  if (options.help) {
+    showHelp();
+    process.exit(0);
   }
-
-  // Set defaults
-  options.baseDir = options.baseDir || path.resolve(__dirname, '..');
 
   return options;
 }
 
 function showHelp() {
   console.log(`
-Usage: node process-export.js [zipPath] [exportName] [baseDir] [options]
+Usage: node dumpster-processor.js [zipPath] [exportName] [baseDir] [options]
 
 Arguments:
   zipPath      Path to ChatGPT export ZIP file (required)
@@ -90,17 +73,17 @@ Options:
   --help       Show this help message
 
 Examples:
-  # Basic usage
-  node process-export.js ./chatgpt-export.zip "my-chat-history"
-  
-  # With custom base directory
-  node process-export.js ./export.zip "work-chat" /path/to/app
-  
-  # Overwrite existing export
-  node process-export.js ./export.zip "my-chat" --overwrite
-  
-  # Verbose output
-  node process-export.js ./export.zip "my-chat" --verbose
+# Basic usage
+   node dumpster-processor.js ./chatgpt-export.zip "my-chat-history"
+   
+   # With custom base directory
+   node dumpster-processor.js ./export.zip "work-chat" /path/to/app
+   
+   # Overwrite existing export
+   node dumpster-processor.js ./export.zip "my-chat" --overwrite
+   
+   # Verbose output
+   node dumpster-processor.js ./export.zip "my-chat" --verbose
 `);
 }
 
@@ -258,21 +241,13 @@ async function processExport(
     throw new Error('zipData, dumpsterName, and baseDir are required');
   }
 
-  // Progress callback
-  const progressCallback = (stage, progress, message) => {
-    onProgress?.({ stage, progress, message });
-    if (verbose) {
-      console.info(`${stage}: ${progress}% - ${message}`);
-    }
-  };
-
-  progressCallback('initializing', 0, 'Initializing dumpster processing...');
+  // Create unified progress tracker
+  const progress = createProgressTracker(onProgress, verbose);
+  progress.initializing('Initializing dumpster processing...');
 
   // Sanitize dumpster name
-  const sanitizedDumpsterName = dumpsterName
-    .replace(/[^a-zA-Z0-9_-]/g, '_')
-    .replace(/^[^a-zA-Z]/, '_')
-    .toLowerCase();
+  const { sanitizeName } = require('../utils/fileUtils');
+  const sanitizedDumpsterName = sanitizeName(dumpsterName, { type: 'dumpster' });
 
   // Create base directories
   await ensureDir(baseDir);
@@ -294,15 +269,7 @@ async function processExport(
   }
 
   try {
-    // Progress callback wrapper
-    const progressCallback = (stage, progress, message) => {
-      if (onProgress) {
-        onProgress({ stage, progress, message });
-      }
-      if (verbose) {
-        console.log(`${stage}: ${progress}% - ${message}`);
-      }
-    };
+    // Progress tracker already created above, no need for wrapper
 
     // Clean up existing export directory if overwriting
     if (overwrite) {
@@ -316,18 +283,18 @@ async function processExport(
       }
     }
 
-    progressCallback('extracting', 5, 'Setting up directories...');
+    progress.extracting(5, 'Setting up directories...');
 
     // Ensure directories exist
     await ensureDir(tempDir);
     await ensureDir(dumpsterDir);
 
-    progressCallback('extracting', 10, 'Extracting ZIP file...');
+    progress.extracting(10, 'Extracting ZIP file...');
 
     // Extract ZIP file
     await validateAndExtractZip(zipData, tempDir, isBuffer);
 
-    progressCallback('dumping', 40, 'Dumping conversations...');
+    progress.dumping(40, 'Dumping conversations...');
 
     // Dump conversations
     const conversationsInput = path.join(
@@ -352,7 +319,7 @@ async function processExport(
       console.warn(`Dump completed with ${dumpResult.errors} errors`);
     }
 
-    progressCallback('extracting-assets', 70, 'Extracting media assets...');
+    progress.extractingAssets(70, 'Extracting media assets...');
 
     // Extract assets
     const chatHtmlPath = path.join(tempDir, 'Test-Chat-Combine', 'chat.html');
@@ -369,7 +336,7 @@ async function processExport(
       console.warn('No assets found or asset extraction failed');
     }
 
-    progressCallback('organizing', 85, 'Organizing media files...');
+    progress.organizing(85, 'Organizing media files...');
 
     // Create media directory and move files
     const exportMediaDir = path.join(dumpsterDir, 'media');
@@ -379,7 +346,7 @@ async function processExport(
       verbose,
     });
 
-    progressCallback('validating', 95, 'Validating dumpster...');
+    progress.validating(95, 'Validating dumpster...');
 
     // Validate dumpster structure
     const validation = await validateDumpster(dumpsterDir);
@@ -388,7 +355,7 @@ async function processExport(
       throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
     }
 
-    progressCallback('completed', 100, 'Export processing complete!');
+    progress.completed('Export processing complete!');
 
     console.log(`Dumpster "${sanitizedDumpsterName}" created successfully`);
     console.log(

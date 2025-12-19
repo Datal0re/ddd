@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Enhanced extract-assets-json.js for direct file processing
+ * Enhanced extract-assets.js for direct file processing
  *
  * Extracts assetsJson variables from chat.html files and saves them as assets.json
  *
  * Usage:
- *   node extract-assets-json.js [inputPath] [outputPath] [options]
- *   node extract-assets-json.js /path/to/chat.html /path/to/output.json
- *   node extract-assets-json.js /path/to/directory /output/dir/ --recursive
- *   node extract-assets-json.js --help
+ *   node extract-assets.js [inputPath] [outputPath] [options]
+ *   node extract-assets.js /path/to/chat.html /path/to/output.json
+ *   node extract-assets.js /path/to/directory /output/dir/ --recursive
+ *   node extract-assets.js --help
  *
  * Options:
  *   --recursive    Process all HTML files in directory recursively
@@ -72,7 +72,7 @@ function parseArguments() {
 
 function showHelp() {
   console.log(`
-Usage: node extract-assets-json.js [inputPath] [outputPath] [options]
+Usage: node extract-assets.js [inputPath] [outputPath] [options]
 
 Arguments:
   inputPath     Path to chat.html file or directory containing HTML files
@@ -87,16 +87,16 @@ Options:
 
 Examples:
   # Process single file
-  node extract-assets-json.js chat.html assets.json
+  node extract-assets.js chat.html assets.json
   
   # Process directory
-  node extract-assets-json.js ./extracted-files ./output
+  node extract-assets.js ./extracted-files ./output
   
   # Process directory recursively
-  node extract-assets-json.js ./data ./output --recursive
+  node extract-assets.js ./data ./output --recursive
   
   # Overwrite existing files
-  node extract-assets-json.js chat.html assets.json --overwrite
+  node extract-assets.js chat.html assets.json --overwrite
 `);
 }
 
@@ -104,32 +104,15 @@ Examples:
  * Find all HTML files in a directory
  */
 async function findHtmlFiles(dirPath, recursive = false) {
-  const files = [];
+  const { findFilesByPattern } = require('../utils/fileUtils');
 
-  async function traverse(currentPath) {
-    try {
-      const items = await fs.readdir(currentPath);
-
-      for (const item of items) {
-        const itemPath = path.join(currentPath, item);
-        const stats = await fs.stat(itemPath);
-
-        if (stats.isDirectory() && recursive) {
-          await traverse(itemPath);
-        } else if (
-          stats.isFile() &&
-          (item.endsWith('.html') || item.endsWith('.htm'))
-        ) {
-          files.push(itemPath);
-        }
-      }
-    } catch (error) {
-      console.warn(`Error accessing directory ${currentPath}: ${error.message}`);
-    }
+  try {
+    const htmlPattern = '\\.(html?|htm)$';
+    return await findFilesByPattern(dirPath, htmlPattern, recursive);
+  } catch (error) {
+    console.warn(`Error accessing directory ${dirPath}: ${error.message}`);
+    return [];
   }
-
-  await traverse(dirPath);
-  return files;
 }
 
 /**

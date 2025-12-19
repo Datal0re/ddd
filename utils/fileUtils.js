@@ -177,12 +177,10 @@ async function ensureDir(dirPath) {
 async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
   const decompress = await getDecompress();
   let tempDir = null;
-  let tempZipPath = null;
-
   try {
     // Create secure temp directory for processing
     tempDir = await createTempDir();
-    tempZipPath = path.join(tempDir, 'extract.zip');
+    const tempZipPath = path.join(tempDir, 'extract.zip');
 
     console.log(`Validating and extracting ZIP: isBuffer=${isBuffer}`);
 
@@ -298,7 +296,7 @@ async function runAssetExtraction(dumpsterName, baseDir) {
   return new Promise((resolve, _reject) => {
     const child = spawn(
       'node',
-      [path.join(baseDir, 'data', 'extract-assets-json.js'), dumpsterName],
+      [path.join(baseDir, 'data', 'extract-assets.js'), dumpsterName],
       {
         stdio: 'pipe',
       }
@@ -348,21 +346,19 @@ async function processZipUpload(
   onProgress = null
 ) {
   const decompress = await getDecompress();
-  const path = require('path');
-  let tempDir = null;
-  let tempZipPath = null;
+  const tempDir = await createTempDir();
+  const tempZipPath = path.join(tempDir, `${dumpsterName}.zip`);
 
   try {
-    // Create secure temp directory for processing
-    tempDir = await createTempDir();
-    tempZipPath = path.join(tempDir, 'upload.zip');
-
-    console.log(
+    console.debug(
       `Processing zip upload: isBuffer=${isBuffer}, dumpsterName=${dumpsterName}`
     );
 
+    // Create unified progress tracker
+    const progress = createProgressTracker(onProgress);
+
     // Validate upload before processing
-    onProgress?.({ stage: 'validating', progress: 0, message: 'Validating upload...' });
+    progress.validating(0, 'Validating upload...');
     await validateUpload(zipData);
 
     // Save or copy zip file to temp location
@@ -374,11 +370,7 @@ async function processZipUpload(
       await fs.copyFile(zipData, tempZipPath);
     }
 
-    onProgress?.({
-      stage: 'extracting',
-      progress: 10,
-      message: 'Extracting archive...',
-    });
+    progress.extracting(10, 'Extracting archive...');
     console.log('Starting zip extraction...');
 
     // Extract zip to temp directory first (security)
@@ -405,14 +397,10 @@ async function processZipUpload(
       );
     }
 
-    onProgress?.({ stage: 'organizing', progress: 50, message: 'Organizing files...' });
+    progress.organizing(50, 'Organizing files...');
 
     // Move files from temp to final locations
-    onProgress?.({
-      stage: 'finalizing',
-      progress: 80,
-      message: 'Finalizing organization...',
-    });
+    progress.update('finalizing', 80, 'Finalizing organization...');
     const conversationsPath = await moveFilesToFinalLocations(
       tempDir,
       exportDir,
@@ -440,11 +428,7 @@ async function processZipUpload(
       );
     }
 
-    onProgress?.({
-      stage: 'completed',
-      progress: 100,
-      message: 'Processing complete!',
-    });
+    progress.completed('Upload processing complete');
     return conversationsPath;
   } catch (error) {
     console.error('Zip upload processing failed:', {
@@ -635,6 +619,396 @@ async function removeDirectories(...dirs) {
   }
 }
 
+/**
+ * Unified CLI argument parser for common options
+ * @param {Object} config - Configuration for argument parsing
+ * @param {Array} config.args - Arguments array (default: process.argv.slice(2))
+ * @param {Object} config.defaults - Default options
+ * @param {Array} config.flags - Array of flag definitions {name, flag, description}
+ * @param {Array} config.positional - Array of positional argument names
+ * @returns {Object} Parsed options object
+ */
+function parseCLIArguments(argsOrConfig = []) {
+  // Allow both parseCLIArguments(args, config) and parseCLIArguments(config)
+  let args, config;
+  if (Array.isArray(argsOrConfig)) {
+    args = argsOrConfig;
+    config = arguments[1] || {};
+  } else {
+    args = process.argv.slice(2);
+    config = argsOrConfig;
+  }
+
+  const { defaults = {}, flags = [], positional = [] } = config;
+
+  const options = { ...defaults };
+  let positionalIndex = 0;
+
+  // Parse arguments
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    // Check if it's a flag
+    const flagConfig = flags.find(f => f.flag === arg);
+    if (flagConfig) {
+      if (flagConfig.type === 'boolean') {
+        options[flagConfig.name] = true;
+      } else if (flagConfig.type === 'string' && i + 1 < args.length) {
+        options[flagConfig.name] = args[++i];
+      }
+      continue;
+    }
+
+    // Handle special flags that aren't in config
+    if (arg === '--help') {
+      options.help = true;
+      continue;
+    }
+
+    // Handle positional arguments
+    if (positionalIndex < positional.length) {
+      options[positional[positionalIndex]] = arg;
+      positionalIndex++;
+    }
+  }
+
+  return options;
+}
+
+/**
+ * Common flag definitions for reuse across scripts
+ */
+const COMMON_FLAGS = {
+  preserve: {
+    name: 'preserveOriginal',
+    flag: '--preserve',
+    type: 'boolean',
+    description: 'Keep original file after processing',
+  },
+  overwrite: {
+    name: 'overwrite',
+    flag: '--overwrite',
+    type: 'boolean',
+    description: 'Overwrite existing files',
+  },
+  verbose: {
+    name: 'verbose',
+    flag: '--verbose',
+    type: 'boolean',
+    description: 'Enable verbose logging',
+  },
+  help: {
+    name: 'help',
+    flag: '--help',
+    type: 'boolean',
+    description: 'Show help message',
+  },
+};
+
+/**
+ * Generate help text from configuration
+ * @param {Object} config - Configuration object
+ * @param {string} config.usage - Usage string
+ * @param {Array} config.positional - Positional arguments array
+ * @param {Array} config.flags - Flags array
+ * @param {Array} config.examples - Examples array
+ * @returns {string} Formatted help text
+ */
+function generateHelpText(config = {}) {
+  const { usage = '', positional = [], flags = [], examples = [] } = config;
+
+  let helpText = `\nUsage: ${usage}\n\n`;
+
+  if (positional.length > 0) {
+    helpText += 'Arguments:\n';
+    positional.forEach(arg => {
+      helpText += `  ${arg.padEnd(15)} Description for ${arg}\n`;
+    });
+    helpText += '\n';
+  }
+
+  if (flags.length > 0) {
+    helpText += 'Options:\n';
+    flags.forEach(flag => {
+      const line = `  ${flag.flag.padEnd(15)} ${flag.description}`;
+      helpText += line + '\n';
+    });
+    helpText += '\n';
+  }
+
+  if (examples.length > 0) {
+    helpText += 'Examples:\n';
+    examples.forEach(example => {
+      helpText += `  ${example}\n`;
+    });
+  }
+
+  return helpText;
+}
+
+/**
+ * Unified progress callback utility
+ * @param {Function} userCallback - User-provided progress callback (optional)
+ * @param {boolean} verbose - Whether to log to console (optional)
+ * @returns {Function} Standardized progress callback function
+ */
+function createProgressCallback(userCallback = null, verbose = false) {
+  return (stage, progress, message) => {
+    const progressData = { stage, progress, message };
+
+    // Call user callback if provided
+    if (userCallback) {
+      userCallback(progressData);
+    }
+
+    // Log to console if verbose
+    if (verbose) {
+      console.log(`${stage}: ${progress}% - ${message}`);
+    }
+  };
+}
+
+/**
+ * Standard progress stages for consistency
+ */
+const PROGRESS_STAGES = {
+  INITIALIZING: 'initializing',
+  EXTRACTING: 'extracting',
+  DUMPING: 'dumping',
+  EXTRACTING_ASSETS: 'extracting-assets',
+  ORGANIZING: 'organizing',
+  VALIDATING: 'validating',
+  COMPLETED: 'completed',
+};
+
+/**
+ * Create a progress tracker with automatic percentage calculation
+ * @param {Function} userCallback - User-provided progress callback
+ * @param {boolean} verbose - Whether to log to console
+ * @returns {Object} Progress tracker with update method
+ */
+function createProgressTracker(userCallback = null, verbose = false) {
+  const callback = createProgressCallback(userCallback, verbose);
+
+  return {
+    /**
+     * Update progress with automatic stage management
+     * @param {string} stage - Current stage
+     * @param {number} percentage - Progress percentage (0-100)
+     * @param {string} message - Progress message
+     */
+    update: (stage, percentage, message) => {
+      callback(stage, percentage, message);
+    },
+
+    /**
+     * Convenience methods for common stages
+     */
+    initializing: message => callback(PROGRESS_STAGES.INITIALIZING, 0, message),
+    extracting: (percentage, message) =>
+      callback(PROGRESS_STAGES.EXTRACTING, percentage, message),
+    dumping: (percentage, message) =>
+      callback(PROGRESS_STAGES.DUMPING, percentage, message),
+    extractingAssets: (percentage, message) =>
+      callback(PROGRESS_STAGES.EXTRACTING_ASSETS, percentage, message),
+    organizing: (percentage, message) =>
+      callback(PROGRESS_STAGES.ORGANIZING, percentage, message),
+    validating: (percentage, message) =>
+      callback(PROGRESS_STAGES.VALIDATING, percentage, message),
+    completed: message => callback(PROGRESS_STAGES.COMPLETED, 100, message),
+  };
+}
+
+/**
+ * Unified file search utility with multiple filtering options
+ * @param {string} dir - Directory to search in
+ * @param {Object} options - Search options
+ * @param {boolean} options.recursive - Search subdirectories recursively (default: false)
+ * @param {Function} options.filter - Filter function (filename, fullPath, stats) => boolean
+ * @param {string} options.pattern - Regex pattern to match filenames against
+ * @param {string} options.extension - File extension to match (e.g., '.js', '.json')
+ * @param {string} options.prefix - Filename prefix to match
+ * @param {boolean} options.includeDirs - Include directories in results (default: false)
+ * @param {number} options.maxDepth - Maximum recursion depth (default: unlimited)
+ * @returns {Promise<Array>} Array of matching file paths
+ */
+async function findFiles(dir, options = {}) {
+  const {
+    recursive = false,
+    filter = null,
+    pattern = null,
+    extension = null,
+    prefix = null,
+    includeDirs = false,
+    maxDepth = Infinity,
+  } = options;
+
+  if (!dir || typeof dir !== 'string') {
+    throw new Error('Directory path is required and must be a string');
+  }
+
+  const results = [];
+
+  async function traverse(currentPath, currentDepth = 0) {
+    try {
+      // Check depth limit
+      if (currentDepth > maxDepth) {
+        return;
+      }
+
+      const entries = await fs.readdir(currentPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentPath, entry.name);
+        const stats = await fs.stat(fullPath);
+
+        // Apply filters
+        let include = true;
+
+        if (filter && typeof filter === 'function') {
+          include = filter(entry.name, fullPath, stats);
+        }
+
+        if (pattern) {
+          include = include && new RegExp(pattern).test(entry.name);
+        }
+
+        if (extension) {
+          include = include && entry.name.endsWith(extension);
+        }
+
+        if (prefix) {
+          include = include && entry.name.startsWith(prefix);
+        }
+
+        // Add to results if included
+        if (include) {
+          if (stats.isFile() || includeDirs) {
+            results.push(fullPath);
+          }
+        }
+
+        // Recurse into subdirectories if enabled
+        if (recursive && stats.isDirectory() && currentDepth < maxDepth) {
+          await traverse(fullPath, currentDepth + 1);
+        }
+      }
+    } catch (error) {
+      console.warn(`Error accessing directory ${currentPath}: ${error.message}`);
+    }
+  }
+
+  await traverse(dir);
+  return results;
+}
+
+/**
+ * Convenience function for finding files by extension
+ * @param {string} dir - Directory to search
+ * @param {string} extension - File extension (e.g., '.html', '.json')
+ * @param {boolean} recursive - Search recursively (default: false)
+ * @returns {Promise<Array>} Array of matching file paths
+ */
+async function findFilesByExtension(dir, extension, recursive = false) {
+  return findFiles(dir, {
+    recursive,
+    extension: extension.startsWith('.') ? extension : `.${extension}`,
+  });
+}
+
+/**
+ * Convenience function for finding files by name pattern
+ * @param {string} dir - Directory to search
+ * @param {string} prefix - Filename prefix to match
+ * @param {boolean} recursive - Search recursively (default: true)
+ * @returns {Promise<Array>} Array of matching file paths
+ */
+async function findFilesByPrefix(dir, prefix, recursive = true) {
+  return findFiles(dir, {
+    recursive,
+    prefix,
+  });
+}
+
+/**
+ * Convenience function for finding files by regex pattern
+ * @param {string} dir - Directory to search
+ * @param {string|RegExp} pattern - Regex pattern to match
+ * @param {boolean} recursive - Search recursively (default: false)
+ * @returns {Promise<Array>} Array of matching file paths
+ */
+async function findFilesByPattern(dir, pattern, recursive = false) {
+  return findFiles(dir, {
+    recursive,
+    pattern: typeof pattern === 'string' ? pattern : pattern.source,
+  });
+}
+
+/**
+ * Unified name sanitization function for different use cases
+ * @param {string} name - Name to sanitize
+ * @param {Object} options - Sanitization options
+ * @param {string} options.type - Type of sanitization: 'dumpster', 'export', 'filename'
+ * @param {number} options.maxLength - Maximum length (default varies by type)
+ * @param {string} options.caseTransform - Case transformation: 'lower', 'upper', 'none' (default varies by type)
+ * @param {string} options.spaceReplacement - What to replace spaces with (default varies by type)
+ * @returns {string} Sanitized name
+ */
+function sanitizeName(name, options = {}) {
+  const {
+    type = 'dumpster',
+    maxLength = type === 'dumpster' ? 50 : type === 'export' ? 50 : 100,
+    caseTransform = type === 'dumpster' ? 'lower' : 'none',
+    spaceReplacement = type === 'dumpster' ? '_' : type === 'export' ? ' ' : '_',
+    allowPrefixNumbers = type !== 'dumpster',
+  } = options;
+
+  let sanitized = name;
+
+  if (type === 'dumpster') {
+    // Strict alphanumeric + underscore + dash only
+    sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    // Ensure starts with letter (if not allowed to start with numbers)
+    if (!allowPrefixNumbers) {
+      sanitized = sanitized.replace(/^[^a-zA-Z]/, '_');
+    }
+  } else if (type === 'export') {
+    // Replace filesystem-invalid characters with dash
+    sanitized = sanitized.replace(/[<>:"/\\|?*]/g, '-');
+  } else {
+    // Remove characters not suitable for filenames
+    sanitized = sanitized.replace(/[^\w\s-]/g, '');
+  }
+
+  // Replace multiple spaces with single space replacement
+  sanitized = sanitized.replace(/\s+/g, spaceReplacement);
+
+  // Remove leading/trailing whitespace/space replacement
+  sanitized = sanitized.trim();
+
+  // Limit length
+  sanitized = sanitized.substring(0, maxLength);
+
+  // Case transformation
+  if (caseTransform === 'lower') {
+    sanitized = sanitized.toLowerCase();
+  } else if (caseTransform === 'upper') {
+    sanitized = sanitized.toUpperCase();
+  }
+
+  // Ensure it's not empty
+  if (sanitized.length === 0) {
+    return type === 'dumpster'
+      ? 'untitled_dumpster'
+      : type === 'export'
+        ? 'untitled_export'
+        : 'untitled';
+  }
+
+  return sanitized;
+}
+
 module.exports = {
   ensureDir,
   runDump,
@@ -649,4 +1023,15 @@ module.exports = {
   isMediaFile,
   moveFilesToFinalLocations,
   validateAndExtractZip,
+  sanitizeName,
+  parseCLIArguments,
+  COMMON_FLAGS,
+  generateHelpText,
+  createProgressCallback,
+  createProgressTracker,
+  PROGRESS_STAGES,
+  findFiles,
+  findFilesByExtension,
+  findFilesByPrefix,
+  findFilesByPattern,
 };

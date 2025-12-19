@@ -1,51 +1,42 @@
 #!/usr/bin/env node
-// dump.js - Enhanced version for direct file processing
+// conversation-dumper.js - Enhanced version for direct file processing
 const fs = require('fs').promises;
 const path = require('path');
+const { sanitizeName } = require('../utils/fileUtils');
 
 /**
  * Configuration options
  */
 function parseArguments() {
-  const args = process.argv.slice(2);
-  const options = {
-    inputPath: null,
-    outputDir: null,
-    createSubdirs: false,
-    preserveOriginal: false,
-    overwrite: false,
-    verbose: false,
+  const { parseCLIArguments, COMMON_FLAGS } = require('../utils/fileUtils');
+
+  const config = {
+    defaults: {
+      createSubdirs: false,
+      preserveOriginal: false,
+      overwrite: false,
+      verbose: false,
+    },
+    flags: [
+      COMMON_FLAGS.preserve,
+      COMMON_FLAGS.overwrite,
+      COMMON_FLAGS.verbose,
+      COMMON_FLAGS.help,
+      {
+        name: 'createSubdirs',
+        flag: '--create-subdirs',
+        type: 'boolean',
+        description: 'Create a conversations subdirectory in outputDir',
+      },
+    ],
+    positional: ['inputPath', 'outputDir'],
   };
 
-  // Parse arguments
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  const options = parseCLIArguments(config);
 
-    switch (arg) {
-      case '--create-subdirs':
-        options.createSubdirs = true;
-        break;
-      case '--preserve':
-        options.preserveOriginal = true;
-        break;
-      case '--overwrite':
-        options.overwrite = true;
-        break;
-      case '--verbose':
-        options.verbose = true;
-        break;
-      case '--help':
-        showHelp();
-        process.exit(0);
-        break;
-      default:
-        if (!options.inputPath) {
-          options.inputPath = arg;
-        } else if (!options.outputDir) {
-          options.outputDir = arg;
-        }
-        break;
-    }
+  if (options.help) {
+    showHelp();
+    process.exit(0);
   }
 
   // Set defaults
@@ -58,38 +49,33 @@ function parseArguments() {
 
 function showHelp() {
   console.log(`
-Usage: node dump.js [inputPath] [outputDir] [options]
+Usage: node conversation-dumper.js [inputPath] [outputDir] [options]
 
 Arguments:
   inputPath    Path to conversations.json file (default: conversations.json)
   outputDir    Directory to save individual conversation files (default: ./conversations)
 
 Options:
-  --create-subdirs   Create a 'conversations' subdirectory in outputDir
+  --create-subdirs   Create a conversations subdirectory in outputDir
   --preserve         Keep original conversations.json file
   --overwrite        Overwrite existing files (default: skip existing)
   --verbose          Enable verbose logging
   --help             Show this help message
 
 Examples:
-  node dump.js                                   # Use defaults
-  node dump.js /path/to/conversations.json       # Custom input path
-  node dump.js data.json ./output                # Custom input and output
-  node dump.js data.json ./out --create-subdirs  # Create conversations subdirectory
-  node dump.js data.json ./out --overwrite       # Overwrite existing files
-`);
+  node conversation-dumper.js                                   # Use defaults
+  node conversation-dumper.js /path/to/conversations.json       # Custom input path
+  node conversation-dumper.js data.json ./output                # Custom input and output
+  node conversation-dumper.js data.json ./out --create-subdirs  # Create conversations subdirectory
+  node conversation-dumper.js data.json ./out --overwrite       # Overwrite existing files
+ `);
 }
 
 /**
  * Utility functions
  */
 function sanitizeFilename(rawTitle) {
-  // Remove characters not suitable for filenames, then replace spaces with underscores
-  const noBad = rawTitle.replace(/[^\w\s-]/g, '');
-  const sanitized = noBad.trim().replace(/\s+/g, '_');
-
-  // Limit length and ensure it's not empty
-  return sanitized.length > 0 ? sanitized.substring(0, 100) : 'untitled';
+  return sanitizeName(rawTitle, { type: 'filename' });
 }
 
 function toNumber(v) {

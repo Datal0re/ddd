@@ -5,7 +5,7 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
-const { ensureDir, removeDirectories } = require('./fileUtils.js');
+const { ensureDir, removeDirectories, sanitizeName } = require('./fileUtils.js');
 
 class DumpsterManager {
   constructor(baseDir) {
@@ -255,11 +255,7 @@ class DumpsterManager {
    * @returns {string} Sanitized export name
    */
   sanitizeExportName(name) {
-    return name
-      .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid characters
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .trim() // Remove leading/trailing whitespace
-      .substring(0, 50); // Limit length
+    return sanitizeName(name, { type: 'export' });
   }
 
   /**
@@ -334,10 +330,54 @@ class DumpsterManager {
    * @returns {string} Sanitized name
    */
   sanitizeDumpsterName(name) {
-    return name
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .replace(/^[^a-zA-Z]/, '_')
-      .toLowerCase();
+    return sanitizeName(name, { type: 'dumpster' });
+  }
+
+  /**
+   * Create a new dumpster from a ZIP file
+   * @param {string|Buffer} zipData - Path to ZIP file or ZIP buffer
+   * @param {string} dumpsterName - Name for the dumpster
+   * @param {boolean} isBuffer - Whether zipData is a buffer (default: false)
+   * @param {Function} onProgress - Progress callback function
+   * @returns {Promise<Object>} Dumpster creation result
+   */
+  async createDumpster(zipData, dumpsterName, isBuffer = false, onProgress = null) {
+    const { processExport } = require('../data/dumpster-processor');
+
+    try {
+      // Ensure data directories exist
+      await this.ensureDataDirectories();
+
+      // Process the export using the dumpster processor
+      const result = await processExport(
+        zipData,
+        dumpsterName,
+        this.baseDir,
+        isBuffer,
+        onProgress,
+        {}
+      );
+
+      if (result.success) {
+        // Add to dumpsters registry
+        const sanitizedDumpsterName = this.sanitizeDumpsterName(dumpsterName);
+        this.dumpsters.set(sanitizedDumpsterName, {
+          name: sanitizedDumpsterName,
+          displayName: dumpsterName,
+          createdAt: new Date(),
+          stats: result.stats,
+          path: result.dumpsterDir,
+        });
+
+        // Save to disk
+        await this.saveDumpsters();
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Failed to create dumpster:', error.message);
+      throw error;
+    }
   }
 
   /**
