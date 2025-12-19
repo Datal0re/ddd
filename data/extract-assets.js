@@ -19,96 +19,91 @@
  *   --help         Show this help message
  */
 
-const fs = require('fs').promises;
+const { CLIFramework } = require('../utils/cliFramework');
+const FileSystemHelper = require('../utils/fsHelpers');
+const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
 
 /**
  * Parse command line arguments
  */
 function parseArguments() {
-  const args = process.argv.slice(2);
-  const options = {
-    inputPath: null,
-    outputPath: null,
-    recursive: false,
-    overwrite: false,
-    preserve: false,
-    verbose: false,
+  const config = {
+    defaults: {
+      recursive: false,
+      overwrite: false,
+      preserve: false,
+      verbose: false,
+    },
+    flags: [
+      {
+        name: 'recursive',
+        flag: '--recursive',
+        type: 'boolean',
+        description: 'Process all HTML files in directory recursively',
+      },
+    ],
+    positional: ['inputPath', 'outputPath'],
   };
 
-  // Parse arguments
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  const options = CLIFramework.parseArguments(config);
 
-    switch (arg) {
-      case '--recursive':
-        options.recursive = true;
-        break;
-      case '--overwrite':
-        options.overwrite = true;
-        break;
-      case '--preserve':
-        options.preserve = true;
-        break;
-      case '--verbose':
-        options.verbose = true;
-        break;
-      case '--help':
-        showHelp();
-        process.exit(0);
-        break;
-      default:
-        if (!options.inputPath) {
-          options.inputPath = arg;
-        } else if (!options.outputPath) {
-          options.outputPath = arg;
-        }
-        break;
-    }
+  if (options.help) {
+    showHelp();
+    process.exit(0);
   }
 
   return options;
 }
 
 function showHelp() {
-  console.log(`
-Usage: node extract-assets.js [inputPath] [outputPath] [options]
+  const config = {
+    usage: 'node extract-assets.js [inputPath] [outputPath] [options]',
+    positional: [
+      {
+        name: 'inputPath',
+        description: 'Path to chat.html file or directory containing HTML files',
+      },
+      {
+        name: 'outputPath',
+        description: 'Path for output assets.json file or directory',
+      },
+    ],
+    flags: [
+      {
+        name: 'recursive',
+        flag: '--recursive',
+        type: 'boolean',
+        description: 'Process all HTML files in directory recursively',
+      },
+    ],
+    examples: [
+      '# Process single file',
+      'node extract-assets.js chat.html assets.json',
+      '',
+      '# Process directory',
+      'node extract-assets.js ./extracted-files ./output',
+      '',
+      '# Process directory recursively',
+      'node extract-assets.js ./data ./output --recursive',
+      '',
+      '# Overwrite existing files',
+      'node extract-assets.js chat.html assets.json --overwrite',
+    ],
+  };
 
-Arguments:
-  inputPath     Path to chat.html file or directory containing HTML files
-  outputPath    Path for output assets.json file or directory
-
-Options:
-  --recursive   Process all HTML files in directory recursively
-  --overwrite   Overwrite existing assets.json files
-  --preserve    Keep original HTML files
-  --verbose     Enable verbose logging
-  --help        Show this help message
-
-Examples:
-  # Process single file
-  node extract-assets.js chat.html assets.json
-  
-  # Process directory
-  node extract-assets.js ./extracted-files ./output
-  
-  # Process directory recursively
-  node extract-assets.js ./data ./output --recursive
-  
-  # Overwrite existing files
-  node extract-assets.js chat.html assets.json --overwrite
-`);
+  console.log(CLIFramework.generateHelpText(config));
 }
 
 /**
  * Find all HTML files in a directory
  */
 async function findHtmlFiles(dirPath, recursive = false) {
-  const { findFilesByPattern } = require('../utils/fileUtils');
+  const PathUtils = require('../utils/pathUtils');
 
   try {
     const htmlPattern = '\\.(html?|htm)$';
-    return await findFilesByPattern(dirPath, htmlPattern, recursive);
+    return await PathUtils.findFilesByPattern(dirPath, htmlPattern, recursive);
   } catch (error) {
     console.warn(`Error accessing directory ${dirPath}: ${error.message}`);
     return [];
@@ -164,10 +159,10 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
       }
 
       // Ensure output directory exists
-      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      await FileSystemHelper.ensureDirectory(path.dirname(outputPath));
 
       // Write assets.json file
-      await fs.writeFile(outputPath, JSON.stringify(assetJsonData, null, 2), 'utf8');
+      await FileSystemHelper.writeJsonFile(outputPath, assetJsonData);
 
       const assetCount = Array.isArray(assetJsonData)
         ? assetJsonData.length

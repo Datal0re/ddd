@@ -25,13 +25,15 @@ program
       await dumpsterManager.initialize();
 
       // Check if file exists
-      const fs = require('fs');
-      if (!fs.existsSync(file)) {
+      const FileSystemHelper = require('./utils/fsHelpers');
+      if (!(await FileSystemHelper.fileExists(file))) {
         throw new Error(`File not found: ${file}`);
       }
 
+      const { createProgressTracker } = require('./utils/progressTracker');
+      const progressTracker = createProgressTracker(null, options.verbose);
       const onProgress = progress => {
-        console.log(`${progress.stage}: ${progress.progress}% - ${progress.message}`);
+        progressTracker.update(progress.stage, progress.progress, progress.message);
       };
       await dumpsterManager.createDumpster(file, options.name, false, onProgress);
 

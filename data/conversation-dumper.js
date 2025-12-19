@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 // conversation-dumper.js - Enhanced version for direct file processing
-const fs = require('fs').promises;
-const path = require('path');
-const { sanitizeName } = require('../utils/fileUtils');
+const { CLIFramework } = require('../utils/cliFramework');
+const FileSystemHelper = require('../utils/fsHelpers');
+const PathUtils = require('../utils/pathUtils');
 
 /**
  * Configuration options
  */
 function parseArguments() {
-  const { parseCLIArguments, COMMON_FLAGS } = require('../utils/fileUtils');
-
   const config = {
     defaults: {
       createSubdirs: false,
@@ -18,10 +16,6 @@ function parseArguments() {
       verbose: false,
     },
     flags: [
-      COMMON_FLAGS.preserve,
-      COMMON_FLAGS.overwrite,
-      COMMON_FLAGS.verbose,
-      COMMON_FLAGS.help,
       {
         name: 'createSubdirs',
         flag: '--create-subdirs',
@@ -32,7 +26,7 @@ function parseArguments() {
     positional: ['inputPath', 'outputDir'],
   };
 
-  const options = parseCLIArguments(config);
+  const options = CLIFramework.parseArguments(config);
 
   if (options.help) {
     showHelp();
@@ -42,40 +36,54 @@ function parseArguments() {
   // Set defaults
   options.inputPath = options.inputPath || 'conversations.json';
   options.outputDir =
-    options.outputDir || path.join(path.dirname(options.inputPath), 'conversations');
+    options.outputDir ||
+    FileSystemHelper.joinPath(
+      FileSystemHelper.getDirName(options.inputPath),
+      'conversations'
+    );
 
   return options;
 }
 
 function showHelp() {
-  console.log(`
-Usage: node conversation-dumper.js [inputPath] [outputDir] [options]
+  const config = {
+    usage: 'node conversation-dumper.js [inputPath] [outputDir] [options]',
+    positional: [
+      {
+        name: 'inputPath',
+        description: 'Path to conversations.json file (default: conversations.json)',
+      },
+      {
+        name: 'outputDir',
+        description:
+          'Directory to save individual conversation files (default: ./conversations)',
+      },
+    ],
+    flags: [
+      {
+        name: 'createSubdirs',
+        flag: '--create-subdirs',
+        type: 'boolean',
+        description: 'Create a conversations subdirectory in outputDir',
+      },
+    ],
+    examples: [
+      'node conversation-dumper.js                                   # Use defaults',
+      'node conversation-dumper.js /path/to/conversations.json       # Custom input path',
+      'node conversation-dumper.js data.json ./output                # Custom input and output',
+      'node conversation-dumper.js data.json ./out --create-subdirs  # Create conversations subdirectory',
+      'node conversation-dumper.js data.json ./out --overwrite       # Overwrite existing files',
+    ],
+  };
 
-Arguments:
-  inputPath    Path to conversations.json file (default: conversations.json)
-  outputDir    Directory to save individual conversation files (default: ./conversations)
-
-Options:
-  --create-subdirs   Create a conversations subdirectory in outputDir
-  --preserve         Keep original conversations.json file
-  --overwrite        Overwrite existing files (default: skip existing)
-  --verbose          Enable verbose logging
-  --help             Show this help message
-
-Examples:
-  node conversation-dumper.js                                   # Use defaults
-  node conversation-dumper.js /path/to/conversations.json       # Custom input path
-  node conversation-dumper.js data.json ./output                # Custom input and output
-  node conversation-dumper.js data.json ./out --create-subdirs  # Create conversations subdirectory
-  node conversation-dumper.js data.json ./out --overwrite       # Overwrite existing files
- `);
+  console.log(CLIFramework.generateHelpText(config));
 }
 
 /**
  * Utility functions
  */
 function sanitizeFilename(rawTitle) {
-  return sanitizeName(rawTitle, { type: 'filename' });
+  return PathUtils.sanitizeName(rawTitle, { type: 'filename' });
 }
 
 function toNumber(v) {
@@ -109,21 +117,20 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
   } = options;
 
   // Resolve input path
-  const resolvedInputPath = path.isAbsolute(inputPath)
+  const resolvedInputPath = FileSystemHelper.isAbsolute(inputPath)
     ? inputPath
-    : path.resolve(inputPath);
+    : FileSystemHelper.resolvePath(inputPath);
 
   // Determine final output directory
   const finalOutputDir = createSubdirs
-    ? path.join(outputDir, 'conversations')
+    ? FileSystemHelper.joinPath(outputDir, 'conversations')
     : outputDir;
 
   console.log(`Dumping conversations from ${resolvedInputPath} to ${finalOutputDir}`);
 
   try {
     // Read and validate input file
-    const raw = await fs.readFile(resolvedInputPath, 'utf8');
-    const conversations = JSON.parse(raw);
+    const conversations = await FileSystemHelper.readJsonFile(resolvedInputPath);
 
     if (!Array.isArray(conversations)) {
       throw new Error('Expected an array of conversations in input file');
@@ -135,7 +142,7 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
     conversations.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
 
     // Create output directory if it doesn't exist
-    await fs.mkdir(finalOutputDir, { recursive: true });
+    await FileSystemHelper.ensureDirectory(finalOutputDir);
 
     // Process each conversation
     let processed = 0;
@@ -149,24 +156,21 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
         const rawTitle = conv.title || 'untitled';
         const cleanTitle = sanitizeFilename(rawTitle);
         const filename = `${dateStr}_${cleanTitle}.json`;
-        const filepath = path.join(finalOutputDir, filename);
+        const filepath = FileSystemHelper.joinPath(finalOutputDir, filename);
 
         // Check if file exists
         if (!overwrite) {
-          try {
-            await fs.access(filepath);
+          if (await FileSystemHelper.fileExists(filepath)) {
             if (verbose) {
               console.log(`Skipping existing file: ${filename}`);
             }
             skipped++;
             continue;
-          } catch {
-            // File doesn't exist, proceed
           }
         }
 
         // Write conversation file
-        await fs.writeFile(filepath, JSON.stringify(conv, null, 2), 'utf8');
+        await FileSystemHelper.writeJsonFile(filepath, conv);
         processed++;
 
         if (verbose) {
@@ -181,6 +185,7 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
     // Remove original file if requested
     if (!preserveOriginal && processed > 0) {
       try {
+        const fs = require('fs').promises; // Use original fs for unlink since fsHelpers doesn't have it
         await fs.unlink(resolvedInputPath);
         console.log('Removed original conversations.json file');
       } catch (err) {

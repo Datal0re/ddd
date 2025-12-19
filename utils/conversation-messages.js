@@ -1,58 +1,18 @@
 const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
-const fs = require('fs').promises;
-const path = require('path');
+const {
+  CONTENT_TYPES,
+  FILE_EXTENSIONS,
+  ASSET_PREFIXES,
+  SEARCH_CONFIG,
+} = require('../config/constants');
+const FileSystemHelper = require('./fsHelpers');
+const PathUtils = require('./pathUtils');
 
-/**
- * Validate required parameters for a function
- * @param {Array<{name: string, value: any}>} params - Array of parameter objects with name and value
- * @param {string} functionName - Name of the function for error reporting
- * @throws {Error} If any required parameters are missing or invalid
- */
-function validateRequiredParams(params, functionName) {
-  const missing = params.filter(p => !p.value);
-  if (missing.length > 0) {
-    throw new Error(
-      `${functionName}: Missing required parameters: ${missing.map(p => p.name).join(', ')}`
-    );
-  }
-}
-
-/**
- * Validate that a parameter is a non-empty string
- * @param {any} param - Parameter to validate
- * @param {string} paramName - Name of the parameter for error reporting
- * @throws {Error} If parameter is not a non-empty string
- */
-function validateNonEmptyString(param, paramName) {
-  if (typeof param !== 'string' || param.trim() === '') {
-    throw new Error(`${paramName} must be a non-empty string`);
-  }
-}
-
-// Content type constants
-const CONTENT_TYPES = {
-  IMAGE: 'image_asset_pointer',
-  AUDIO: 'audio_asset_pointer',
-  VIDEO: 'video_container_asset_pointer',
-  TRANSCRIPTION: 'audio_transcription',
-};
-
-// File extension constants
-const FILE_EXTENSIONS = {
-  AUDIO: ['.wav', '.mp3', '.m4a', '.dat'],
-  IMAGE: ['.webp', '.png', '.jpg', '.jpeg'],
-};
-
-// Asset pointer prefixes
-const ASSET_PREFIXES = {
-  FILE_SERVICE: 'file-service://',
-  SEDIMENT: 'sediment://',
-};
+const { validateRequiredParams, validateNonEmptyString } = require('./validators');
 
 // Simple file cache to improve performance
 const fileCache = new Map();
-const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
 
 // Clear cache to ensure fresh results for testing
 fileCache.clear();
@@ -70,10 +30,10 @@ async function cachedRecursivelyFindFiles(dir, filename) {
     return fileCache.get(cacheKey);
   }
 
-  const results = await recursivelyFindFiles(dir, filename);
+  const results = await PathUtils.findFilesByPrefix(dir, filename, true);
 
   // Implement simple LRU-like behavior
-  if (fileCache.size >= MAX_CACHE_SIZE) {
+  if (fileCache.size >= SEARCH_CONFIG.MAX_CACHE_SIZE) {
     const firstKey = fileCache.keys().next().value;
     fileCache.delete(firstKey);
   }
@@ -83,8 +43,8 @@ async function cachedRecursivelyFindFiles(dir, filename) {
 }
 
 /**
- * Get the media directory path for an export
- * @param {string} baseDir - Base directory of the application
+ * Get media directory path for an export
+ * @param {string} baseDir - Base directory of application
  * @param {string} exportName - The export name
  * @returns {string} Media directory path
  */
@@ -99,13 +59,13 @@ function getMediaDir(baseDir, exportName) {
   validateNonEmptyString(baseDir, 'baseDir');
   validateNonEmptyString(exportName, 'exportName');
 
-  return path.join(baseDir, 'data', 'exports', exportName, 'media');
+  return FileSystemHelper.joinPath(baseDir, 'data', 'exports', exportName, 'media');
 }
 
 /**
  * Build a web URL from a file path
  * @param {string} filePath - Absolute file path
- * @param {string} baseDir - Base directory of the application
+ * @param {string} baseDir - Base directory of application
  * @returns {string} Web URL path
  */
 function buildAssetUrl(filePath, baseDir) {
@@ -119,8 +79,12 @@ function buildAssetUrl(filePath, baseDir) {
   validateNonEmptyString(filePath, 'filePath');
   validateNonEmptyString(baseDir, 'baseDir');
 
-  const relativePath = path.relative(path.join(baseDir, 'public'), filePath);
-  // Return absolute URL to ensure proper loading through the web server
+  const path = require('path');
+  const relativePath = path.relative(
+    FileSystemHelper.joinPath(baseDir, 'public'),
+    filePath
+  );
+  // Return absolute URL to ensure proper loading through web server
   const port = process.env.API_PORT || 3001;
   return `http://localhost:${port}/` + relativePath.replace(/\\/g, '/');
 }
@@ -128,7 +92,7 @@ function buildAssetUrl(filePath, baseDir) {
 /**
  * Handle file operation errors consistently
  * @param {Error} error - The error object
- * @param {string} operation - Description of the operation
+ * @param {string} operation - Description of operation
  * @param {string} context - Additional context (optional)
  */
 function handleFileError(error, operation, context = '') {
@@ -153,70 +117,67 @@ async function loadAssetMapping(exportName, baseDir) {
     );
     validateNonEmptyString(exportName, 'exportName');
     validateNonEmptyString(baseDir, 'baseDir');
-  } catch (error) {
-    console.warn('Invalid parameters for loadAssetMapping:', {
-      exportName,
+
+    // Try to load from assets.json first (preferred method)
+    const assetsJsonPath = FileSystemHelper.joinPath(
       baseDir,
-      error: error.message,
-    });
+      'data',
+      'exports',
+      exportName,
+      'assets.json'
+    );
+
+    try {
+      const assetsContent = await FileSystemHelper.readFile(assetsJsonPath);
+      const assetMapping = JSON.parse(assetsContent);
+      console.debug(
+        `Loaded asset mapping from assets.json for export ${exportName} with ${Object.keys(assetMapping).length} assets`
+      );
+      return assetMapping;
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.warn('Error reading assets.json:', error.message);
+      }
+    }
+
+    // Fallback to chat.html if assets.json doesn't exist
+    const path = require('path');
+    const chatHtmlPath = path.join(
+      baseDir,
+      'data',
+      'exports',
+      exportName,
+      'media',
+      'chat.html'
+    );
+
+    try {
+      const chatHtmlContent = await FileSystemHelper.readFile(chatHtmlPath);
+
+      // Look for assetsJson variable in HTML (updated regex to handle objects)
+      const assetJsonMatch = chatHtmlContent.match(
+        /var\s+assetsJson\s*=\s*(\{[\s\S]*?\})\s*;?/
+      );
+
+      if (assetJsonMatch && assetJsonMatch[1]) {
+        // Parse JSON string
+        const assetJsonString = assetJsonMatch[1];
+        console.debug(
+          `Found asset mapping in chat.html for export ${exportName} (fallback method)`
+        );
+        return JSON.parse(assetJsonString);
+      } else {
+        console.debug(`No asset mapping found in chat.html for export ${exportName}`);
+      }
+    } catch (error) {
+      handleFileError(error, 'loading asset mapping from chat.html', exportName);
+    }
+
+    return {};
+  } catch (error) {
+    console.error('Error in loadAssetMapping:', error);
     return {};
   }
-
-  // Try to load from assets.json first (preferred method)
-  const assetsJsonPath = path.join(
-    baseDir,
-    'data',
-    'exports',
-    exportName,
-    'assets.json'
-  );
-
-  try {
-    const assetsContent = await fs.readFile(assetsJsonPath, 'utf8');
-    const assetMapping = JSON.parse(assetsContent);
-    console.debug(
-      `Loaded asset mapping from assets.json for export ${exportName} with ${Object.keys(assetMapping).length} assets`
-    );
-    return assetMapping;
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      console.warn('Error reading assets.json:', error.message);
-    }
-  }
-
-  // Fallback to chat.html if assets.json doesn't exist
-  const chatHtmlPath = path.join(
-    baseDir,
-    'data',
-    'exports',
-    exportName,
-    'media',
-    'chat.html'
-  );
-
-  try {
-    const chatHtmlContent = await fs.readFile(chatHtmlPath, 'utf8');
-
-    // Look for assetsJson variable in HTML (updated regex to handle objects)
-    const assetJsonMatch = chatHtmlContent.match(
-      /var\s+assetsJson\s*=\s*(\{[\s\S]*?\})\s*;?/
-    );
-
-    if (assetJsonMatch && assetJsonMatch[1]) {
-      // Parse JSON string
-      const assetJsonString = assetJsonMatch[1];
-      console.debug(
-        `Found asset mapping in chat.html for export ${exportName} (fallback method)`
-      );
-      return JSON.parse(assetJsonString);
-    } else {
-      console.debug(`No asset mapping found in chat.html for export ${exportName}`);
-    }
-  } catch (error) {
-    handleFileError(error, 'loading asset mapping from chat.html', exportName);
-  }
-
-  return {};
 }
 
 /**
@@ -270,7 +231,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
   }
 
   // If mapping fails, try to extract base filename from asset pointer and search for files with similar names
-  // This handles cases where the asset mapping is incorrect or missing
+  // This handles cases where asset mapping is incorrect or missing
   const baseAssetId = assetPointer.replace(/^(file-service:\/\/|sediment:\/\/)/, '');
   const possibleNames = [
     baseAssetId, // Exact match
@@ -280,7 +241,7 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
   ];
 
   // Search in both main media directory and Test-Chat-Combine subdirectory
-  const searchDirs = [mediaDir, path.join(mediaDir, 'Test-Chat-Combine')];
+  const searchDirs = [mediaDir, require('path').join(mediaDir, 'Test-Chat-Combine')];
 
   for (const searchDir of searchDirs) {
     for (const name of possibleNames) {
@@ -324,50 +285,30 @@ async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {
 
 /**
  * Recursively find files by filename prefix
- * @param {string} dir - Directory to search
+ * @param {string} dir - Directory to search in
  * @param {string} filename - Filename to search for (prefix)
  * @returns {Promise<Array>} Array of file paths
  */
-async function recursivelyFindFiles(dir, filename) {
-  if (!dir || !filename) {
-    console.warn('Invalid parameters for recursivelyFindFiles:', { dir, filename });
-    return [];
-  }
-
-  validateNonEmptyString(dir, 'dir');
-  validateNonEmptyString(filename, 'filename');
-
-  const { findFilesByPrefix } = require('./fileUtils');
-
-  try {
-    const results = await findFilesByPrefix(dir, filename, true);
-    return results;
-  } catch (error) {
-    console.error(`Error searching directory ${dir}:`, error);
-    return [];
-  }
-}
-
-/**
- * Generate a URL for an asset pointer
- * @param {string} assetPointer - The asset pointer (e.g., "file-service://file-abc123")
- * @param {string} exportName - The export name
- * @param {string} baseDir - Base directory of the application
- * @param {Object} assetMapping - Asset mapping from assets.json or chat.html (optional)
- * @returns {Promise<string|null>} The URL to access the asset or null if not found
- */
-async function generateAssetUrl(assetPointer, exportName, baseDir, assetMapping = {}) {
-  if (!assetPointer || !exportName || !baseDir) {
-    console.warn('Invalid parameters for generateAssetUrl:', {
-      assetPointer,
-      exportName,
-      baseDir,
-    });
-    return null;
-  }
-
-  return await findAssetFile(assetPointer, exportName, baseDir, assetMapping);
-}
+// Unused function - can be removed
+// async function recursivelyFindFiles(dir, filename) {
+//   if (!dir || !filename) {
+//     console.warn('Invalid parameters for recursivelyFindFiles:', { dir, filename });
+//     return [];
+//   }
+//
+//   validateNonEmptyString(dir, 'dir');
+//   validateNonEmptyString(filename, 'filename');
+//
+//   const { findFilesByPrefix } = require('./pathUtils');
+//
+//   try {
+//     const results = await findFilesByPrefix(dir, filename, true);
+//     return results;
+//   } catch (error) {
+//     console.error(`Error searching directory ${dir}:`, error);
+//     return [];
+//   }
+// }
 
 /**
  * Generate HTML for different asset types
@@ -404,20 +345,15 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
   const contentType = asset.content_type || '';
   console.debug(`Processing asset: ${assetPointer}, content type: ${contentType}`);
 
-  const assetUrl = await generateAssetUrl(
-    assetPointer,
-    exportName,
-    baseDir,
-    assetMapping
-  );
+  const assetUrl = await findAssetFile(assetPointer, exportName, baseDir, assetMapping);
   if (!assetUrl) {
     console.debug(`Asset URL not found for: ${assetPointer}`);
     // File not found - show helpful message
     return {
-      html: `<div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem; color: #856404;">
-          🖼️ <strong>Asset Not Available</strong>
-          <br><small style="color: #856404;">Asset file not found: ${assetPointer}</small>
-          </div>`,
+      html: `<div class="asset-missing" style="margin: 0.5rem 0; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 0.25rem;">
+            🖼️ <strong>Asset Not Available</strong>
+            <br><small style="color: #856404;">Asset file not found: ${assetPointer}</small>
+            </div>`,
       type: 'missing',
     };
   }
@@ -435,16 +371,16 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
     case CONTENT_TYPES.AUDIO:
       return {
         html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
-          <p>Your browser does not support the audio element.</p>
-        </audio>`,
+            <p>Your browser does not support the audio element.</p>
+            </audio>`,
         type: 'audio',
       };
 
     case CONTENT_TYPES.VIDEO:
       return {
         html: `<video controls src="${assetUrl}" style="width: 100%; max-height: 400px; border-radius: 0.5rem; margin: 0.5rem 0;">
-          <p>Your browser does not support the video element.</p>
-        </video>`,
+            <p>Your browser does not support the video element.</p>
+            </video>`,
         type: 'video',
       };
 
@@ -460,7 +396,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
         return {
           html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
             <p>Your browser does not support the audio element.</p>
-          </audio>`,
+            </audio>`,
           type: 'audio',
         };
       }
@@ -473,7 +409,7 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
         return {
           html: `<audio controls src="${assetUrl}" style="width: 100%; margin: 0.5rem 0;">
             <p>Your browser does not support the audio element.</p>
-          </audio>`,
+            </audio>`,
           type: 'audio',
         };
       } else if (isImageFile) {
@@ -486,15 +422,23 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
       // Fallback: show as download link
       return {
         html: `<div class="asset-info" style="margin: 0.5rem 0; padding: 0.5rem; background: #f5f5f5; border-radius: 0.25rem;">
-          📎 <a href="${assetUrl}" target="_blank" style="color: #0066cc; text-decoration: none;">Download Asset</a>
-          <br><small style="color: #666;">${assetPointer}</small>
-          </div>`,
+              📎 <a href="${assetUrl}" target="_blank" style="color: #0066cc; text-decoration: none;">Download Asset</a>
+              <br><small style="color: #666;">${assetPointer}</small>
+              </div>`,
         type: 'unknown',
       };
     }
   }
 }
 
+/**
+ * Get conversation messages with proper asset processing
+ * @param {Object} conversation - Conversation object
+ * @param {string} exportName - The export name
+ * @param {string} baseDir - Base directory of the application
+ * @param {Object} options - Processing options
+ * @returns {Promise<Array>} Array of processed messages
+ */
 async function getConversationMessages(
   conversation,
   exportName = null,

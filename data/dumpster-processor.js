@@ -12,14 +12,13 @@
  *   node dumpster-processor.js --help
  */
 
-const fs = require('fs').promises;
+const { CLIFramework } = require('../utils/cliFramework');
+const FileSystemHelper = require('../utils/fsHelpers');
+const PathUtils = require('../utils/pathUtils');
+const ZipProcessor = require('../utils/zipProcessor');
+const { createProgressTracker } = require('../utils/progressTracker');
+const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
-const {
-  ensureDir,
-  removeDirectories,
-  validateAndExtractZip,
-  createProgressTracker,
-} = require('../utils/fileUtils');
 const { dumpConversations } = require('./conversation-dumper.js');
 const { extractAssetsFromHtml } = require('./extract-assets.js');
 
@@ -27,8 +26,6 @@ const { extractAssetsFromHtml } = require('./extract-assets.js');
  * Parse command line arguments
  */
 function parseArguments() {
-  const { parseCLIArguments, COMMON_FLAGS } = require('../utils/fileUtils');
-
   const config = {
     defaults: {
       tempDir: null,
@@ -36,18 +33,12 @@ function parseArguments() {
       preserveOriginal: false,
       overwrite: false,
       verbose: false,
-      baseDir: path.resolve(__dirname, '..'),
+      baseDir: FileSystemHelper.resolvePath(__dirname, '..'),
     },
-    flags: [
-      COMMON_FLAGS.preserve,
-      COMMON_FLAGS.overwrite,
-      COMMON_FLAGS.verbose,
-      COMMON_FLAGS.help,
-    ],
     positional: ['zipPath', 'dumpsterName', 'baseDir'],
   };
 
-  const options = parseCLIArguments(config);
+  const options = CLIFramework.parseArguments(config);
 
   if (options.help) {
     showHelp();
@@ -58,33 +49,35 @@ function parseArguments() {
 }
 
 function showHelp() {
-  console.log(`
-Usage: node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]
+  const config = {
+    usage: 'node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]',
+    positional: [
+      { name: 'zipPath', description: 'Path to ChatGPT export ZIP file (required)' },
+      {
+        name: 'dumpsterName',
+        description: 'Name for the dumpster directory (required)',
+      },
+      {
+        name: 'baseDir',
+        description: 'Base directory of the application (default: parent directory)',
+      },
+    ],
+    examples: [
+      '# Basic usage',
+      'node dumpster-processor.js ./chatgpt-export.zip "my-chat-history"',
+      '',
+      '# With custom base directory',
+      'node dumpster-processor.js ./export.zip "work-chat" /path/to/app',
+      '',
+      '# Overwrite existing dumpster',
+      'node dumpster-processor.js ./export.zip "my-chat" --overwrite',
+      '',
+      '# Verbose output',
+      'node dumpster-processor.js ./export.zip "my-chat" --verbose',
+    ],
+  };
 
-Arguments:
-  zipPath      Path to ChatGPT export ZIP file (required)
-  dumpsterName   Name for the dumpster directory (required)
-  baseDir      Base directory of the application (default: parent directory)
-
-Options:
-  --preserve   Keep original ZIP file after processing
-  --overwrite  Overwrite existing dumpster directory
-  --verbose    Enable verbose logging
-  --help       Show this help message
-
-Examples:
-# Basic usage
-   node dumpster-processor.js ./chatgpt-export.zip "my-chat-history"
-   
-   # With custom base directory
-   node dumpster-processor.js ./export.zip "work-chat" /path/to/app
-   
-   # Overwrite existing dumpster
-   node dumpster-processor.js ./export.zip "my-chat" --overwrite
-   
-   # Verbose output
-   node dumpster-processor.js ./export.zip "my-chat" --verbose
-`);
+  console.log(CLIFramework.generateHelpText(config));
 }
 
 /**
@@ -93,7 +86,12 @@ Examples:
 function generateTempDir(baseDir) {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return path.join(baseDir, 'data', 'temp', `dumpster_${timestamp}_${random}`);
+  return FileSystemHelper.joinPath(
+    baseDir,
+    'data',
+    'temp',
+    `dumpster_${timestamp}_${random}`
+  );
 }
 
 /**
@@ -103,14 +101,12 @@ async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
   const { verbose = false } = options;
 
   try {
-    await ensureDir(dumpsterMediaDir);
+    await FileSystemHelper.ensureDirectory(dumpsterMediaDir);
 
-    const tempMediaDir = path.join(tempDir, 'Test-Chat-Combine');
+    const tempMediaDir = FileSystemHelper.joinPath(tempDir, 'Test-Chat-Combine');
 
     // Check if temp media directory exists
-    try {
-      await fs.access(tempMediaDir);
-    } catch {
+    if (!(await FileSystemHelper.fileExists(tempMediaDir))) {
       if (verbose) {
         console.debug('No media directory found in temp files');
       }
@@ -121,7 +117,7 @@ async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
     let errors = 0;
 
     // Get all files and directories in temp media
-    const items = await fs.readdir(tempMediaDir);
+    const items = await FileSystemHelper.listDirectory(tempMediaDir);
 
     for (const item of items) {
       // Skip chat.html and conversations.json (these are handled separately)
@@ -129,8 +125,8 @@ async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
         continue;
       }
 
-      const srcPath = path.join(tempMediaDir, item);
-      const destPath = path.join(dumpsterMediaDir, item);
+      const srcPath = FileSystemHelper.joinPath(tempMediaDir, item);
+      const destPath = FileSystemHelper.joinPath(dumpsterMediaDir, item);
 
       try {
         const stats = await fs.stat(srcPath);
@@ -169,7 +165,7 @@ async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
  * Copy directory recursively
  */
 async function copyDirectory(src, dest) {
-  await ensureDir(dest);
+  await FileSystemHelper.ensureDirectory(dest);
 
   const items = await fs.readdir(src);
 
@@ -250,7 +246,7 @@ async function processDumpster(
   const sanitizedDumpsterName = sanitizeName(dumpsterName, { type: 'dumpster' });
 
   // Create base directories
-  await ensureDir(baseDir);
+  await FileSystemHelper.ensureDirectory(baseDir);
   const dumpsterDir = path.join(baseDir, 'data', 'dumpsters', sanitizedDumpsterName);
   const tempDir = generateTempDir(baseDir);
 
@@ -274,7 +270,7 @@ async function processDumpster(
     // Clean up existing dumpster directory if overwriting
     if (overwrite) {
       try {
-        await removeDirectories(dumpsterDir);
+        await PathUtils.removeDirectories(dumpsterDir);
         console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
       } catch (error) {
         if (error.code !== 'ENOENT') {
@@ -286,13 +282,13 @@ async function processDumpster(
     progress.extracting(5, 'Setting up directories...');
 
     // Ensure directories exist
-    await ensureDir(tempDir);
-    await ensureDir(dumpsterDir);
+    await FileSystemHelper.ensureDirectory(tempDir);
+    await FileSystemHelper.ensureDirectory(dumpsterDir);
 
     progress.extracting(10, 'Extracting ZIP file...');
 
     // Extract ZIP file
-    await validateAndExtractZip(zipData, tempDir, isBuffer);
+    await ZipProcessor.validateAndExtractZip(zipData, tempDir, isBuffer);
 
     progress.dumping(40, 'Dumping conversations...');
 
@@ -379,7 +375,7 @@ async function processDumpster(
   } finally {
     // Always clean up temporary directory
     try {
-      await removeDirectories(tempDir);
+      await PathUtils.removeDirectories(tempDir);
       if (verbose) {
         console.debug('Cleaned up temporary directory');
       }
