@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Unified Export Processor for ChatGPT Data Exports
+ * Unified Dumpster Processor for ChatGPT Data Dumpsters
  *
  * This script combines ZIP extraction, conversation dumping, and asset extraction
  * into a single streamlined process for the new direct file-based architecture.
  *
  * Usage:
- *   node dumpster-processor.js [zipPath] [exportName] [baseDir] [options]
+ *   node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]
  *   node dumpster-processor.js ./chatgpt-export.zip "my-chat-history" ./ --verbose
  *   node dumpster-processor.js --help
  */
@@ -44,7 +44,7 @@ function parseArguments() {
       COMMON_FLAGS.verbose,
       COMMON_FLAGS.help,
     ],
-    positional: ['zipPath', 'exportName', 'baseDir'],
+    positional: ['zipPath', 'dumpsterName', 'baseDir'],
   };
 
   const options = parseCLIArguments(config);
@@ -59,16 +59,16 @@ function parseArguments() {
 
 function showHelp() {
   console.log(`
-Usage: node dumpster-processor.js [zipPath] [exportName] [baseDir] [options]
+Usage: node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]
 
 Arguments:
   zipPath      Path to ChatGPT export ZIP file (required)
-  exportName   Name for the export directory (required)
+  dumpsterName   Name for the dumpster directory (required)
   baseDir      Base directory of the application (default: parent directory)
 
 Options:
   --preserve   Keep original ZIP file after processing
-  --overwrite  Overwrite existing export directory
+  --overwrite  Overwrite existing dumpster directory
   --verbose    Enable verbose logging
   --help       Show this help message
 
@@ -79,7 +79,7 @@ Examples:
    # With custom base directory
    node dumpster-processor.js ./export.zip "work-chat" /path/to/app
    
-   # Overwrite existing export
+   # Overwrite existing dumpster
    node dumpster-processor.js ./export.zip "my-chat" --overwrite
    
    # Verbose output
@@ -93,17 +93,17 @@ Examples:
 function generateTempDir(baseDir) {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return path.join(baseDir, 'data', 'temp', `export_${timestamp}_${random}`);
+  return path.join(baseDir, 'data', 'temp', `dumpster_${timestamp}_${random}`);
 }
 
 /**
- * Move media files from temp to export directory
+ * Move media files from temp to dumpster directory
  */
-async function moveMediaFiles(tempDir, exportMediaDir, options = {}) {
+async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
   const { verbose = false } = options;
 
   try {
-    await ensureDir(exportMediaDir);
+    await ensureDir(dumpsterMediaDir);
 
     const tempMediaDir = path.join(tempDir, 'Test-Chat-Combine');
 
@@ -130,7 +130,7 @@ async function moveMediaFiles(tempDir, exportMediaDir, options = {}) {
       }
 
       const srcPath = path.join(tempMediaDir, item);
-      const destPath = path.join(exportMediaDir, item);
+      const destPath = path.join(dumpsterMediaDir, item);
 
       try {
         const stats = await fs.stat(srcPath);
@@ -189,7 +189,7 @@ async function copyDirectory(src, dest) {
 /**
  * Copy essential files to media directory
  */
-async function copyEssentialFiles(tempDir, exportMediaDir, options = {}) {
+async function copyEssentialFiles(tempDir, dumpsterMediaDir, options = {}) {
   const { verbose = false } = options;
 
   const essentialFiles = ['chat.html', 'conversations.json'];
@@ -198,7 +198,7 @@ async function copyEssentialFiles(tempDir, exportMediaDir, options = {}) {
 
   for (const file of essentialFiles) {
     const srcPath = path.join(tempDir, 'Test-Chat-Combine', file);
-    const destPath = path.join(exportMediaDir, file);
+    const destPath = path.join(dumpsterMediaDir, file);
 
     try {
       await fs.access(srcPath);
@@ -224,9 +224,9 @@ async function copyEssentialFiles(tempDir, exportMediaDir, options = {}) {
 }
 
 /**
- * Main export processing function
+ * Main dumpster processing function
  */
-async function processExport(
+async function processDumpster(
   zipData,
   dumpsterName,
   baseDir,
@@ -254,7 +254,7 @@ async function processExport(
   const dumpsterDir = path.join(baseDir, 'data', 'dumpsters', sanitizedDumpsterName);
   const tempDir = generateTempDir(baseDir);
 
-  // Check if export already exists
+  // Check if dumpster already exists
   if (!overwrite) {
     try {
       await fs.access(dumpsterDir);
@@ -271,7 +271,7 @@ async function processExport(
   try {
     // Progress tracker already created above, no need for wrapper
 
-    // Clean up existing export directory if overwriting
+    // Clean up existing dumpster directory if overwriting
     if (overwrite) {
       try {
         await removeDirectories(dumpsterDir);
@@ -339,10 +339,10 @@ async function processExport(
     progress.organizing(85, 'Organizing media files...');
 
     // Create media directory and move files
-    const exportMediaDir = path.join(dumpsterDir, 'media');
+    const dumpsterMediaDir = path.join(dumpsterDir, 'media');
 
-    const mediaResult = await moveMediaFiles(tempDir, exportMediaDir, { verbose });
-    const essentialResult = await copyEssentialFiles(tempDir, exportMediaDir, {
+    const mediaResult = await moveMediaFiles(tempDir, dumpsterMediaDir, { verbose });
+    const essentialResult = await copyEssentialFiles(tempDir, dumpsterMediaDir, {
       verbose,
     });
 
@@ -355,7 +355,7 @@ async function processExport(
       throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
     }
 
-    progress.completed('Export processing complete!');
+    progress.completed('Dumpster processing complete!');
 
     console.log(`Dumpster "${sanitizedDumpsterName}" created successfully`);
     console.log(
@@ -374,7 +374,7 @@ async function processExport(
       },
     };
   } catch (error) {
-    console.error(`Export processing failed: ${error.message}`);
+    console.error(`Dumpster processing failed: ${error.message}`);
     throw error;
   } finally {
     // Always clean up temporary directory
@@ -390,7 +390,7 @@ async function processExport(
 }
 
 /**
- * Validate export structure
+ * Validate dumpster structure
  */
 async function validateDumpster(dumpsterDir) {
   const errors = [];
@@ -452,8 +452,8 @@ async function main() {
   try {
     const options = parseArguments();
 
-    if (!options.zipPath || !options.exportName) {
-      console.error('zipPath and exportName are required');
+    if (!options.zipPath || !options.dumpsterName) {
+      console.error('zipPath and dumpsterName are required');
       showHelp();
       process.exit(1);
     }
@@ -469,10 +469,10 @@ async function main() {
     // Read ZIP file
     const zipData = await fs.readFile(options.zipPath);
 
-    // Process export with progress callback
-    await processExport(
+    // Process dumpster with progress callback
+    await processDumpster(
       zipData,
-      options.exportName,
+      options.dumpsterName,
       options.baseDir,
       false, // isBuffer = false (we're reading from file)
       progress => {
@@ -485,9 +485,9 @@ async function main() {
       }
     );
 
-    console.log('Export completed successfully!');
+    console.log('Dumpster completed successfully!');
   } catch (error) {
-    console.error('Export processing failed:', error);
+    console.error('Dumpster processing failed:', error);
     process.exit(1);
   }
 }
@@ -498,7 +498,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  processExport,
+  processDumpster,
   validateDumpster,
   generateTempDir,
   moveMediaFiles,

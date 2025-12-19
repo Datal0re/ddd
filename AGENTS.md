@@ -67,8 +67,7 @@ data-dumpster-diver/
 ├── utils/              # Core utilities
 │   ├── DumpsterManager.js # Dumpster management
 │   ├── fileUtils.js     # File operations
-│   ├── getConversationMessages.js # Chat message processing
-│   └── logger.js       # Logging
+│   └── getConversationMessages.js # Chat message processing
 ├── data/               # Data processing
 │   ├── dump.js         # Data dump
 │   ├── extract-assets-json.js # Asset extraction

@@ -47,8 +47,8 @@ program
   });
 
 program
-  .command('inventory')
-  .description('List all processed dumpsters')
+  .command('hoard')
+  .description('View you dumpster hoard')
   .option('-v, --verbose', 'show detailed information')
   .action(async options => {
     try {
@@ -81,7 +81,7 @@ program
 program
   .command('rummage')
   .description('Rummage through chats in a dumpster')
-  .argument('<export-name>', 'name of the export to view')
+  .argument('<dumpster-name>', 'name of the dumpster to view')
   .option('-l, --limit <number>', 'number of conversations to show', '10')
   .action(async (dumpsterName, options) => {
     try {
