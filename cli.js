@@ -12,7 +12,7 @@ program
 
 program
   .command('dump')
-  .description('Upload and process a ChatGPT export ZIP file')
+  .description('Unpack and process a ChatGPT export ZIP file')
   .argument('<file>', 'path to the ZIP file')
   .option('-n, --name <name>', 'custom name for the dumpster', 'default')
   .option('-v, --verbose', 'verbose output')
@@ -20,7 +20,7 @@ program
     try {
       console.log(`Dumping ChatGPT export: ${chalk.blue(file)}`);
 
-      const { DumpsterManager } = require('./utils/dumpster-manager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
@@ -52,7 +52,7 @@ program
   .option('-v, --verbose', 'show detailed information')
   .action(async options => {
     try {
-      const { DumpsterManager } = require('./utils/dumpster-manager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
@@ -85,7 +85,7 @@ program
   .option('-l, --limit <number>', 'number of conversations to show', '10')
   .action(async (dumpsterName, options) => {
     try {
-      const { DumpsterManager } = require('./utils/dumpster-manager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 

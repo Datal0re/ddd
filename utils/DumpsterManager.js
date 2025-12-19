@@ -342,7 +342,7 @@ class DumpsterManager {
    * @returns {Promise<Object>} Dumpster creation result
    */
   async createDumpster(zipData, dumpsterName, isBuffer = false, onProgress = null) {
-    const { processExport } = require('../data/dumpster-processor');
+    const { processExport } = require('../data/dumpster-processor.js');
 
     try {
       // Ensure data directories exist

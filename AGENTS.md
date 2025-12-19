@@ -61,7 +61,7 @@ npm run extract-assets # Extract assets from chat.html
 
 ## File Structure
 
-```
+```text
 data-dumpster-diver/
 ├── cli.js              # Main CLI entry point
 ├── utils/              # Core utilities
