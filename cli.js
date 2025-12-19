@@ -20,7 +20,7 @@ program
     try {
       console.log(`Dumping ChatGPT export: ${chalk.blue(file)}`);
 
-      const { DumpsterManager } = require('./utils/ExportManager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
@@ -52,7 +52,7 @@ program
   .option('-v, --verbose', 'show detailed information')
   .action(async options => {
     try {
-      const { DumpsterManager } = require('./utils/ExportManager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
@@ -85,7 +85,7 @@ program
   .option('-l, --limit <number>', 'number of conversations to show', '10')
   .action(async (dumpsterName, options) => {
     try {
-      const { DumpsterManager } = require('./utils/ExportManager');
+      const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
