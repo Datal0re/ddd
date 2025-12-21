@@ -50,7 +50,7 @@ program
 
 program
   .command('hoard')
-  .description('View you dumpster hoard')
+  .description('View your dumpster hoard')
   .option('-v, --verbose', 'show detailed information')
   .action(async options => {
     try {

@@ -242,8 +242,7 @@ async function processDumpster(
   progress.initializing('Initializing dumpster processing...');
 
   // Sanitize dumpster name
-  const { sanitizeName } = require('../utils/fileUtils');
-  const sanitizedDumpsterName = sanitizeName(dumpsterName, { type: 'dumpster' });
+  const sanitizedDumpsterName = PathUtils.sanitizeName(dumpsterName, { type: 'dumpster' });
 
   // Create base directories
   await FileSystemHelper.ensureDirectory(baseDir);
