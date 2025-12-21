@@ -1,17 +1,1 @@
-[
-  [
-    "test-dumpster",
-    {
-      "name": "test-dumpster",
-      "displayName": "test-dumpster",
-      "createdAt": "2025-12-21T19:12:37.192Z",
-      "stats": {
-        "conversations": 373,
-        "assets": 463,
-        "mediaFiles": 672,
-        "essentialFiles": 2
-      },
-      "path": "/Users/ethanthomason/opencode-projects/data-dumpster-diver/data/dumpsters/test-dumpster"
-    }
-  ]
-]
+[]

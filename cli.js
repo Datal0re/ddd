@@ -112,4 +112,89 @@ program
     }
   });
 
+program
+  .command('burn')
+  .description('Set a dumpster on fire - watch it burn to ashes')
+  .argument('<dumpster-name>', 'name of dumpster to burn')
+  .option('-f, --force', 'skip confirmation prompt')
+  .option('--dry-run', 'show what would be burned without actually burning')
+  .action(async (dumpsterName, options) => {
+    try {
+      const { DumpsterManager } = require('./utils/DumpsterManager');
+      const dumpsterManager = new DumpsterManager(__dirname);
+      await dumpsterManager.initialize();
+
+      // Check if dumpster exists
+      const dumpster = dumpsterManager.getDumpster(dumpsterName);
+      if (!dumpster) {
+        console.error(chalk.red('🚨 Dumpster not found - nothing to burn'));
+        process.exit(1);
+      }
+
+      // Get dumpster stats for confirmation
+      const stats = await dumpsterManager.getDumpsterStats(dumpsterName);
+      const chatCount = stats?.chatCount || 'unknown';
+      const sizeInMB = stats?.totalSize
+        ? Math.round(stats.totalSize / 1024 / 1024)
+        : 'unknown';
+
+      console.log(chalk.yellow('🔥 Preparing to light a fire...'));
+      console.log(chalk.dim(`Dumpster: ${dumpsterName}`));
+      console.log(chalk.dim(`Chats to burn: ${chatCount}`));
+      console.log(chalk.dim(`Data to destroy: ${sizeInMB}MB`));
+
+      // Handle dry-run
+      if (options.dryRun) {
+        console.log(chalk.blue('🔥 Dry run: Would have burned this dumpster to ashes'));
+        return;
+      }
+
+      // Confirm deletion unless force flag is used
+      if (!options.force) {
+        const readline = require('readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+
+        const answer = await new Promise(resolve => {
+          rl.question(
+            chalk.red('Are you sure you want to watch this dumpster burn? (y/N): '),
+            resolve
+          );
+        });
+        rl.close();
+
+        if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+          console.log(
+            chalk.yellow('🔥 Fire extinguished - dumpster lives to see another day')
+          );
+          return;
+        }
+      }
+
+      // Perform the burning
+      console.log(chalk.red('🔥 Lighting the match...'));
+      const success = await dumpsterManager.deleteDumpster(dumpsterName);
+
+      if (success) {
+        console.log(chalk.green('🔥 Dumpster burned to ashes successfully!'));
+        console.log(
+          chalk.dim(
+            `All ${chatCount} chats and ${sizeInMB}MB of data reduced to cinders`
+          )
+        );
+      } else {
+        console.error(chalk.red('🚨 Failed to ignite dumpster - flames died out'));
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('🚨 Failed to start dumpster fire:'), error.message);
+      if (options.verbose) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
 program.parse();
