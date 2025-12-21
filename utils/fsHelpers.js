@@ -96,11 +96,15 @@ class FileSystemHelper {
   }
 
   /**
-   * Creates a secure temporary directory
+   * Creates a secure temporary directory in the system temp directory
+   *
+   * Use this for short-lived temporary files that can be safely cleaned up by the OS.
+   * Creates directories in os.tmpdir() with secure random names.
+   *
    * @param {string} prefix - Directory name prefix (default: 'dddiver-')
-   * @returns {Promise<string>} Path to created temp directory
+   * @returns {Promise<string>} Path to created system temp directory
    */
-  static async createTempDir(prefix = 'dddiver-') {
+  static async createSystemTempDir(prefix = 'dddiver-') {
     const tempDir = path.join(
       os.tmpdir(),
       `${prefix}${crypto.randomBytes(8).toString('hex')}`

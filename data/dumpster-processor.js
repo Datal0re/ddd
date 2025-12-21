@@ -16,6 +16,7 @@ const { CLIFramework } = require('../utils/cliFramework');
 const FileSystemHelper = require('../utils/fsHelpers');
 const PathUtils = require('../utils/pathUtils');
 const ZipProcessor = require('../utils/zipProcessor');
+const AssetUtils = require('../utils/assetUtils');
 const { createProgressTracker } = require('../utils/progressTracker');
 const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
@@ -81,9 +82,16 @@ function showHelp() {
 }
 
 /**
- * Generate a temporary directory name
+ * Creates a temporary directory within the project's data/temp directory
+ *
+ * Use this for long-lived temporary files during dumpster processing that need to
+ * persist within the project structure. Uses timestamp + random for human-readable names.
+ * Creates directories under {baseDir}/data/temp/ for easier debugging and manual cleanup.
+ *
+ * @param {string} baseDir - Base directory of the application
+ * @returns {string} Path to project temp directory
  */
-function generateTempDir(baseDir) {
+function createProjectTempDir(baseDir) {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return FileSystemHelper.joinPath(
@@ -92,94 +100,6 @@ function generateTempDir(baseDir) {
     'temp',
     `dumpster_${timestamp}_${random}`
   );
-}
-
-/**
- * Move media files from temp to dumpster directory
- */
-async function moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
-  const { verbose = false } = options;
-
-  try {
-    await FileSystemHelper.ensureDirectory(dumpsterMediaDir);
-
-    const tempMediaDir = FileSystemHelper.joinPath(tempDir, 'Test-Chat-Combine');
-
-    // Check if temp media directory exists
-    if (!(await FileSystemHelper.fileExists(tempMediaDir))) {
-      if (verbose) {
-        console.debug('No media directory found in temp files');
-      }
-      return { moved: 0, errors: 0 };
-    }
-
-    let moved = 0;
-    let errors = 0;
-
-    // Get all files and directories in temp media
-    const items = await FileSystemHelper.listDirectory(tempMediaDir);
-
-    for (const item of items) {
-      // Skip chat.html and conversations.json (these are handled separately)
-      if (item === 'chat.html' || item === 'conversations.json') {
-        continue;
-      }
-
-      const srcPath = FileSystemHelper.joinPath(tempMediaDir, item);
-      const destPath = FileSystemHelper.joinPath(dumpsterMediaDir, item);
-
-      try {
-        const stats = await fs.stat(srcPath);
-
-        if (stats.isDirectory()) {
-          // Copy directory recursively
-          await copyDirectory(srcPath, destPath);
-        } else {
-          // Copy file
-          await fs.copyFile(srcPath, destPath);
-        }
-
-        moved++;
-
-        if (verbose) {
-          console.debug(`Moved media: ${item}`);
-        }
-      } catch (error) {
-        console.error(`Error moving media item ${item}: ${error.message}`);
-        errors++;
-      }
-    }
-
-    if (verbose) {
-      console.log(`Media files moved: ${moved}, errors: ${errors}`);
-    }
-
-    return { moved, errors };
-  } catch (error) {
-    console.error(`Error moving media files: ${error.message}`);
-    throw error;
-  }
-}
-
-/**
- * Copy directory recursively
- */
-async function copyDirectory(src, dest) {
-  await FileSystemHelper.ensureDirectory(dest);
-
-  const items = await fs.readdir(src);
-
-  for (const item of items) {
-    const srcPath = path.join(src, item);
-    const destPath = path.join(dest, item);
-    const stats = await fs.stat(srcPath);
-
-    if (stats.isDirectory()) {
-      await copyDirectory(srcPath, destPath);
-    } else {
-      await fs.copyFile(srcPath, destPath);
-    }
-  }
 }
 
 /**
@@ -242,12 +162,14 @@ async function processDumpster(
   progress.initializing('Initializing dumpster processing...');
 
   // Sanitize dumpster name
-  const sanitizedDumpsterName = PathUtils.sanitizeName(dumpsterName, { type: 'dumpster' });
+  const sanitizedDumpsterName = PathUtils.sanitizeName(dumpsterName, {
+    type: 'dumpster',
+  });
 
   // Create base directories
   await FileSystemHelper.ensureDirectory(baseDir);
   const dumpsterDir = path.join(baseDir, 'data', 'dumpsters', sanitizedDumpsterName);
-  const tempDir = generateTempDir(baseDir);
+  const tempDir = createProjectTempDir(baseDir);
 
   // Check if dumpster already exists
   if (!overwrite) {
@@ -336,7 +258,9 @@ async function processDumpster(
     // Create media directory and move files
     const dumpsterMediaDir = path.join(dumpsterDir, 'media');
 
-    const mediaResult = await moveMediaFiles(tempDir, dumpsterMediaDir, { verbose });
+    const mediaResult = await AssetUtils.moveMediaFiles(tempDir, dumpsterMediaDir, {
+      verbose,
+    });
     const essentialResult = await copyEssentialFiles(tempDir, dumpsterMediaDir, {
       verbose,
     });
@@ -495,7 +419,6 @@ if (require.main === module) {
 module.exports = {
   processDumpster,
   validateDumpster,
-  generateTempDir,
-  moveMediaFiles,
+  createProjectTempDir,
   copyEssentialFiles,
 };

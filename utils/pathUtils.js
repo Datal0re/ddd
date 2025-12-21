@@ -138,9 +138,14 @@ class PathUtils {
   }
 
   /**
-   * Validates file path to prevent path traversal attacks
-   * @param {string} filePath - File path to validate
-   * @returns {boolean} True if path is safe
+   * Consolidated path validation to prevent traversal attacks
+   *
+   * This is the primary implementation for path security validation. Previously
+   * duplicated in zipProcessor.js - now consolidated here as single source of truth.
+   * Validates against path traversal, null bytes, and dangerous characters.
+   *
+   * @param {string} filePath - File path to validate for security
+   * @returns {boolean} True if path is safe, false if potentially dangerous
    */
   static validatePath(filePath) {
     if (!filePath || typeof filePath !== 'string') {
@@ -276,10 +281,15 @@ class PathUtils {
   }
 
   /**
-   * Copies a directory recursively
-   * @param {string} src - Source directory
-   * @param {string} dest - Destination directory
-   * @returns {Promise<void>}
+   * Consolidated recursive directory copy implementation
+   *
+   * This is the primary implementation for directory copying. Previously duplicated
+   * in dumpster-processor.js - now consolidated here as single source of truth.
+   * Uses { withFileTypes: true } for better performance than fs.stat().
+   *
+   * @param {string} src - Source directory to copy from
+   * @param {string} dest - Destination directory to copy to
+   * @returns {Promise<void>} Resolves when copy completes
    */
   static async copyDirectory(src, dest) {
     await FileSystemHelper.ensureDirectory(dest);

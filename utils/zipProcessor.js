@@ -7,6 +7,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { LIMITS, ZIP_SIGNATURES, TEMP_CONFIG } = require('../config/constants');
 const FileSystemHelper = require('./fsHelpers');
+const PathUtils = require('./pathUtils');
 
 // Dynamic import for decompress (ES module)
 let decompress;
@@ -23,8 +24,12 @@ const getDecompress = async () => {
  */
 class ZipProcessor {
   /**
-   * Creates a secure temporary directory for processing
-   * @returns {Promise<string>} Path to temp directory
+   * Creates a secure temporary directory specifically for ZIP processing
+   *
+   * Uses application-specific prefix from TEMP_CONFIG for ZIP security context.
+   * Creates directories in os.tmpdir() with enhanced security for ZIP bomb protection.
+   *
+   * @returns {Promise<string>} Path to temp directory for ZIP processing
    */
   static async createTempDir() {
     const crypto = require('crypto');
@@ -137,7 +142,7 @@ class ZipProcessor {
 
       // Check for suspicious file paths
       for (const file of files) {
-        if (!this.validatePath(file.path)) {
+        if (!PathUtils.validatePath(file.path)) {
           throw new Error(`Suspicious file path detected: ${file.path}`);
         }
       }
@@ -338,40 +343,6 @@ class ZipProcessor {
         await this.cleanupTempDir(tempDir);
       }
     }
-  }
-
-  /**
-   * Validates file path to prevent path traversal attacks
-   * @param {string} filePath - File path to validate
-   * @returns {boolean} True if path is safe
-   */
-  static validatePath(filePath) {
-    if (!filePath || typeof filePath !== 'string') {
-      return false;
-    }
-
-    // Normalize path to resolve any .. sequences
-    const normalized = path.normalize(filePath);
-
-    // Check for path traversal attempts
-    if (
-      normalized.includes('..') ||
-      normalized.startsWith('/') ||
-      normalized.includes('\\')
-    ) {
-      return false;
-    }
-
-    // Check for null bytes and other dangerous characters
-    if (
-      normalized.includes('\0') ||
-      normalized.includes('\r') ||
-      normalized.includes('\n')
-    ) {
-      return false;
-    }
-
-    return true;
   }
 }
 

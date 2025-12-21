@@ -130,12 +130,17 @@ class AssetUtils {
   }
 
   /**
-   * Moves media files from temp to dumpster directory
-   * @param {string} tempDir - Temporary directory path
-   * @param {string} dumpsterMediaDir - Dumpster media directory path
-   * @param {Object} options - Options object
-   * @param {boolean} options.verbose - Enable verbose logging
-   * @returns {Promise<Object>} Move operation result with counts
+   * Consolidated function to move media files from temp to dumpster directory
+   *
+   * This is the primary implementation for media file movement. Handles directories
+   * and files, preserves directory structure, and provides detailed operation feedback.
+   * Previously duplicated in dumpster-processor.js - now consolidated here as single source.
+   *
+   * @param {string} tempDir - Source temporary directory path
+   * @param {string} dumpsterMediaDir - Destination dumpster media directory path
+   * @param {Object} options - Configuration options
+   * @param {boolean} options.verbose - Enable verbose logging for debug output
+   * @returns {Promise<Object>} Operation result with {moved: number, errors: number}
    */
   static async moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
     const { verbose = false } = options;
