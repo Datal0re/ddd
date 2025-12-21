@@ -17,8 +17,8 @@ This is a focused CLI tool for processing ChatGPT conversation data:
 
 - **cli.js**: Command-line interface with Commander.js
 - **utils/DumpsterManager.js**: Core dumpster lifecycle management
-- **utils/fileUtils.js**: File operations and validation
-- **utils/getConversationMessages.js**: Chat message processing and asset handling
+- **utils/fsHelpers.js**: File operations and validation
+- **utils/conversation-messages.js**: Chat message processing and asset handling
 - **data/**: Processing scripts for dumping and extraction
 
 ## Development Commands
@@ -31,7 +31,7 @@ npm run format        # Format code with Prettier
 
 # Core functionality
 npm run dump           # Dump old conversation format
-npm run extract-assets # Extract assets from chat.html
+npm run extract-assets # Extract assets using data/extract-assets.js
 ```
 
 ## Code Style
@@ -66,11 +66,11 @@ data-dumpster-diver/
 ├── cli.js              # Main CLI entry point
 ├── utils/              # Core utilities
 │   ├── DumpsterManager.js # Dumpster management
-│   ├── fileUtils.js     # File operations
-│   └── getConversationMessages.js # Chat message processing
+│   ├── fsHelpers.js     # File operations
+│   └── conversation-messages.js # Chat message processing
 ├── data/               # Data processing
 │   ├── dump.js         # Data dump
-│   ├── extract-assets-json.js # Asset extraction
+│   ├── extract-assets.js # Asset extraction
 │   └── process-export.js # Dumpster processing
 ├── package.json        # Dependencies and scripts
 ├── README.md           # User documentation
