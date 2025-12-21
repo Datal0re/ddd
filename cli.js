@@ -8,7 +8,7 @@ const program = new Command();
 program
   .name('ddd')
   .description('CLI tool to process and explore exported ChatGPT conversation data')
-  .version('2.0.0-alpha');
+  .version('0.0.1');
 
 program
   .command('dump')
