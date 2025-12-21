@@ -158,7 +158,20 @@ async function processDumpster(
   }
 
   // Create unified progress tracker
-  const progress = createProgressTracker(onProgress, verbose);
+  const baseTracker = createProgressTracker(onProgress, verbose);
+  const progress = {
+    initializing: message => baseTracker.update('initializing', 0, message),
+    extracting: (percent, message) =>
+      baseTracker.update('extracting', percent, message),
+    dumping: (percent, message) => baseTracker.update('dumping', percent, message),
+    extractingAssets: (percent, message) =>
+      baseTracker.update('extractingAssets', percent, message),
+    organizing: (percent, message) =>
+      baseTracker.update('organizing', percent, message),
+    validating: (percent, message) =>
+      baseTracker.update('validating', percent, message),
+    completed: message => baseTracker.update('completed', 100, message),
+  };
   progress.initializing('Initializing dumpster processing...');
 
   // Sanitize dumpster name

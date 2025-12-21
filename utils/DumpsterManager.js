@@ -341,14 +341,14 @@ class DumpsterManager {
    * @returns {Promise<Object>} Dumpster creation result
    */
   async createDumpster(zipData, dumpsterName, isBuffer = false, onProgress = null) {
-    const { processExport } = require('../data/dumpster-processor.js');
+    const { processDumpster } = require('../data/dumpster-processor.js');
 
     try {
       // Ensure data directories exist
       await this.ensureDataDirectories();
 
       // Process the export using the dumpster processor
-      const result = await processExport(
+      const result = await processDumpster(
         zipData,
         dumpsterName,
         this.baseDir,
