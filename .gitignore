@@ -73,6 +73,7 @@ backups/
 public/media/
 data/sessions.json
 data/upload-progress.json
+data/dumpsters.json
 
 # Database files
 *.db
