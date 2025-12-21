@@ -103,7 +103,7 @@ ddd rummage 2024-chats --limit 5
 
 The codebase follows a clean, modular architecture with clear separation of concerns:
 
-```
+```text
 CLI Layer (cli.js)
 ├── Commands: dump, hoard, rummage
 ├── User Interface & Error Handling
@@ -133,7 +133,7 @@ Utility Layer (utils/)
 
 Processed exports are organized as follows:
 
-```
+```text
 data/
 ├── dumpsters/
 │   └── {dumpster-name}/
@@ -180,7 +180,7 @@ npm run extract-assets
 
 ### Project Structure
 
-```
+```text
 data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point
 ├── package.json              # Dependencies and scripts
