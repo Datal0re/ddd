@@ -12,8 +12,8 @@
   "scripts": {
     "start": "node cli.js",
     "dev": "nodemon cli.js",
-    "lint": "eslint . --ext .js,.mjs",
-    "lint:fix": "eslint . --ext .js,.mjs --fix",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "extract-assets": "node data/extract-assets.js"

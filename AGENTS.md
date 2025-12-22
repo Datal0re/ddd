@@ -84,8 +84,8 @@ Currently no test suite. For hobby project, manual testing is acceptable:
 ```bash
 # Test basic functionality
 node cli.js --help
-node cli.js inventory
 node cli.js dump --help
+node cli.js hoard
 
 # Test with real data (when available)
 node cli.js dump path/to/chatgpt-export.zip --name "test"
