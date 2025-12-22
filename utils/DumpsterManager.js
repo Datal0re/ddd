@@ -105,10 +105,10 @@ class DumpsterManager {
     }
 
     const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, dumpsterName);
-    const conversationsDir = FileSystemHelper.joinPath(dumpsterDir, 'conversations');
+    const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
 
     try {
-      const files = await FileSystemHelper.listDirectory(conversationsDir);
+      const files = await FileSystemHelper.listDirectory(chatsDir);
 
       // Filter for JSON files and sort by filename (which includes date)
       const jsonFiles = files
@@ -118,11 +118,11 @@ class DumpsterManager {
       const chats = [];
       for (const file of limit ? jsonFiles.slice(0, limit) : jsonFiles) {
         try {
-          const filePath = FileSystemHelper.joinPath(conversationsDir, file);
-          const conversation = await FileSystemHelper.readJsonFile(filePath);
+          const filePath = FileSystemHelper.joinPath(chatsDir, file);
+          const chat = await FileSystemHelper.readJsonFile(filePath);
           chats.push({
             filename: file,
-            ...conversation,
+            ...chat,
           });
         } catch (error) {
           console.warn(`Error reading chat file ${file}:`, error.message);
@@ -150,8 +150,8 @@ class DumpsterManager {
     }
 
     const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, dumpsterName);
-    const conversationsDir = FileSystemHelper.joinPath(dumpsterDir, 'conversations');
-    const chatFile = FileSystemHelper.joinPath(conversationsDir, chatId);
+    const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
+    const chatFile = FileSystemHelper.joinPath(chatsDir, chatId);
 
     try {
       const conversation = await FileSystemHelper.readJsonFile(chatFile);
@@ -204,12 +204,12 @@ class DumpsterManager {
       let totalSize = 0;
       let chatCount = 0;
 
-      const conversationsDir = FileSystemHelper.joinPath(dumpsterDir, 'conversations');
-      const files = await FileSystemHelper.listDirectory(conversationsDir);
+      const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
+      const files = await FileSystemHelper.listDirectory(chatsDir);
 
       for (const file of files) {
         if (file.endsWith('.json')) {
-          const filePath = FileSystemHelper.joinPath(conversationsDir, file);
+          const filePath = FileSystemHelper.joinPath(chatsDir, file);
           const stats = await FileSystemHelper.getStats(filePath);
           totalSize += stats.size;
           chatCount++;
@@ -258,18 +258,18 @@ class DumpsterManager {
   }
 
   /**
-   * Get conversation count for a dumpster
+   * Get chat count for a dumpster
    * @param {string} dumpsterName - Dumpster name
-   * @returns {Promise<number>} Number of conversations
+   * @returns {Promise<number>} Number of chats
    */
-  async getConversationCount(dumpsterName) {
+  async getChatCount(dumpsterName) {
     try {
-      const conversationsDir = FileSystemHelper.joinPath(
+      const chatsDir = FileSystemHelper.joinPath(
         this.dumpstersDir,
         dumpsterName,
-        'conversations'
+        'chats'
       );
-      const files = await FileSystemHelper.listDirectory(conversationsDir);
+      const files = await FileSystemHelper.listDirectory(chatsDir);
       return files.filter(f => f.endsWith('.json')).length;
     } catch {
       return 0;

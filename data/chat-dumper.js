@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// conversation-dumper.js - Enhanced version for direct file processing
+// chat-dumper.js - Enhanced version for direct file processing
 const { CLIFramework } = require('../utils/cliFramework');
 const FileSystemHelper = require('../utils/fsHelpers');
 const PathUtils = require('../utils/pathUtils');
@@ -20,7 +20,7 @@ function parseArguments() {
         name: 'createSubdirs',
         flag: '--create-subdirs',
         type: 'boolean',
-        description: 'Create a conversations subdirectory in outputDir',
+        description: 'Create a chats subdirectory in outputDir',
       },
     ],
     positional: ['inputPath', 'outputDir'],
@@ -37,17 +37,14 @@ function parseArguments() {
   options.inputPath = options.inputPath || 'conversations.json';
   options.outputDir =
     options.outputDir ||
-    FileSystemHelper.joinPath(
-      FileSystemHelper.getDirName(options.inputPath),
-      'conversations'
-    );
+    FileSystemHelper.joinPath(FileSystemHelper.getDirName(options.inputPath), 'chats');
 
   return options;
 }
 
 function showHelp() {
   const config = {
-    usage: 'node conversation-dumper.js [inputPath] [outputDir] [options]',
+    usage: 'node chat-dumper.js [inputPath] [outputDir] [options]',
     positional: [
       {
         name: 'inputPath',
@@ -55,8 +52,7 @@ function showHelp() {
       },
       {
         name: 'outputDir',
-        description:
-          'Directory to save individual conversation files (default: ./conversations)',
+        description: 'Directory to save individual chat files (default: ./chats)',
       },
     ],
     flags: [
@@ -64,15 +60,15 @@ function showHelp() {
         name: 'createSubdirs',
         flag: '--create-subdirs',
         type: 'boolean',
-        description: 'Create a conversations subdirectory in outputDir',
+        description: 'Create a chats subdirectory in outputDir',
       },
     ],
     examples: [
-      'node conversation-dumper.js                                   # Use defaults',
-      'node conversation-dumper.js /path/to/conversations.json       # Custom input path',
-      'node conversation-dumper.js data.json ./output                # Custom input and output',
-      'node conversation-dumper.js data.json ./out --create-subdirs  # Create conversations subdirectory',
-      'node conversation-dumper.js data.json ./out --overwrite       # Overwrite existing files',
+      'node chat-dumper.js                                   # Use defaults',
+      'node chat-dumper.js /path/to/conversations.json       # Custom input path',
+      'node chat-dumper.js data.json ./output                # Custom input and output',
+      'node chat-dumper.js data.json ./out --create-subdirs  # Create chats subdirectory',
+      'node chat-dumper.js data.json ./out --overwrite       # Overwrite existing files',
     ],
   };
 
@@ -108,7 +104,7 @@ function formatDateFromTimestamp(ts) {
 /**
  * Enhanced dump function for direct file processing
  */
-async function dumpConversations(inputPath, outputDir, options = {}) {
+async function dumpChats(inputPath, outputDir, options = {}) {
   const {
     createSubdirs = false,
     preserveOriginal = false,
@@ -123,37 +119,35 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
 
   // Determine final output directory
   const finalOutputDir = createSubdirs
-    ? FileSystemHelper.joinPath(outputDir, 'conversations')
+    ? FileSystemHelper.joinPath(outputDir, 'chats')
     : outputDir;
 
-  console.log(`Dumping conversations from ${resolvedInputPath} to ${finalOutputDir}`);
+  console.log(`Dumping chats from ${resolvedInputPath} to ${finalOutputDir}`);
 
   try {
     // Read and validate input file
-    const conversations = await FileSystemHelper.readJsonFile(resolvedInputPath);
+    const chats = await FileSystemHelper.readJsonFile(resolvedInputPath);
 
-    if (!Array.isArray(conversations)) {
-      throw new Error('Expected an array of conversations in input file');
+    if (!Array.isArray(chats)) {
+      throw new Error('Expected an array of chats in input file');
     }
 
-    console.log(`Found ${conversations.length} conversations to process`);
+    console.log(`Found ${chats.length} chats to process`);
 
     // Sort newest first
-    conversations.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
+    chats.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
 
     // Create output directory if it doesn't exist
-    await FileSystemHelper.ensureDirectory(finalOutputDir);
+    await FileSystemHelper.createDirectory(finalOutputDir);
 
-    // Process each conversation
     let processed = 0;
     let skipped = 0;
     let errors = 0;
-
-    for (const conv of conversations) {
+    for (const chat of chats) {
       try {
-        const ts = extractTimestamp(conv);
+        const ts = extractTimestamp(chat);
         const dateStr = formatDateFromTimestamp(ts);
-        const rawTitle = conv.title || 'untitled';
+        const rawTitle = chat.title || 'untitled';
         const cleanTitle = sanitizeFilename(rawTitle);
         const filename = `${dateStr}_${cleanTitle}.json`;
         const filepath = FileSystemHelper.joinPath(finalOutputDir, filename);
@@ -169,8 +163,8 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
           }
         }
 
-        // Write conversation file
-        await FileSystemHelper.writeJsonFile(filepath, conv);
+        // Write chat file
+        await FileSystemHelper.writeJsonFile(filepath, chat);
         processed++;
 
         if (verbose) {
@@ -201,7 +195,7 @@ async function dumpConversations(inputPath, outputDir, options = {}) {
       processed,
       skipped,
       errors,
-      total: conversations.length,
+      total: chats.length,
     };
   } catch (err) {
     console.error(`dump failed: ${err.message}`);
@@ -220,11 +214,7 @@ async function main() {
       console.log('Starting dump with options: ', options);
     }
 
-    const result = await dumpConversations(
-      options.inputPath,
-      options.outputDir,
-      options
-    );
+    const result = await dumpChats(options.inputPath, options.outputDir, options);
 
     if (result.errors > 0) {
       console.warn(`dump completed with ${result.errors} errors`);
@@ -243,7 +233,7 @@ async function main() {
  * Export function for programmatic usage
  */
 module.exports = {
-  dumpConversations,
+  dumpChats,
   sanitizeFilename,
   extractTimestamp,
   formatDateFromTimestamp,

@@ -20,7 +20,7 @@ const AssetUtils = require('../utils/assetUtils');
 const { createProgressTracker } = require('../utils/progressTracker');
 const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
-const { dumpConversations } = require('./conversation-dumper.js');
+const { dumpChats } = require('./chat-dumper.js');
 const { extractAssetsFromHtml } = require('./extract-assets.js');
 
 /**
@@ -224,26 +224,18 @@ async function processDumpster(
     // Extract ZIP file
     await ZipProcessor.validateAndExtractZip(zipData, tempDir, isBuffer);
 
-    progress.dumping(40, 'Dumping conversations...');
+    progress.dumping(40, 'Dumping chats...');
 
     // Dump conversations
-    const conversationsInput = path.join(
-      tempDir,
-      'Test-Chat-Combine',
-      'conversations.json'
-    );
-    const conversationsOutput = path.join(dumpsterDir, 'conversations');
+    const chatsInput = path.join(tempDir, 'Test-Chat-Combine', 'conversations.json');
+    const chatsOutput = path.join(dumpsterDir, 'chats');
 
-    const dumpResult = await dumpConversations(
-      conversationsInput,
-      conversationsOutput,
-      {
-        createSubdirs: false,
-        preserveOriginal: true,
-        overwrite: true,
-        verbose,
-      }
-    );
+    const dumpResult = await dumpChats(chatsInput, chatsOutput, {
+      createSubdirs: false,
+      preserveOriginal: true,
+      overwrite: true,
+      verbose,
+    });
 
     if (dumpResult.errors > 0) {
       console.warn(`Dump completed with ${dumpResult.errors} errors`);
@@ -299,7 +291,7 @@ async function processDumpster(
       dumpsterName: sanitizedDumpsterName,
       dumpsterDir,
       stats: {
-        conversations: dumpResult.processed,
+        chats: dumpResult.processed,
         assets: assetResult.assetCount || 0,
         mediaFiles: mediaResult.moved,
         essentialFiles: essentialResult.copied,
@@ -330,7 +322,7 @@ async function validateDumpster(dumpsterDir) {
 
   try {
     // Check required directories
-    const requiredDirs = ['conversations', 'media'];
+    const requiredDirs = ['chats', 'media'];
     for (const dir of requiredDirs) {
       const dirPath = path.join(dumpsterDir, dir);
       try {
@@ -340,14 +332,14 @@ async function validateDumpster(dumpsterDir) {
       }
     }
 
-    // Check conversation files
-    const conversationsDir = path.join(dumpsterDir, 'conversations');
+    // Check chat files
+    const chatsDir = path.join(dumpsterDir, 'chats');
     try {
-      const files = await fs.readdir(conversationsDir);
+      const files = await fs.readdir(chatsDir);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
 
       if (jsonFiles.length === 0) {
-        errors.push('No conversation files found');
+        errors.push('No chat files found');
       }
     } catch {
       // Already caught above

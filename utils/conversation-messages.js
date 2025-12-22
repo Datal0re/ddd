@@ -439,16 +439,9 @@ async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) 
  * @param {Object} options - Processing options
  * @returns {Promise<Array>} Array of processed messages
  */
-async function getConversationMessages(
-  conversation,
-  exportName = null,
-  baseDir = null
-) {
+async function getChatMessages(chat, exportName = null, baseDir = null) {
   try {
-    validateRequiredParams(
-      [{ name: 'conversation', value: conversation }],
-      'getConversationMessages'
-    );
+    validateRequiredParams([{ name: 'chat', value: chat }], 'getChatMessages');
 
     if (exportName) {
       validateNonEmptyString(exportName, 'exportName');
@@ -457,14 +450,14 @@ async function getConversationMessages(
       validateNonEmptyString(baseDir, 'baseDir');
     }
   } catch (error) {
-    console.warn('Invalid parameters for getConversationMessages:', error.message);
+    console.warn('Invalid parameters for getChatMessages:', error.message);
     return [];
   }
 
   const messages = [];
   const nodes =
-    conversation && (conversation.nodes || conversation.mapping)
-      ? Object.values(conversation.nodes || conversation.mapping)
+    chat && (chat.nodes || chat.mapping)
+      ? Object.values(chat.nodes || chat.mapping)
       : [];
 
   // Load asset mapping once for the entire conversation (performance optimization)
@@ -577,4 +570,4 @@ async function getConversationMessages(
   return messages;
 }
 
-module.exports = { getConversationMessages };
+module.exports = { getChatMessages };

@@ -38,7 +38,7 @@ const PATHS = {
   DUMPSTERS_DIR: 'data/dumpsters',
   TEMP_DIR: 'data/temp',
   MEDIA_DIR: 'media',
-  CONVERSATIONS_DIR: 'conversations',
+  CHATS_DIR: 'chats',
 };
 
 // ZIP file signatures for validation

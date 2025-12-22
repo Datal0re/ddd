@@ -84,7 +84,7 @@ program
   .command('rummage')
   .description('Rummage through chats in a dumpster')
   .argument('<dumpster-name>', 'name of the dumpster to view')
-  .option('-l, --limit <number>', 'number of conversations to show', '10')
+  .option('-l, --limit <number>', 'number of chats to show', '10')
   .action(async (dumpsterName, options) => {
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');

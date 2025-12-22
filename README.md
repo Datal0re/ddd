@@ -6,7 +6,7 @@ A Node.js CLI tool to process and explore exported ChatGPT conversation data. Tr
 
 - **Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters
 - **Hoard**: View your collection of processed dumpsters
-- **Rummage**: Explore conversations within specific dumpsters
+- **Rummage**: Explore chats within specific dumpsters
 - **Burn**: Safely delete dumpsters with confirmation prompts
 - **Organize**: Automatically extract and organize media assets (images, files, audio)
 - **Secure**: Validate ZIP files against path traversal and zip bomb attacks
@@ -36,7 +36,7 @@ ddd dump chatgpt-export.zip --name "my-chats"
 # View all dumpsters
 ddd hoard
 
-# Explore conversations in a dumpster
+# Explore chats in a dumpster
 ddd rummage my-chats --limit 10
 
 # Burn (delete) a dumpster
@@ -95,7 +95,7 @@ ddd rummage <dumpster-name> [options]
 
 **Options:**
 
-- `-l, --limit <number>`: Number of conversations to show (default: 10)
+- `-l, --limit <number>`: Number of chats to show (default: 10)
 
 **Example:**
 
@@ -161,7 +161,7 @@ Processed exports are organized as follows:
 data/
 ├── dumpsters/
 │   └── {dumpster-name}/
-│       ├── conversations/
+│       ├── chats/
 │       │   ├── conversation-1.json
 │       │   ├── conversation-2.json
 │       │   └── ...
@@ -217,7 +217,7 @@ data-dumpster-diver/
 │   └── constants.js          # Configuration constants
 ├── data/
 │   ├── dumpster-processor.js  # Main processing orchestration
-│   ├── conversation-dumper.js  # Conversation data processing
+│   ├── chat-dumper.js  # Chat data processing
 │   └── extract-assets.js     # Asset extraction from HTML
 ├── utils/
 │   ├── DumpsterManager.js     # Core dumpster management
@@ -315,7 +315,7 @@ Planned improvements include:
 - **Error Handling**: Standardized error framework
 - **Configuration**: User-configurable settings
 - **Export Formats**: Support for different output formats
-- **Search Functionality**: Full-text search across conversations
+- **Search Functionality**: Full-text search across chats
 - **Enhanced Burn Command**: Batch deletion and recycling bin functionality
 
 ## 📞 Support
