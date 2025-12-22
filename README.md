@@ -7,6 +7,7 @@ A Node.js CLI tool to process and explore exported ChatGPT conversation data. Tr
 - **Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters
 - **Hoard**: View your collection of processed dumpsters
 - **Rummage**: Explore conversations within specific dumpsters
+- **Burn**: Safely delete dumpsters with confirmation prompts
 - **Organize**: Automatically extract and organize media assets (images, files, audio)
 - **Secure**: Validate ZIP files against path traversal and zip bomb attacks
 
@@ -37,6 +38,9 @@ ddd hoard
 
 # Explore conversations in a dumpster
 ddd rummage my-chats --limit 10
+
+# Burn (delete) a dumpster
+ddd burn my-chats
 
 # Get help
 ddd --help
@@ -97,6 +101,26 @@ ddd rummage <dumpster-name> [options]
 
 ```bash
 ddd rummage 2024-chats --limit 5
+```
+
+### `burn <dumpster-name>`
+
+Set a dumpster on fire - permanently delete it with confirmation.
+
+```bash
+ddd burn <dumpster-name> [options]
+```
+
+**Options:**
+
+- `-f, --force`: Skip confirmation prompt
+- `--dry-run`: Show what would be burned without actually burning
+
+**Example:**
+
+```bash
+ddd burn old-chats --dry-run
+ddd burn old-chats --force
 ```
 
 ## 🏗️ Architecture
@@ -170,9 +194,11 @@ npm run dev
 
 # Lint code
 npm run lint
+npm run lint:fix
 
 # Format code
 npm run format
+npm run format:check
 
 # Run specific data processing
 npm run extract-assets
@@ -184,6 +210,9 @@ npm run extract-assets
 data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point
 ├── package.json              # Dependencies and scripts
+├── eslint.config.js         # ESLint configuration
+├── .prettierrc.json         # Prettier configuration
+├── .prettierignore          # Prettier ignore rules
 ├── config/
 │   └── constants.js          # Configuration constants
 ├── data/
@@ -198,8 +227,12 @@ data-dumpster-diver/
 │   ├── zipProcessor.js       # ZIP processing & security
 │   ├── validators.js         # Input validation
 │   ├── progressTracker.js    # Progress tracking
-│   └── cliFramework.js       # CLI utilities
-└── AGENTS.md               # Development guidelines
+│   ├── cliFramework.js       # CLI utilities
+│   └── conversation-messages.js # Chat message processing
+├── AGENTS.md               # Development guidelines
+├── CHANGELOG.md            # Version history
+├── LICENSE                 # MIT License
+└── README.md               # This file
 ```
 
 ### Code Quality
@@ -230,7 +263,7 @@ Configuration is handled through `config/constants.js`:
 }
 ```
 
-## 🔄 Recent Improvements (v2.0.0-alpha)
+## 🔄 Recent Improvements (v0.0.1)
 
 ### Codebase Refactoring
 
@@ -277,12 +310,13 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Planned improvements include:
 
-- **Additional CLI Commands**: `delete`, `inspect`, `stats`, `search`
+- **Additional CLI Commands**: `inspect`, `stats`, `search`
 - **Service Layer**: Better abstraction for business logic
 - **Error Handling**: Standardized error framework
 - **Configuration**: User-configurable settings
 - **Export Formats**: Support for different output formats
 - **Search Functionality**: Full-text search across conversations
+- **Enhanced Burn Command**: Batch deletion and recycling bin functionality
 
 ## 📞 Support
 
