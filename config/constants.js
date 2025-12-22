@@ -102,6 +102,44 @@ const SEARCH_CONFIG = {
   MAX_CACHE_SIZE: 1000, // For file search caching
 };
 
+/**
+ * Validate configuration values
+ * @throws {Error} If configuration is invalid
+ */
+function validateConfig() {
+  // Validate limits are positive numbers
+  Object.values(LIMITS).forEach(value => {
+    if (typeof value !== 'number' || value <= 0) {
+      throw new Error(`Invalid LIMITS configuration: values must be positive numbers`);
+    }
+  });
+
+  // Validate temp config
+  if (typeof TEMP_CONFIG.BYTES_LENGTH !== 'number' || TEMP_CONFIG.BYTES_LENGTH <= 0) {
+    throw new Error(`Invalid TEMP_CONFIG.BYTES_LENGTH: must be positive number`);
+  }
+
+  // Validate search config
+  if (
+    typeof SEARCH_CONFIG.MAX_CACHE_SIZE !== 'number' ||
+    SEARCH_CONFIG.MAX_CACHE_SIZE <= 0
+  ) {
+    throw new Error(`Invalid SEARCH_CONFIG.MAX_CACHE_SIZE: must be positive number`);
+  }
+
+  // Validate required arrays are not empty
+  if (!Array.isArray(FILE_EXTENSIONS.IMAGE) || FILE_EXTENSIONS.IMAGE.length === 0) {
+    throw new Error(`Invalid FILE_EXTENSIONS.IMAGE: must be non-empty array`);
+  }
+
+  if (!Array.isArray(ZIP_SIGNATURES) || ZIP_SIGNATURES.length === 0) {
+    throw new Error(`Invalid ZIP_SIGNATURES: must be non-empty array`);
+  }
+}
+
+// Perform validation when module is loaded
+validateConfig();
+
 module.exports = {
   LIMITS,
   FILE_EXTENSIONS,

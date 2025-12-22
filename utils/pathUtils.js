@@ -9,6 +9,12 @@ const { SEARCH_CONFIG, SANITIZATION_DEFAULTS } = require('../config/constants');
 const FileSystemHelper = require('./fsHelpers');
 const { validateNonEmptyString } = require('./validators');
 
+// Simple file cache to improve performance for repeated searches
+const fileCache = new Map();
+
+// Clear cache to ensure fresh results for testing
+fileCache.clear();
+
 /**
  * Path utilities class for path manipulation and file searching
  */
@@ -120,6 +126,31 @@ class PathUtils {
       recursive,
       prefix,
     });
+  }
+
+  /**
+   * Get cached file search results or perform new search
+   * @param {string} dir - Directory to search
+   * @param {string} filename - Filename to search for
+   * @returns {Promise<Array>} Array of matching file paths
+   */
+  static async cachedRecursivelyFindFiles(dir, filename) {
+    const cacheKey = `${dir}:${filename}`;
+
+    if (fileCache.has(cacheKey)) {
+      return fileCache.get(cacheKey);
+    }
+
+    const results = await this.findFilesByPrefix(dir, filename, true);
+
+    // Implement simple LRU-like behavior
+    if (fileCache.size >= SEARCH_CONFIG.MAX_CACHE_SIZE) {
+      const firstKey = fileCache.keys().next().value;
+      fileCache.delete(firstKey);
+    }
+
+    fileCache.set(cacheKey, results);
+    return results;
   }
 
   /**

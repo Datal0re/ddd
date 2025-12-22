@@ -42,6 +42,11 @@ ddd rummage my-chats --limit 10
 # Burn (delete) a dumpster
 ddd burn my-chats
 
+# Export dumpsters to various formats
+ddd upcycle txt my-chats --output ./exports
+ddd upcycle html my-chats --include-media --self-contained
+ddd upcycle md my-chats --single-file
+
 # Get help
 ddd --help
 ```
@@ -123,13 +128,49 @@ ddd burn old-chats --dry-run
 ddd burn old-chats --force
 ```
 
+### `upcycle <format> <dumpster-name>`
+
+Upcycle dumpsters to various export formats.
+
+```bash
+ddd upcycle <format> <dumpster-name> [options]
+```
+
+**Formats:**
+
+- `txt`: Plain text format
+- `md`: Markdown format
+- `html`: HTML format
+
+**Options:**
+
+- `-o, --output <path>`: Output directory (default: `./upcycles`)
+- `-s, --single-file`: Combine all chats into single file
+- `--per-chat`: Create separate file per chat (default)
+- `--include-media`: Copy media assets to export directory
+- `--self-contained`: Embed assets in output (HTML only)
+- `-v, --verbose`: Verbose output
+
+**Examples:**
+
+```bash
+# Export to text with separate files
+ddd upcycle txt my-chats --output ./text-exports
+
+# Export to HTML with embedded assets
+ddd upcycle html my-chats --self-contained --single-file
+
+# Export to Markdown with media included
+ddd upcycle md my-chats --include-media --verbose
+```
+
 ## 🏗️ Architecture
 
 The codebase follows a clean, modular architecture with clear separation of concerns:
 
 ```text
 CLI Layer (cli.js)
-├── Commands: dump, hoard, rummage
+├── Commands: dump, hoard, rummage, burn, upcycle
 ├── User Interface & Error Handling
 └── Progress Display
 
@@ -138,19 +179,26 @@ Business Logic Layer (DumpsterManager.js)
 ├── Metadata Persistence
 └── High-Level Operations
 
+Export Layer (UpcycleManager.js)
+├── Export Format Management
+├── Asset Processing & Copying
+└── Output Generation
+
 Processing Layer (data/)
 ├── dumpster-processor.js - Main orchestration
-├── conversation-dumper.js - Conversation processing
+├── chat-dumper.js - Conversation processing
 └── extract-assets.js - Asset extraction
 
 Utility Layer (utils/)
 ├── fsHelpers.js - File system operations
 ├── pathUtils.js - Path manipulation & searching
 ├── assetUtils.js - Asset handling
+├── ChatUpcycler.js - Chat processing for export
+├── upcycleHelpers.js - Export helper functions
 ├── zipProcessor.js - ZIP processing & security
 ├── validators.js - Input validation
 ├── progressTracker.js - Progress tracking
-└── cliFramework.js - CLI utilities
+└── formatters/ - Export format handlers
 ```
 
 ## 🗂️ Data Organization
@@ -217,18 +265,24 @@ data-dumpster-diver/
 │   └── constants.js          # Configuration constants
 ├── data/
 │   ├── dumpster-processor.js  # Main processing orchestration
-│   ├── chat-dumper.js  # Chat data processing
+│   ├── chat-dumper.js      # Chat data processing
 │   └── extract-assets.js     # Asset extraction from HTML
 ├── utils/
-│   ├── DumpsterManager.js     # Core dumpster management
+│   ├── DumpsterManager.js    # Core dumpster management
 │   ├── fsHelpers.js         # File system operations
 │   ├── pathUtils.js          # Path operations & searching
 │   ├── assetUtils.js         # Asset handling utilities
+│   ├── ChatUpcycler.js      # Chat message processing & export
+│   ├── UpcycleManager.js    # Export format management
 │   ├── zipProcessor.js       # ZIP processing & security
 │   ├── validators.js         # Input validation
 │   ├── progressTracker.js    # Progress tracking
-│   ├── cliFramework.js       # CLI utilities
-│   └── conversation-messages.js # Chat message processing
+│   ├── upcycleHelpers.js    # Export helper functions
+│   └── formatters/          # Export formatters
+│       ├── BaseFormatter.js
+│       ├── HTMLFormatter.js
+│       ├── MDFormatter.js
+│       └── TXTFormatter.js
 ├── AGENTS.md               # Development guidelines
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License

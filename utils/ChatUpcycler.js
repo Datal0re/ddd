@@ -4,42 +4,11 @@
  * Removes web dependencies and focuses on export functionality
  */
 
-const { CONTENT_TYPES, ASSET_PREFIXES, SEARCH_CONFIG } = require('../config/constants');
+const { CONTENT_TYPES, ASSET_PREFIXES } = require('../config/constants');
 const FileSystemHelper = require('./fsHelpers');
 const PathUtils = require('./pathUtils');
 const { validateRequiredParams, validateNonEmptyString } = require('./validators');
 const { logError, logWarning } = require('./upcycleHelpers');
-
-// Simple file cache to improve performance
-const fileCache = new Map();
-
-// Clear cache to ensure fresh results for testing
-fileCache.clear();
-
-/**
- * Get cached file search results or perform new search
- * @param {string} dir - Directory to search
- * @param {string} filename - Filename to search for
- * @returns {Promise<Array>} Array of matching file paths
- */
-async function cachedRecursivelyFindFiles(dir, filename) {
-  const cacheKey = `${dir}:${filename}`;
-
-  if (fileCache.has(cacheKey)) {
-    return fileCache.get(cacheKey);
-  }
-
-  const results = await PathUtils.findFilesByPrefix(dir, filename, true);
-
-  // Implement simple LRU-like behavior
-  if (fileCache.size >= SEARCH_CONFIG.MAX_CACHE_SIZE) {
-    const firstKey = fileCache.keys().next().value;
-    fileCache.delete(firstKey);
-  }
-
-  fileCache.set(cacheKey, results);
-  return results;
-}
 
 /**
  * Get media directory path for a dumpster
@@ -152,7 +121,7 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
 
     if (filename) {
       try {
-        const files = await cachedRecursivelyFindFiles(mediaDir, filename);
+        const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, filename);
         if (files.length > 0) {
           return FileSystemHelper.joinPath('media', filename);
         }
@@ -190,7 +159,7 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
   for (const searchDir of searchDirs) {
     for (const name of possibleNames) {
       try {
-        const files = await cachedRecursivelyFindFiles(searchDir, name);
+        const files = await PathUtils.cachedRecursivelyFindFiles(searchDir, name);
         if (files.length > 0) {
           return FileSystemHelper.joinPath('media', name);
         }
@@ -202,7 +171,7 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
 
   // Fallback search
   try {
-    const files = await cachedRecursivelyFindFiles(mediaDir, assetKey);
+    const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, assetKey);
     if (files.length > 0) {
       return FileSystemHelper.joinPath('media', assetKey);
     }

@@ -96,6 +96,16 @@ class FileSystemHelper {
   }
 
   /**
+   * Deletes a file
+   * @param {string} filePath - Path to the file to delete
+   * @returns {Promise<void>}
+   * @throws {Error} If file doesn't exist or can't be deleted
+   */
+  static async deleteFile(filePath) {
+    return await fs.unlink(filePath);
+  }
+
+  /**
    * Creates a secure temporary directory in the system temp directory
    *
    * Use this for short-lived temporary files that can be safely cleaned up by the OS.

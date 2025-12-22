@@ -208,7 +208,6 @@ class AssetUtils {
    * @returns {Promise<Object>} Extracted asset information
    */
   static async extractAssetInfo(htmlFilePath) {
-    const fs = require('fs').promises;
     const content = await fs.readFile(htmlFilePath, 'utf8');
 
     // Look for assetsJson variable in the HTML

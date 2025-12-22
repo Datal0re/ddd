@@ -178,7 +178,7 @@ async function validateOutputDirectory(outputDir, createIfMissing = true) {
     }
 
     // Check if it's actually a directory
-    const stats = await FileSystemHelper.getFileStats(outputDir);
+    const stats = await FileSystemHelper.getStats(outputDir);
     if (!stats.isDirectory()) {
       throw new Error(`Output path is not a directory: ${outputDir}`);
     }

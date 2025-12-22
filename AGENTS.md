@@ -18,7 +18,8 @@ This is a focused CLI tool for processing ChatGPT conversation data:
 - **cli.js**: Command-line interface with Commander.js
 - **utils/DumpsterManager.js**: Core dumpster lifecycle management
 - **utils/fsHelpers.js**: File operations and validation
-- **utils/conversation-messages.js**: Chat message processing and asset handling
+- **utils/ChatUpcycler.js**: Chat message processing and export functionality
+- **utils/UpcycleManager.js**: Export format management and coordination
 - **data/**: Processing scripts for dumping and extraction
 
 ## Development Commands
@@ -32,6 +33,13 @@ npm run format        # Format code with Prettier
 # Core functionality
 npm run dump           # Dump old conversation format
 npm run extract-assets # Extract assets using data/extract-assets.js
+
+# CLI Commands
+node cli.js dump       # Process ChatGPT export ZIP
+node cli.js hoard      # List all dumpsters
+node cli.js rummage    # Explore chats in a dumpster
+node cli.js burn       # Delete a dumpster
+node cli.js upcycle    # Export dumpsters to various formats
 ```
 
 ## Code Style
@@ -63,18 +71,34 @@ npm run extract-assets # Extract assets using data/extract-assets.js
 
 ```text
 data-dumpster-diver/
-├── cli.js              # Main CLI entry point
-├── utils/              # Core utilities
-│   ├── DumpsterManager.js # Dumpster management
-│   ├── fsHelpers.js     # File operations
-│   └── conversation-messages.js # Chat message processing
-├── data/               # Data processing
-│   ├── dump.js         # Data dump
-│   ├── extract-assets.js # Asset extraction
-│   └── process-export.js # Dumpster processing
-├── package.json        # Dependencies and scripts
-├── README.md           # User documentation
-└── LICENSE             # MIT License
+├── cli.js                    # Main CLI entry point
+├── utils/                    # Core utilities
+│   ├── DumpsterManager.js    # Dumpster management
+│   ├── fsHelpers.js         # File operations
+│   ├── pathUtils.js          # Path operations & searching
+│   ├── assetUtils.js         # Asset handling utilities
+│   ├── ChatUpcycler.js      # Chat message processing & export
+│   ├── UpcycleManager.js    # Export format management
+│   ├── zipProcessor.js       # ZIP processing & security
+│   ├── validators.js         # Input validation
+│   ├── progressTracker.js    # Progress tracking
+│   ├── upcycleHelpers.js    # Export helper functions
+│   └── formatters/          # Export formatters
+│       ├── BaseFormatter.js
+│       ├── HTMLFormatter.js
+│       ├── MDFormatter.js
+│       └── TXTFormatter.js
+├── data/                    # Data processing
+│   ├── dumpster-processor.js # Main processing orchestration
+│   ├── chat-dumper.js      # Chat data processing
+│   └── extract-assets.js   # Asset extraction from HTML
+├── config/
+│   └── constants.js         # Configuration constants
+├── package.json             # Dependencies and scripts
+├── README.md                # User documentation
+├── AGENTS.md               # Development guidelines
+├── CHANGELOG.md            # Version history
+└── LICENSE                 # MIT License
 ```
 
 ## Testing
@@ -86,10 +110,12 @@ Currently no test suite. For hobby project, manual testing is acceptable:
 node cli.js --help
 node cli.js dump --help
 node cli.js hoard
+node cli.js upcycle --help
 
 # Test with real data (when available)
 node cli.js dump path/to/chatgpt-export.zip --name "test"
 node cli.js rummage test
+node cli.js upcycle txt test --output ./test-exports
 ```
 
 ## Dependency Management
