@@ -197,4 +197,85 @@ program
     }
   });
 
+program
+  .command('upcycle')
+  .description('Upcycle dumpsters to various formats')
+  .argument('<format>', 'Export format: txt, md, html')
+  .argument('<dumpster-name>', 'Name of dumpster to upcycle')
+  .option('-o, --output <path>', 'Output directory', './upcycles')
+  .option('-s, --single-file', 'Combine all chats into single file')
+  .option('--per-chat', 'Create separate file per chat (default)')
+  .option('--include-media', 'Copy media assets to export directory')
+  .option('--self-contained', 'Embed assets in output (HTML only)')
+  .option('-v, --verbose', 'Verbose output')
+  .action(async (format, dumpsterName, options) => {
+    try {
+      // Validate required parameters
+      if (!format || !dumpsterName) {
+        console.error(chalk.red('❌ Both format and dumpster-name are required'));
+        console.log(
+          chalk.yellow('Usage: node cli.js upcycle <format> <dumpster-name>')
+        );
+        process.exit(1);
+      }
+
+      console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
+      console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
+
+      if (options.verbose) {
+        console.log(chalk.dim('Options:'), options);
+      }
+
+      // Validate format
+      const validFormats = ['txt', 'md', 'html'];
+      if (!validFormats.includes(format.toLowerCase())) {
+        console.error(chalk.red(`❌ Invalid format: ${format}`));
+        console.error(chalk.yellow(`Available formats: ${validFormats.join(', ')}`));
+        process.exit(1);
+      }
+
+      // Initialize UpcycleManager
+      const { DumpsterManager } = require('./utils/DumpsterManager');
+      const UpcycleManager = require('./utils/UpcycleManager');
+
+      const dumpsterManager = new DumpsterManager(__dirname);
+      await dumpsterManager.initialize();
+
+      const upcycleManager = new UpcycleManager(dumpsterManager);
+
+      // Check if dumpster exists
+      const dumpsters = await dumpsterManager.listDumpsters();
+      const dumpster = dumpsters.find(d => d.name === dumpsterName);
+
+      if (!dumpster) {
+        console.error(chalk.red(`🚨 Dumpster "${dumpsterName}" not found`));
+        console.log(chalk.yellow('Available dumpsters:'));
+        dumpsters.forEach(d => {
+          console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
+        });
+        process.exit(1);
+      }
+
+      // Perform upcycle
+      const result = await upcycleManager.upcycleDumpster(
+        dumpsterName,
+        format.toLowerCase(),
+        options
+      );
+
+      // Display results
+      const { generateExportReport } = require('./utils/upcycleHelpers');
+      const report = generateExportReport(result);
+      console.log(report);
+
+      console.log(chalk.green('✅ Upcycle complete!'));
+    } catch (error) {
+      console.error(chalk.red('❌ Error upcycling dumpster:'), error.message);
+      if (options.verbose) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
 program.parse();

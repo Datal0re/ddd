@@ -7,6 +7,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { SEARCH_CONFIG, SANITIZATION_DEFAULTS } = require('../config/constants');
 const FileSystemHelper = require('./fsHelpers');
+const { validateNonEmptyString } = require('./validators');
 
 /**
  * Path utilities class for path manipulation and file searching
@@ -36,9 +37,7 @@ class PathUtils {
       maxDepth = SEARCH_CONFIG.DEFAULT_MAX_DEPTH,
     } = options;
 
-    if (!dir || typeof dir !== 'string') {
-      throw new Error('Directory path is required and must be a string');
-    }
+    validateNonEmptyString(dir, 'dir');
 
     const results = [];
 

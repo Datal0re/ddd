@@ -138,7 +138,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     chats.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
 
     // Create output directory if it doesn't exist
-    await FileSystemHelper.createDirectory(finalOutputDir);
+    await FileSystemHelper.ensureDirectory(finalOutputDir);
 
     let processed = 0;
     let skipped = 0;
