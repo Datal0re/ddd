@@ -542,9 +542,10 @@ async function processChatForExport(
                 });
               }
             } else {
-              console.warn(`Frame asset pointer is null in chat "${exportName}", skipping`);
+              console.warn(
+                `Frame asset pointer is null in chat "${exportName}", skipping`
+              );
             }
-          }
           }
         }
       }
