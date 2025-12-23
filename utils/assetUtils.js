@@ -367,7 +367,7 @@ class AssetUtils {
         chatHtmlPath: path.join(expectedPath, 'chat.html'),
         mediaDir: expectedPath,
       };
-    } catch (error) {
+    } catch {
       // Fallback: scan temp directory for valid structure
       const fallbackDir = await this.findValidDirectory(tempDir);
 
@@ -413,13 +413,13 @@ class AssetUtils {
             const conversationsPath = path.join(itemPath, 'conversations.json');
             await fs.access(conversationsPath);
             return item.name;
-          } catch (error) {
+          } catch {
             // Skip directories without required files
             continue;
           }
         }
       }
-    } catch (error) {
+    } catch {
       // If we can't read the directory, return null
       return null;
     }
