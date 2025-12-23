@@ -244,7 +244,7 @@ async function processDumpster(
     // Create media directory and move files
     const dumpsterMediaDir = path.join(dumpsterDir, 'media');
 
-    const mediaResult = await AssetUtils.moveMediaFiles(tempDir, dumpsterMediaDir, {
+    const mediaResult = await AssetUtils.moveMediaFiles(dumpsterMediaDir, {
       verbose,
       tempMediaDir: dirStructure.mediaDir,
     });

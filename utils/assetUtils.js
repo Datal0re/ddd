@@ -136,21 +136,20 @@ class AssetUtils {
    * and files, preserves directory structure, and provides detailed operation feedback.
    * Previously duplicated in dumpster-processor.js - now consolidated here as single source.
    *
-   * @param {string} tempDir - Source temporary directory path
    * @param {string} dumpsterMediaDir - Destination dumpster media directory path
    * @param {Object} options - Configuration options
    * @param {boolean} options.verbose - Enable verbose logging for debug output
    * @param {string} options.tempMediaDir - Source media directory (overrides detection)
    * @returns {Promise<Object>} Operation result with {moved: number, errors: number}
    */
-  static async moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
+  static async moveMediaFiles(dumpsterMediaDir, options = {}) {
     const { verbose = false, tempMediaDir: providedMediaDir } = options;
 
     try {
       await FileSystemHelper.ensureDirectory(dumpsterMediaDir);
 
       // Use provided media directory or fallback to default detection
-      const tempMediaDir = providedMediaDir || path.join(tempDir, 'Test-Chat-Combine');
+      const tempMediaDir = providedMediaDir;
 
       // Check if temp media directory exists
       if (!(await FileSystemHelper.fileExists(tempMediaDir))) {
@@ -312,7 +311,7 @@ class AssetUtils {
       if (this.isMediaFile(key)) {
         if (extension.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
           stats.byType.image++;
-        } else if (extension.match(/\.(wav|mp3|m4a|ogg)$/)) {
+        } else if (extension.match(/\.(dat|wav|mp3|m4a|ogg)$/)) {
           stats.byType.audio++;
         } else if (extension.match(/\.(mp4|webm|mov)$/)) {
           stats.byType.video++;
