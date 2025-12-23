@@ -3,7 +3,7 @@
  * Direct file-based dumpster management system
  * Replaces session-based architecture with user-accessible dumpsters
  */
-const FileSystemHelper = require('./FilesSystemHelper');
+const FileSystemHelper = require('./FileSystemHelper');
 const PathUtils = require('./PathUtils');
 
 class DumpsterManager {
