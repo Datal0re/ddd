@@ -3,7 +3,7 @@
  * Shared utilities for upcycle functionality
  */
 
-const FileSystemHelper = require('./fsHelpers');
+const FileSystemHelper = require('./FilesSystemHelper');
 const { validateNonEmptyString } = require('./Validators');
 
 /**

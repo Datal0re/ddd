@@ -5,7 +5,7 @@
 
 const { validateRequiredParams } = require('./Validators');
 const { logError, logWarning } = require('./upcycleHelpers');
-const FileSystemHelper = require('./fsHelpers');
+const FileSystemHelper = require('./FilesSystemHelper');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressTracker } = require('./ProgressTracker');
 const fs = require('fs').promises;

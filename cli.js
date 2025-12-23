@@ -25,7 +25,7 @@ program
       await dumpsterManager.initialize();
 
       // Check if file exists
-      const FileSystemHelper = require('./utils/fsHelpers');
+      const FileSystemHelper = require('./utils/FilesSystemHelper');
       if (!(await FileSystemHelper.fileExists(file))) {
         throw new Error(`File not found: ${file}`);
       }

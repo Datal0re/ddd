@@ -21,7 +21,7 @@
 
 const { CLIFramework } = require('../utils/cliFramework');
 const FileSystemHelper = require('../utils/FileSystemHelper');
-const fs = require('fs').promises; // Keep for operations not in fsHelpers
+const fs = require('fs').promises; // Keep for operations not in FilesSystemHelper
 const path = require('path');
 
 /**

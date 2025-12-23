@@ -179,7 +179,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     // Remove original file if requested
     if (!preserveOriginal && processed > 0) {
       try {
-        const fs = require('fs').promises; // Use original fs for unlink since fsHelpers doesn't have it
+        const fs = require('fs').promises; // Use original fs for unlink since FilesSystemHelper doesn't have it
         await fs.unlink(resolvedInputPath);
         console.log('Removed original conversations.json file');
       } catch (err) {

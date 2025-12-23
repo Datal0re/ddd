@@ -5,7 +5,7 @@
  */
 
 const { CONTENT_TYPES, ASSET_PREFIXES } = require('../config/constants');
-const FileSystemHelper = require('./fsHelpers');
+const FileSystemHelper = require('./FilesSystemHelper');
 const PathUtils = require('./PathUtils');
 const { validateRequiredParams, validateNonEmptyString } = require('./Validators');
 const { logError, logWarning } = require('./upcycleHelpers');
