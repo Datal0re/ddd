@@ -576,3 +576,10 @@ class ChatUpcycler {
 }
 
 module.exports = ChatUpcycler;
+
+// Export helper functions as static properties
+ChatUpcycler.loadAssetMapping = loadAssetMapping;
+ChatUpcycler.getMediaDir = getMediaDir;
+ChatUpcycler.findAssetFile = findAssetFile;
+ChatUpcycler.generateAssetContent = generateAssetContent;
+ChatUpcycler.processChatForExport = processChatForExport;

@@ -187,9 +187,16 @@ class ZipProcessor {
       // Extract zip to target directory
       const files = await decompress(tempZipPath, targetDir);
 
-      console.debug(
-        `Extracted ${files.length} files:`,
-        files.map(f => ({ path: f.path, type: f.type }))
+      // Provide concise extraction summary
+      const imageFiles = files.filter(
+        f => f.type === 'file' && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.path)
+      ).length;
+      const otherFiles = files.filter(
+        f => f.type === 'file' && !/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.path)
+      ).length;
+
+      console.log(
+        `Extracted ${files.length} files (${imageFiles} images, ${otherFiles} other files)`
       );
 
       if (!files || files.length === 0) {
@@ -276,9 +283,16 @@ class ZipProcessor {
       // Extract zip to temp directory first (security)
       const files = await decompress(tempZipPath, tempDir);
 
-      console.debug(
-        `Extracted ${files.length} files:`,
-        files.map(f => ({ path: f.path, type: f.type }))
+      // Provide concise extraction summary
+      const imageFiles = files.filter(
+        f => f.type === 'file' && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.path)
+      ).length;
+      const otherFiles = files.filter(
+        f => f.type === 'file' && !/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.path)
+      ).length;
+
+      console.log(
+        `Extracted ${files.length} files (${imageFiles} images, ${otherFiles} other files)`
       );
 
       if (!files || files.length === 0) {

@@ -271,9 +271,23 @@ class UpcycleManager {
     const mediaDir = FileSystemHelper.joinPath(outputDir, 'media');
     await FileSystemHelper.ensureDirectory(mediaDir);
 
+    // Load asset mapping to get correct filenames
+    const ChatUpcycler = require('./ChatUpcycler');
+    const assetMapping = await ChatUpcycler.loadAssetMapping(
+      dumpsterName,
+      this.dumpsterManager.baseDir
+    );
+
     for (const asset of assets) {
       try {
-        if (!asset || !asset.filename) {
+        if (!asset || !asset.pointer) {
+          continue;
+        }
+
+        // Get actual filename from asset mapping
+        const actualFilename = assetMapping[asset.pointer];
+        if (!actualFilename) {
+          logWarning(`No mapping found for asset ${asset.pointer}`, asset);
           continue;
         }
 
@@ -285,14 +299,16 @@ class UpcycleManager {
           'media'
         );
 
-        const sourcePath = FileSystemHelper.joinPath(dumpsterMediaDir, asset.filename);
+        const sourcePath = FileSystemHelper.joinPath(dumpsterMediaDir, actualFilename);
 
         if (await FileSystemHelper.fileExists(sourcePath)) {
-          const destPath = FileSystemHelper.joinPath(mediaDir, asset.filename);
+          const destPath = FileSystemHelper.joinPath(mediaDir, actualFilename);
           await fs.copyFile(sourcePath, destPath);
+        } else {
+          logWarning(`Asset file not found: ${actualFilename}`, { sourcePath });
         }
       } catch (error) {
-        logWarning(`Failed to copy asset ${asset.filename}`, error);
+        logWarning(`Failed to copy asset ${asset.pointer}`, error);
       }
     }
   }
