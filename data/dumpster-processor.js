@@ -103,43 +103,6 @@ function createProjectTempDir(baseDir) {
 }
 
 /**
- * Copy essential files to media directory
- */
-async function copyEssentialFiles(tempDir, dumpsterMediaDir, options = {}) {
-  const { verbose = false } = options;
-
-  const essentialFiles = ['chat.html', 'conversations.json'];
-  let copied = 0;
-  let errors = 0;
-
-  for (const file of essentialFiles) {
-    const srcPath = path.join(tempDir, 'Test-Chat-Combine', file);
-    const destPath = path.join(dumpsterMediaDir, file);
-
-    try {
-      await fs.access(srcPath);
-      await fs.copyFile(srcPath, destPath);
-      copied++;
-
-      if (verbose) {
-        console.debug(`Copied essential file: ${file}`);
-      }
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        console.error(`Error copying essential file ${file}: ${error.message}`);
-        errors++;
-      }
-    }
-  }
-
-  if (verbose) {
-    console.log(`Essential files copied: ${copied}, errors: ${errors}`);
-  }
-
-  return { copied, errors };
-}
-
-/**
  * Main dumpster processing function
  */
 async function processDumpster(
@@ -227,7 +190,7 @@ async function processDumpster(
     progress.dumping(40, 'Dumping chats...');
 
     // Dump conversations
-    const chatsInput = path.join(tempDir, 'Test-Chat-Combine', 'conversations.json');
+    const chatsInput = path.join(tempDir, 'Test-Chat-Combine', 'conversations.json'); // TODO: fix hardcoded path to ZIP
     const chatsOutput = path.join(dumpsterDir, 'chats');
 
     const dumpResult = await dumpChats(chatsInput, chatsOutput, {
@@ -244,7 +207,7 @@ async function processDumpster(
     progress.extractingAssets(70, 'Extracting media assets...');
 
     // Extract assets
-    const chatHtmlPath = path.join(tempDir, 'Test-Chat-Combine', 'chat.html');
+    const chatHtmlPath = path.join(tempDir, 'Test-Chat-Combine', 'chat.html'); // TODO: fix hardcoded path to ZIP
     const assetsJsonPath = path.join(dumpsterDir, 'assets.json');
 
     const assetResult = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
@@ -264,9 +227,6 @@ async function processDumpster(
     const dumpsterMediaDir = path.join(dumpsterDir, 'media');
 
     const mediaResult = await AssetUtils.moveMediaFiles(tempDir, dumpsterMediaDir, {
-      verbose,
-    });
-    const essentialResult = await copyEssentialFiles(tempDir, dumpsterMediaDir, {
       verbose,
     });
 
@@ -294,7 +254,6 @@ async function processDumpster(
         chats: dumpResult.processed,
         assets: assetResult.assetCount || 0,
         mediaFiles: mediaResult.moved,
-        essentialFiles: essentialResult.copied,
       },
     };
   } catch (error) {
@@ -425,5 +384,4 @@ module.exports = {
   processDumpster,
   validateDumpster,
   createProjectTempDir,
-  copyEssentialFiles,
 };

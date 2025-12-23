@@ -166,7 +166,7 @@ class AssetUtils {
 
       for (const item of items) {
         // Skip chat.html and conversations.json (these are handled separately)
-        if (item === 'chat.html' || item === 'conversations.json') {
+        if (['chat.html', 'conversations.json', 'user.json', 'message_feedback.json'].includes(item)) {
           continue;
         }
 
