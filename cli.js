@@ -38,14 +38,14 @@ program
       progressManager.start('initializing', 'Initializing dumpster creation...');
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
-      const dumpsterManager = new DumpsterManager(__dirname);
-      await dumpsterManager.initialize();
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
       const onProgress = progress => {
         progressManager.update(progress.stage, progress.progress, progress.message);
       };
 
-      await dumpsterManager.createDumpster(file, options.name, false, onProgress, {
+      await dm.createDumpster(file, options.name, false, onProgress, {
         zipPath: file,
       });
 
@@ -70,10 +70,10 @@ program
   .action(async options => {
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');
-      const dumpsterManager = new DumpsterManager(__dirname);
-      await dumpsterManager.initialize();
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
-      const dumpsters = await dumpsterManager.listDumpsters();
+      const dumpsters = await dm.listDumpsters();
 
       if (dumpsters.length === 0) {
         ErrorHandler.logWarning(
@@ -145,10 +145,10 @@ program
       progressManager.start('initializing', `Loading chats from "${dumpsterName}"...`);
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
-      const dumpsterManager = new DumpsterManager(__dirname);
-      await dumpsterManager.initialize();
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
-      const chats = await dumpsterManager.getChats(dumpsterName, limit);
+      const chats = await dm.getChats(dumpsterName, limit);
 
       if (chats.length === 0) {
         progressManager.warn(`No chats found in "${dumpsterName}"`);
@@ -210,11 +210,11 @@ program
       );
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
-      const dumpsterManager = new DumpsterManager(__dirname);
-      await dumpsterManager.initialize();
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
       // Check if dumpster exists
-      const dumpster = dumpsterManager.getDumpster(dumpsterName);
+      const dumpster = dm.getDumpster(dumpsterName);
       if (!dumpster) {
         ErrorHandler.logError(
           `Dumpster "${dumpsterName}" not found - nothing to burn`,
@@ -224,7 +224,7 @@ program
       }
 
       // Get dumpster stats for confirmation
-      const stats = await dumpsterManager.getDumpsterStats(dumpsterName);
+      const stats = await dm.getDumpsterStats(dumpsterName);
       const chatCount = stats?.chatCount || 'unknown';
       const sizeInMB = stats?.totalSize
         ? Math.round(stats.totalSize / (1024 * 1024))
@@ -267,7 +267,7 @@ program
 
       // Perform the burning
       console.log(chalk.red('🔥 Lighting the match...'));
-      const success = await dumpsterManager.deleteDumpster(dumpsterName);
+      const success = await dm.deleteDumpster(dumpsterName);
 
       if (success) {
         progressManager.succeed(
@@ -358,13 +358,13 @@ program
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const UpcycleManager = require('./utils/UpcycleManager');
 
-      const dumpsterManager = new DumpsterManager(__dirname);
-      await dumpsterManager.initialize();
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
-      const upcycleManager = new UpcycleManager(dumpsterManager);
+      const upcycleManager = new UpcycleManager(dm);
 
       // Check if dumpster exists
-      const dumpsters = await dumpsterManager.listDumpsters();
+      const dumpsters = await dm.listDumpsters();
       const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
       if (!dumpster) {
