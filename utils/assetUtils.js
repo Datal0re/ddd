@@ -140,15 +140,17 @@ class AssetUtils {
    * @param {string} dumpsterMediaDir - Destination dumpster media directory path
    * @param {Object} options - Configuration options
    * @param {boolean} options.verbose - Enable verbose logging for debug output
+   * @param {string} options.tempMediaDir - Source media directory (overrides detection)
    * @returns {Promise<Object>} Operation result with {moved: number, errors: number}
    */
   static async moveMediaFiles(tempDir, dumpsterMediaDir, options = {}) {
-    const { verbose = false } = options;
+    const { verbose = false, tempMediaDir: providedMediaDir } = options;
 
     try {
       await FileSystemHelper.ensureDirectory(dumpsterMediaDir);
 
-      const tempMediaDir = path.join(tempDir, 'Test-Chat-Combine');
+      // Use provided media directory or fallback to default detection
+      const tempMediaDir = providedMediaDir || path.join(tempDir, 'Test-Chat-Combine');
 
       // Check if temp media directory exists
       if (!(await FileSystemHelper.fileExists(tempMediaDir))) {
@@ -166,7 +168,14 @@ class AssetUtils {
 
       for (const item of items) {
         // Skip chat.html and conversations.json (these are handled separately)
-        if (['chat.html', 'conversations.json', 'user.json', 'message_feedback.json'].includes(item)) {
+        if (
+          [
+            'chat.html',
+            'conversations.json',
+            'user.json',
+            'message_feedback.json',
+          ].includes(item)
+        ) {
           continue;
         }
 
@@ -322,6 +331,111 @@ class AssetUtils {
     }
 
     return stats;
+  }
+
+  /**
+   * Extract directory name from ZIP file path with fallback scanning
+   *
+   * Primary approach: Extract directory name from ZIP filename (minus .zip extension)
+   * Fallback: Scan temp directory for required files if primary approach fails
+   *
+   * @param {string} zipPath - Path to the original ZIP file
+   * @param {string} tempDir - Temporary directory where ZIP was extracted
+   * @returns {Promise<Object>} Directory structure information
+   */
+  static async getDirectoryStructure(zipPath, tempDir) {
+    const path = require('path');
+    const fs = require('fs').promises;
+
+    // Primary approach: extract directory name from ZIP filename
+    const expectedDir = path.basename(zipPath, '.zip');
+    const expectedPath = path.join(tempDir, expectedDir);
+
+    try {
+      // Check if expected directory exists and contains required files
+      await fs.access(expectedPath);
+
+      // Verify it contains conversations.json (minimal validation)
+      const conversationsPath = path.join(expectedPath, 'conversations.json');
+      await fs.access(conversationsPath);
+
+      return {
+        success: true,
+        directoryName: expectedDir,
+        method: 'path-based',
+        chatsPath: conversationsPath,
+        chatHtmlPath: path.join(expectedPath, 'chat.html'),
+        mediaDir: expectedPath,
+      };
+    } catch (error) {
+      // Fallback: scan temp directory for valid structure
+      const fallbackDir = await this.findValidDirectory(tempDir);
+
+      if (fallbackDir) {
+        return {
+          success: true,
+          directoryName: fallbackDir,
+          method: 'fallback-scan',
+          chatsPath: path.join(tempDir, fallbackDir, 'conversations.json'),
+          chatHtmlPath: path.join(tempDir, fallbackDir, 'chat.html'),
+          mediaDir: path.join(tempDir, fallbackDir),
+        };
+      }
+
+      return {
+        success: false,
+        directoryName: null,
+        method: 'failed',
+        error: `No valid directory structure found. Expected "${expectedDir}" but could not locate required files.`,
+      };
+    }
+  }
+
+  /**
+   * Scan temp directory to find a valid ChatGPT export directory
+   * A valid directory contains conversations.json
+   *
+   * @param {string} tempDir - Temporary directory to scan
+   * @returns {Promise<string|null>} Directory name or null if not found
+   */
+  static async findValidDirectory(tempDir) {
+    const path = require('path');
+    const fs = require('fs').promises;
+
+    try {
+      const items = await fs.readdir(tempDir, { withFileTypes: true });
+
+      for (const item of items) {
+        if (item.isDirectory()) {
+          const itemPath = path.join(tempDir, item.name);
+          try {
+            // Check if this directory contains conversations.json
+            const conversationsPath = path.join(itemPath, 'conversations.json');
+            await fs.access(conversationsPath);
+            return item.name;
+          } catch (error) {
+            // Skip directories without required files
+            continue;
+          }
+        }
+      }
+    } catch (error) {
+      // If we can't read the directory, return null
+      return null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract directory name from ZIP file path (utility function)
+   *
+   * @param {string} zipPath - Path to ZIP file
+   * @returns {string} Directory name extracted from ZIP filename
+   */
+  static extractDirectoryName(zipPath) {
+    const path = require('path');
+    return path.basename(zipPath, '.zip');
   }
 }
 

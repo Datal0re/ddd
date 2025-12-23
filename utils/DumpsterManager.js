@@ -333,14 +333,22 @@ class DumpsterManager {
   }
 
   /**
-   * Create a new dumpster from a ZIP file
-   * @param {string|Buffer} zipData - Path to ZIP file or ZIP buffer
+   * Creates a new dumpster from a ChatGPT export ZIP file
+   * @param {Buffer|string} zipData - ZIP file buffer or path
    * @param {string} dumpsterName - Name for the dumpster
-   * @param {boolean} isBuffer - Whether zipData is a buffer (default: false)
+   * @param {boolean} isBuffer - True if zipData is buffer, false if path
    * @param {Function} onProgress - Progress callback function
+   * @param {Object} options - Additional options
+   * @param {string} options.zipPath - Original ZIP file path
    * @returns {Promise<Object>} Dumpster creation result
    */
-  async createDumpster(zipData, dumpsterName, isBuffer = false, onProgress = null) {
+  async createDumpster(
+    zipData,
+    dumpsterName,
+    isBuffer = false,
+    onProgress = null,
+    options = {}
+  ) {
     const { processDumpster } = require('../data/dumpster-processor.js');
 
     try {
@@ -354,7 +362,9 @@ class DumpsterManager {
         this.baseDir,
         isBuffer,
         onProgress,
-        {}
+        {
+          zipPath: options.zipPath,
+        }
       );
 
       if (result.success) {

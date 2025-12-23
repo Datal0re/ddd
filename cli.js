@@ -35,7 +35,9 @@ program
       const onProgress = progress => {
         progressTracker.update(progress.stage, progress.progress, progress.message);
       };
-      await dumpsterManager.createDumpster(file, options.name, false, onProgress);
+      await dumpsterManager.createDumpster(file, options.name, false, onProgress, {
+        zipPath: file,
+      });
 
       console.log(chalk.green('✅ Dumpster created successfully!'));
       console.log(chalk.dim(`Dumpster name: ${options.name}`));

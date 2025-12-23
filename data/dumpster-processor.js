@@ -113,7 +113,7 @@ async function processDumpster(
   onProgress = null,
   options = {}
 ) {
-  const { overwrite = false, verbose = false } = options;
+  const { overwrite = false, verbose = false, zipPath = null } = options;
 
   // Validate inputs
   if (!zipData || !dumpsterName || !baseDir) {
@@ -187,10 +187,28 @@ async function processDumpster(
     // Extract ZIP file
     await ZipProcessor.validateAndExtractZip(zipData, tempDir, isBuffer);
 
+    progress.dumping(30, 'Detecting directory structure...');
+
+    // Detect directory structure dynamically
+    if (!zipPath) {
+      throw new Error('zipPath is required for directory detection');
+    }
+
+    const dirStructure = await AssetUtils.getDirectoryStructure(zipPath, tempDir);
+
+    if (!dirStructure.success) {
+      throw new Error(`Failed to detect directory structure: ${dirStructure.error}`);
+    }
+
+    if (verbose) {
+      console.log(`Detected directory structure using ${dirStructure.method} approach`);
+      console.log(`Directory: ${dirStructure.directoryName}`);
+    }
+
     progress.dumping(40, 'Dumping chats...');
 
-    // Dump conversations
-    const chatsInput = path.join(tempDir, 'Test-Chat-Combine', 'conversations.json'); // TODO: fix hardcoded path to ZIP
+    // Dump conversations using detected paths (previously hardcoded)
+    const chatsInput = dirStructure.chatsPath;
     const chatsOutput = path.join(dumpsterDir, 'chats');
 
     const dumpResult = await dumpChats(chatsInput, chatsOutput, {
@@ -206,8 +224,8 @@ async function processDumpster(
 
     progress.extractingAssets(70, 'Extracting media assets...');
 
-    // Extract assets
-    const chatHtmlPath = path.join(tempDir, 'Test-Chat-Combine', 'chat.html'); // TODO: fix hardcoded path to ZIP
+    // Extract assets using detected path (previously hardcoded)
+    const chatHtmlPath = dirStructure.chatHtmlPath;
     const assetsJsonPath = path.join(dumpsterDir, 'assets.json');
 
     const assetResult = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
@@ -228,6 +246,7 @@ async function processDumpster(
 
     const mediaResult = await AssetUtils.moveMediaFiles(tempDir, dumpsterMediaDir, {
       verbose,
+      tempMediaDir: dirStructure.mediaDir,
     });
 
     progress.validating(95, 'Validating dumpster...');
@@ -365,6 +384,7 @@ async function main() {
         preserveOriginal: options.preserveOriginal,
         overwrite: options.overwrite,
         verbose: options.verbose,
+        zipPath: options.zipPath,
       }
     );
 
