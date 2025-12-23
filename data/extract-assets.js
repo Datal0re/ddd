@@ -20,7 +20,7 @@
  */
 
 const { CLIFramework } = require('../utils/cliFramework');
-const FileSystemHelper = require('../utils/fsHelpers');
+const FileSystemHelper = require('../utils/FileSystemHelper');
 const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
 
@@ -99,7 +99,7 @@ function showHelp() {
  * Find all HTML files in a directory
  */
 async function findHtmlFiles(dirPath, recursive = false) {
-  const PathUtils = require('../utils/pathUtils');
+  const PathUtils = require('../utils/PathUtils');
 
   try {
     const htmlPattern = '\\.(html?|htm)$';

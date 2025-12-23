@@ -4,7 +4,7 @@
  */
 
 const FileSystemHelper = require('./fsHelpers');
-const { validateNonEmptyString } = require('./validators');
+const { validateNonEmptyString } = require('./Validators');
 
 /**
  * Log error with consistent formatting

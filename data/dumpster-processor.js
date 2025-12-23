@@ -12,12 +12,12 @@
  *   node dumpster-processor.js --help
  */
 
-const { CLIFramework } = require('../utils/cliFramework');
-const FileSystemHelper = require('../utils/fsHelpers');
-const PathUtils = require('../utils/pathUtils');
-const ZipProcessor = require('../utils/zipProcessor');
-const AssetUtils = require('../utils/assetUtils');
-const { createProgressTracker } = require('../utils/progressTracker');
+const { CLIFramework } = require('../utils/cliFramework.js');
+const FileSystemHelper = require('../utils/FileSystemHelper.js');
+const PathUtils = require('../utils/PathUtils.js');
+const ZipProcessor = require('../utils/ZipProcessor.js');
+const AssetUtils = require('../utils/AssetUtils.js');
+const { createProgressTracker } = require('../utils/ProgressTracker.js');
 const fs = require('fs').promises; // Keep for operations not in fsHelpers
 const path = require('path');
 const { dumpChats } = require('./chat-dumper.js');

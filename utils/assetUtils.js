@@ -6,8 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { MEDIA_PATTERNS } = require('../config/constants');
-const FileSystemHelper = require('./fsHelpers');
-const PathUtils = require('./pathUtils');
+const FileSystemHelper = require('./FileSystemHelper');
+const PathUtils = require('./PathUtils');
 
 /**
  * Asset utilities class for handling media files and asset organization

@@ -4,7 +4,7 @@
  * Replaces session-based architecture with user-accessible dumpsters
  */
 const FileSystemHelper = require('./fsHelpers');
-const PathUtils = require('./pathUtils');
+const PathUtils = require('./PathUtils');
 
 class DumpsterManager {
   constructor(baseDir) {

@@ -6,8 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { LIMITS, ZIP_SIGNATURES, TEMP_CONFIG } = require('../config/constants');
-const FileSystemHelper = require('./fsHelpers');
-const PathUtils = require('./pathUtils');
+const FileSystemHelper = require('./FileSystemHelper');
+const PathUtils = require('./PathUtils');
 
 // Dynamic import for decompress (ES module)
 let decompress;
@@ -249,8 +249,8 @@ class ZipProcessor {
     isBuffer = true,
     onProgress = null
   ) {
-    const { createProgressTracker } = require('./progressTracker');
-    const { moveFilesToFinalLocations } = require('./assetUtils');
+    const { createProgressTracker } = require('./ProgressTracker');
+    const { moveFilesToFinalLocations } = require('./AssetUtils');
 
     const decompress = await getDecompress();
     const tempDir = await this.createTempDir();

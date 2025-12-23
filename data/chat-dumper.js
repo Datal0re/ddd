@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // chat-dumper.js - Enhanced version for direct file processing
 const { CLIFramework } = require('../utils/cliFramework');
-const FileSystemHelper = require('../utils/fsHelpers');
-const PathUtils = require('../utils/pathUtils');
+const FileSystemHelper = require('../utils/FileSystemHelper');
+const PathUtils = require('../utils/PathUtils');
 
 /**
  * Configuration options

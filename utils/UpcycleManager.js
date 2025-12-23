@@ -3,11 +3,11 @@
  * Main orchestration class for exporting dumpsters to various formats
  */
 
-const { validateRequiredParams } = require('./validators');
+const { validateRequiredParams } = require('./Validators');
 const { logError, logWarning } = require('./upcycleHelpers');
 const FileSystemHelper = require('./fsHelpers');
 const ChatUpcycler = require('./ChatUpcycler');
-const { createProgressTracker } = require('./progressTracker');
+const { createProgressTracker } = require('./ProgressTracker');
 const fs = require('fs').promises;
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');

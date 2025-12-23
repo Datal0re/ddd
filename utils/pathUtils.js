@@ -6,8 +6,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { SEARCH_CONFIG, SANITIZATION_DEFAULTS } = require('../config/constants');
-const FileSystemHelper = require('./fsHelpers');
-const { validateNonEmptyString } = require('./validators');
+const FileSystemHelper = require('./FileSystemHelper');
+const { validateNonEmptyString } = require('./Validators');
 
 // Simple file cache to improve performance for repeated searches
 const fileCache = new Map();
@@ -278,7 +278,7 @@ class PathUtils {
    * @returns {string} Media directory path
    */
   static getMediaDir(baseDir, exportName) {
-    const { validateRequiredParams, validateNonEmptyString } = require('./validators');
+    const { validateRequiredParams, validateNonEmptyString } = require('./Validators');
 
     validateRequiredParams(
       [

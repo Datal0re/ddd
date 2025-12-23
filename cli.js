@@ -30,7 +30,7 @@ program
         throw new Error(`File not found: ${file}`);
       }
 
-      const { createProgressTracker } = require('./utils/progressTracker');
+      const { createProgressTracker } = require('./utils/ProgressTracker');
       const progressTracker = createProgressTracker(null, options.verbose);
       const onProgress = progress => {
         progressTracker.update(progress.stage, progress.progress, progress.message);
