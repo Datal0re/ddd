@@ -2,6 +2,9 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
+const { ErrorHandler } = require('./utils/ErrorHandler');
+const { SchemaValidator } = require('./utils/SchemaValidator');
+const { createProgressManager } = require('./utils/ProgressManager');
 
 const program = new Command();
 
@@ -17,35 +20,45 @@ program
   .option('-n, --name <name>', 'custom name for the dumpster', 'default')
   .option('-v, --verbose', 'verbose output')
   .action(async (file, options) => {
+    const progressManager = createProgressManager(null, options.verbose);
+
     try {
-      console.log(`Dumping ChatGPT export: ${chalk.blue(file)}`);
+      // Validate inputs
+      SchemaValidator.validateRequired([{ name: 'file', value: file }], 'dump command');
+
+      SchemaValidator.validateNonEmptyString(file, 'file', 'dump command');
+      SchemaValidator.validateDumpsterName(options.name, { context: 'dump command' });
+
+      await SchemaValidator.validatePath(file, {
+        mustExist: true,
+        context: 'dump command',
+      });
+
+      // Create progress spinner
+      progressManager.start('initializing', 'Initializing dumpster creation...');
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
-      // Check if file exists
-      const FileSystemHelper = require('./utils/FileSystemHelper');
-      if (!(await FileSystemHelper.fileExists(file))) {
-        throw new Error(`File not found: ${file}`);
-      }
-
-      const { createProgressTracker } = require('./utils/ProgressTracker');
-      const progressTracker = createProgressTracker(null, options.verbose);
       const onProgress = progress => {
-        progressTracker.update(progress.stage, progress.progress, progress.message);
+        progressManager.update(progress.stage, progress.progress, progress.message);
       };
+
       await dumpsterManager.createDumpster(file, options.name, false, onProgress, {
         zipPath: file,
       });
 
-      console.log(chalk.green('✅ Dumpster created successfully!'));
-      console.log(chalk.dim(`Dumpster name: ${options.name}`));
+      progressManager.succeed(`Dumpster "${options.name}" created successfully!`);
+      ErrorHandler.logInfo(`Dumpster name: ${options.name}`, 'dump complete');
     } catch (error) {
-      console.error(chalk.red('❌ Error:'), error.message);
+      progressManager.fail(`Dumpster creation failed: ${error.message}`);
+
       if (options.verbose) {
         console.error(error.stack);
       }
+
+      ErrorHandler.handleFileError(error, 'dump command', false);
       process.exit(1);
     }
   });
@@ -63,21 +76,43 @@ program
       const dumpsters = await dumpsterManager.listDumpsters();
 
       if (dumpsters.length === 0) {
-        console.log(
-          chalk.yellow('No dumpsters found. Use "ddd dump" to process a ZIP file.')
+        ErrorHandler.logWarning(
+          'No dumpsters found. Use "ddd dump" to process a ZIP file.'
         );
         return;
       }
 
       console.log(chalk.blue('🗑️ Available dumpsters:'));
-      dumpsters.forEach(dumpster => {
-        const details = options.verbose
-          ? ` (${new Date(dumpster.createdAt).toLocaleDateString()}, ${dumpster.chatCount} chats)`
-          : '';
-        console.log(`  ${chalk.green(dumpster.name)}${details}`);
-      });
+
+      if (options.verbose) {
+        // Show detailed table
+        const tableData = dumpsters.map(dumpster => ({
+          name: dumpster.name,
+          created: new Date(dumpster.createdAt).toLocaleDateString(),
+          chats: dumpster.chatCount || 'unknown',
+        }));
+
+        console.log(
+          '\n' +
+            require('./utils/CommonUtils').FormatUtils.formatTable(
+              tableData,
+              ['name', 'created', 'chats'],
+              { padding: 2 }
+            )
+        );
+      } else {
+        // Show simple list
+        dumpsters.forEach(dumpster => {
+          console.log(`  ${chalk.green(dumpster.name)}`);
+        });
+      }
+
+      ErrorHandler.logSuccess(
+        `Found ${dumpsters.length} dumpster${dumpsters.length !== 1 ? 's' : ''}`,
+        'hoard'
+      );
     } catch (error) {
-      console.error(chalk.red('❌ Error listing exports:'), error.message);
+      ErrorHandler.handleAsyncError(error, 'listing dumpsters', null, false);
       process.exit(1);
     }
   });
@@ -85,31 +120,58 @@ program
 program
   .command('rummage')
   .description('Rummage through chats in a dumpster')
-  .argument('<dumpster-name>', 'name of the dumpster to view')
+  .argument('<dumpster-name>', 'name of dumpster to view')
   .option('-l, --limit <number>', 'number of chats to show', '10')
   .action(async (dumpsterName, options) => {
     try {
+      // Validate inputs
+      SchemaValidator.validateRequired(
+        [{ name: 'dumpsterName', value: dumpsterName }],
+        'rummage command'
+      );
+
+      SchemaValidator.validateNonEmptyString(
+        dumpsterName,
+        'dumpsterName',
+        'rummage command'
+      );
+      const limit = SchemaValidator.validateNumber(options.limit, 'limit', {
+        min: 1,
+        max: 100,
+        context: 'rummage command',
+      });
+
+      const progressManager = createProgressManager(null, options.verbose);
+      progressManager.start('initializing', `Loading chats from "${dumpsterName}"...`);
+
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
 
-      const chats = await dumpsterManager.getChats(
-        dumpsterName,
-        parseInt(options.limit)
-      );
+      const chats = await dumpsterManager.getChats(dumpsterName, limit);
 
       if (chats.length === 0) {
-        console.log(chalk.yellow('No chats found in this dumpster.'));
+        progressManager.warn(`No chats found in "${dumpsterName}"`);
         return;
       }
 
+      progressManager.succeed(
+        `Found ${chats.length} chat${chats.length !== 1 ? 's' : ''} in "${dumpsterName}"`
+      );
       console.log(chalk.blue(`💬 Chats in ${dumpsterName}:`));
+
       chats.forEach((chat, index) => {
         const title = chat.title || `Chat ${index + 1}`;
-        console.log(`  ${index + 1}. ${chalk.green(title)}`);
+        const timestamp =
+          require('./utils/CommonUtils').TimestampUtils.extractTimestamp(chat);
+        const dateStr = timestamp
+          ? ` (${require('./utils/CommonUtils').TimestampUtils.formatTimestamp(timestamp, 'date')})`
+          : '';
+
+        console.log(`  ${index + 1}. ${chalk.green(title)}${chalk.dim(dateStr)}`);
       });
     } catch (error) {
-      console.error(chalk.red('❌ Error rummaging dumpster:'), error.message);
+      ErrorHandler.handleAsyncError(error, 'rummaging dumpster', null, false);
       process.exit(1);
     }
   });
@@ -121,7 +183,32 @@ program
   .option('-f, --force', 'skip confirmation prompt')
   .option('--dry-run', 'show what would be burned without actually burning')
   .action(async (dumpsterName, options) => {
+    const progressManager = createProgressManager(null, false); // No spinner for burn
+
     try {
+      // Validate inputs
+      SchemaValidator.validateRequired(
+        [{ name: 'dumpsterName', value: dumpsterName }],
+        'burn command'
+      );
+
+      SchemaValidator.validateNonEmptyString(
+        dumpsterName,
+        'dumpsterName',
+        'burn command'
+      );
+
+      const force = SchemaValidator.validateBoolean(
+        options.force,
+        'force',
+        'burn command'
+      );
+      const dryRun = SchemaValidator.validateBoolean(
+        options.dryRun,
+        'dryRun',
+        'burn command'
+      );
+
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dumpsterManager = new DumpsterManager(__dirname);
       await dumpsterManager.initialize();
@@ -129,7 +216,10 @@ program
       // Check if dumpster exists
       const dumpster = dumpsterManager.getDumpster(dumpsterName);
       if (!dumpster) {
-        console.error(chalk.red('🚨 Dumpster not found - nothing to burn'));
+        ErrorHandler.logError(
+          `Dumpster "${dumpsterName}" not found - nothing to burn`,
+          'burn command'
+        );
         process.exit(1);
       }
 
@@ -137,7 +227,7 @@ program
       const stats = await dumpsterManager.getDumpsterStats(dumpsterName);
       const chatCount = stats?.chatCount || 'unknown';
       const sizeInMB = stats?.totalSize
-        ? Math.round(stats.totalSize / 1024 / 1024)
+        ? Math.round(stats.totalSize / (1024 * 1024))
         : 'unknown';
 
       console.log(chalk.yellow('🔥 Preparing to light a fire...'));
@@ -146,13 +236,13 @@ program
       console.log(chalk.dim(`Data to destroy: ${sizeInMB}MB`));
 
       // Handle dry-run
-      if (options.dryRun) {
+      if (dryRun) {
         console.log(chalk.blue('🔥 Dry run: Would have burned this dumpster to ashes'));
         return;
       }
 
       // Confirm deletion unless force flag is used
-      if (!options.force) {
+      if (!force) {
         const readline = require('readline');
         const rl = readline.createInterface({
           input: process.stdin,
@@ -180,21 +270,23 @@ program
       const success = await dumpsterManager.deleteDumpster(dumpsterName);
 
       if (success) {
-        console.log(chalk.green('🔥 Dumpster burned to ashes successfully!'));
+        progressManager.succeed(
+          `Dumpster "${dumpsterName}" burned to ashes successfully!`
+        );
         console.log(
           chalk.dim(
             `All ${chatCount} chats and ${sizeInMB}MB of data reduced to cinders`
           )
         );
       } else {
-        console.error(chalk.red('🚨 Failed to ignite dumpster - flames died out'));
+        progressManager.fail(
+          `Failed to ignite dumpster "${dumpsterName}" - flames died out`
+        );
         process.exit(1);
       }
     } catch (error) {
-      console.error(chalk.red('🚨 Failed to start dumpster fire:'), error.message);
-      if (options.verbose) {
-        console.error(error.stack);
-      }
+      progressManager.fail(`Failed to start dumpster fire: ${error.message}`);
+      ErrorHandler.handleAsyncError(error, 'burning dumpster', null, false);
       process.exit(1);
     }
   });
@@ -211,29 +303,55 @@ program
   .option('--self-contained', 'Embed assets in output (HTML only)')
   .option('-v, --verbose', 'Verbose output')
   .action(async (format, dumpsterName, options) => {
+    const progressManager = createProgressManager(null, options.verbose);
+
     try {
       // Validate required parameters
-      if (!format || !dumpsterName) {
-        console.error(chalk.red('❌ Both format and dumpster-name are required'));
-        console.log(
-          chalk.yellow('Usage: node cli.js upcycle <format> <dumpster-name>')
-        );
-        process.exit(1);
-      }
+      SchemaValidator.validateRequired(
+        [
+          { name: 'format', value: format },
+          { name: 'dumpsterName', value: dumpsterName },
+        ],
+        'upcycle command'
+      );
 
+      const normalizedFormat = SchemaValidator.validateExportFormat(
+        format,
+        ['txt', 'md', 'html'],
+        'upcycle command'
+      );
+      SchemaValidator.validateNonEmptyString(
+        dumpsterName,
+        'dumpsterName',
+        'upcycle command'
+      );
+
+      // Validate options
+      const validatedOptions = SchemaValidator.validateSchema(
+        options,
+        {
+          output: { type: 'string', required: false },
+          singleFile: { type: 'boolean', required: false },
+          perChat: { type: 'boolean', required: false },
+          includeMedia: { type: 'boolean', required: false },
+          selfContained: { type: 'boolean', required: false },
+          verbose: { type: 'boolean', required: false },
+        },
+        'upcycle command'
+      );
+
+      progressManager.start(
+        'initializing',
+        `Preparing to upcycle "${dumpsterName}" to ${normalizedFormat.toUpperCase()}...`
+      );
       console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
-      console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
+      console.log(chalk.dim(`Format: ${normalizedFormat.toUpperCase()}`));
 
-      if (options.verbose) {
-        console.log(chalk.dim('Options:'), options);
-      }
-
-      // Validate format
-      const validFormats = ['txt', 'md', 'html'];
-      if (!validFormats.includes(format.toLowerCase())) {
-        console.error(chalk.red(`❌ Invalid format: ${format}`));
-        console.error(chalk.yellow(`Available formats: ${validFormats.join(', ')}`));
-        process.exit(1);
+      if (validatedOptions.verbose) {
+        ErrorHandler.logInfo(
+          `Options: ${JSON.stringify(validatedOptions, null, 2)}`,
+          'upcycle'
+        );
       }
 
       // Initialize UpcycleManager
@@ -250,19 +368,23 @@ program
       const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
       if (!dumpster) {
-        console.error(chalk.red(`🚨 Dumpster "${dumpsterName}" not found`));
-        console.log(chalk.yellow('Available dumpsters:'));
+        progressManager.fail(`Dumpster "${dumpsterName}" not found`);
+        ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
         dumpsters.forEach(d => {
           console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
         });
         process.exit(1);
       }
 
-      // Perform upcycle
+      // Perform upcycle with progress tracking
+      const onProgress = progress => {
+        progressManager.update(progress.stage, progress.progress, progress.message);
+      };
+
       const result = await upcycleManager.upcycleDumpster(
         dumpsterName,
-        format.toLowerCase(),
-        options
+        normalizedFormat,
+        { ...validatedOptions, onProgress }
       );
 
       // Display results
@@ -270,12 +392,12 @@ program
       const report = generateExportReport(result);
       console.log(report);
 
-      console.log(chalk.green('✅ Upcycle complete!'));
+      progressManager.succeed(
+        `Upcycle of "${dumpsterName}" to ${normalizedFormat.toUpperCase()} complete!`
+      );
     } catch (error) {
-      console.error(chalk.red('❌ Error upcycling dumpster:'), error.message);
-      if (options.verbose) {
-        console.error(error.stack);
-      }
+      progressManager.fail(`Upcycle failed: ${error.message}`);
+      ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);
       process.exit(1);
     }
   });

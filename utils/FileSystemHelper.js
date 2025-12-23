@@ -6,6 +6,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
+const { PATHS } = require('../config/constants');
 
 /**
  * Centralized file system helper class
@@ -199,6 +200,131 @@ class FileSystemHelper {
    */
   static isAbsolute(filePath) {
     return path.isAbsolute(filePath);
+  }
+
+  // ===== Standard Path Operations =====
+
+  /**
+   * Build standard dumpster path
+   * @param {string} baseDir - Base application directory
+   * @param {string} dumpsterName - Sanitized dumpster name
+   * @returns {string} Full path to dumpster directory
+   */
+  static buildDumpsterPath(baseDir, dumpsterName) {
+    return this.joinPath(baseDir, PATHS.DUMPSTERS_DIR, dumpsterName);
+  }
+
+  /**
+   * Build standard chats path within dumpster
+   * @param {string} dumpsterPath - Path to dumpster directory
+   * @returns {string} Path to chats directory
+   */
+  static buildChatsPath(dumpsterPath) {
+    return this.joinPath(dumpsterPath, PATHS.CHATS_DIR);
+  }
+
+  /**
+   * Build standard media path within dumpster
+   * @param {string} dumpsterPath - Path to dumpster directory
+   * @returns {string} Path to media directory
+   */
+  static buildMediaPath(dumpsterPath) {
+    return this.joinPath(dumpsterPath, PATHS.MEDIA_DIR);
+  }
+
+  /**
+   * Build standard temp path
+   * @param {string} baseDir - Base application directory
+   * @param {string} tempName - Temp directory name
+   * @returns {string} Path to temp directory
+   */
+  static buildTempPath(baseDir, tempName = null) {
+    return tempName
+      ? this.joinPath(baseDir, PATHS.TEMP_DIR, tempName)
+      : this.joinPath(baseDir, PATHS.TEMP_DIR);
+  }
+
+  /**
+   * Ensure complete dumpster directory structure
+   * @param {string} dumpsterPath - Path to dumpster directory
+   * @returns {Promise<void>}
+   */
+  static async ensureDumpsterStructure(dumpsterPath) {
+    await this.ensureDirectory(dumpsterPath);
+    await this.ensureDirectory(this.buildChatsPath(dumpsterPath));
+    await this.ensureDirectory(this.buildMediaPath(dumpsterPath));
+  }
+
+  /**
+   * Get all standard paths for a dumpster
+   * @param {string} baseDir - Base application directory
+   * @param {string} dumpsterName - Sanitized dumpster name
+   * @returns {Object} Object containing all standard paths
+   */
+  static getDumpsterPaths(baseDir, dumpsterName) {
+    const dumpsterPath = this.buildDumpsterPath(baseDir, dumpsterName);
+    return {
+      baseDir,
+      dumpsterPath,
+      chatsPath: this.buildChatsPath(dumpsterPath),
+      mediaPath: this.buildMediaPath(dumpsterPath),
+      assetsJsonPath: this.joinPath(dumpsterPath, 'assets.json'),
+      chatHtmlPath: this.joinPath(dumpsterPath, 'chat.html'),
+    };
+  }
+
+  /**
+   * Validate that dumpster structure exists and is complete
+   * @param {string} dumpsterPath - Path to dumpster directory
+   * @returns {Promise<{isValid: boolean, missing: string[]}>}
+   */
+  static async validateDumpsterStructure(dumpsterPath) {
+    const required = [
+      this.buildChatsPath(dumpsterPath),
+      this.buildMediaPath(dumpsterPath),
+    ];
+
+    const missing = [];
+    for (const requiredPath of required) {
+      if (!(await this.fileExists(requiredPath))) {
+        missing.push(requiredPath);
+      }
+    }
+
+    return {
+      isValid: missing.length === 0,
+      missing,
+    };
+  }
+
+  /**
+   * Safely copy file with overwrite check
+   * @param {string} sourcePath - Source file path
+   * @param {string} destPath - Destination file path
+   * @param {boolean} overwrite - Whether to overwrite existing file
+   * @returns {Promise<boolean>} True if file was copied
+   */
+  static async safeCopyFile(sourcePath, destPath, overwrite = false) {
+    if (!overwrite && (await this.fileExists(destPath))) {
+      return false;
+    }
+
+    await this.ensureDirectory(this.getDirName(destPath));
+    await fs.copyFile(sourcePath, destPath);
+    return true;
+  }
+
+  /**
+   * Format file size for human readable display
+   * @param {number} bytes - Size in bytes
+   * @returns {string} Human readable file size
+   */
+  static formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const index = Math.floor(Math.log(bytes) / Math.log(1024));
+    const size = bytes / Math.pow(1024, index);
+    return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
   }
 }
 

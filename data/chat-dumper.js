@@ -1,79 +1,10 @@
-#!/usr/bin/env node
-// chat-dumper.js - Enhanced version for direct file processing
-const { CLIFramework } = require('../utils/cliFramework');
+/*
+ * chat-dumper.js - Chat conversation processing utility
+ * Processes ChatGPT conversation JSON files into individual chat files
+ */
+
 const FileSystemHelper = require('../utils/FileSystemHelper');
 const PathUtils = require('../utils/PathUtils');
-
-/**
- * Configuration options
- */
-function parseArguments() {
-  const config = {
-    defaults: {
-      createSubdirs: false,
-      preserveOriginal: false,
-      overwrite: false,
-      verbose: false,
-    },
-    flags: [
-      {
-        name: 'createSubdirs',
-        flag: '--create-subdirs',
-        type: 'boolean',
-        description: 'Create a chats subdirectory in outputDir',
-      },
-    ],
-    positional: ['inputPath', 'outputDir'],
-  };
-
-  const options = CLIFramework.parseArguments(config);
-
-  if (options.help) {
-    showHelp();
-    process.exit(0);
-  }
-
-  // Set defaults
-  options.inputPath = options.inputPath || 'conversations.json';
-  options.outputDir =
-    options.outputDir ||
-    FileSystemHelper.joinPath(FileSystemHelper.getDirName(options.inputPath), 'chats');
-
-  return options;
-}
-
-function showHelp() {
-  const config = {
-    usage: 'node chat-dumper.js [inputPath] [outputDir] [options]',
-    positional: [
-      {
-        name: 'inputPath',
-        description: 'Path to conversations.json file (default: conversations.json)',
-      },
-      {
-        name: 'outputDir',
-        description: 'Directory to save individual chat files (default: ./chats)',
-      },
-    ],
-    flags: [
-      {
-        name: 'createSubdirs',
-        flag: '--create-subdirs',
-        type: 'boolean',
-        description: 'Create a chats subdirectory in outputDir',
-      },
-    ],
-    examples: [
-      'node chat-dumper.js                                   # Use defaults',
-      'node chat-dumper.js /path/to/conversations.json       # Custom input path',
-      'node chat-dumper.js data.json ./output                # Custom input and output',
-      'node chat-dumper.js data.json ./out --create-subdirs  # Create chats subdirectory',
-      'node chat-dumper.js data.json ./out --overwrite       # Overwrite existing files',
-    ],
-  };
-
-  console.log(CLIFramework.generateHelpText(config));
-}
 
 /**
  * Utility functions
@@ -204,32 +135,6 @@ async function dumpChats(inputPath, outputDir, options = {}) {
 }
 
 /**
- * Main function for CLI usage
- */
-async function main() {
-  try {
-    const options = parseArguments();
-
-    if (options.verbose) {
-      console.log('Starting dump with options: ', options);
-    }
-
-    const result = await dumpChats(options.inputPath, options.outputDir, options);
-
-    if (result.errors > 0) {
-      console.warn(`dump completed with ${result.errors} errors`);
-      process.exit(1);
-    } else {
-      console.log('dump completed successfully');
-      process.exit(0);
-    }
-  } catch (err) {
-    console.error('dump failed:', err);
-    process.exit(1);
-  }
-}
-
-/**
  * Export function for programmatic usage
  */
 module.exports = {
@@ -237,12 +142,4 @@ module.exports = {
   sanitizeFilename,
   extractTimestamp,
   formatDateFromTimestamp,
-  parseArguments,
 };
-// Ensure the script runs only when executed directly, not when imported
-if (require.main === module) {
-  main().catch(err => {
-    console.error('dump failed:', err);
-    process.exit(1);
-  });
-}

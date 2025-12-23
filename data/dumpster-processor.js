@@ -1,18 +1,8 @@
-#!/usr/bin/env node
-
-/**
- * Unified Dumpster Processor for ChatGPT Data Dumpsters
- *
- * This script combines ZIP extraction, conversation dumping, and asset extraction
- * into a single streamlined process for the new direct file-based architecture.
- *
- * Usage:
- *   node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]
- *   node dumpster-processor.js ./chatgpt-export.zip "my-chat-history" ./ --verbose
- *   node dumpster-processor.js --help
+/*
+ * dumpster-processor.js - Unified Dumpster Processing utility
+ * Combines ZIP extraction, conversation dumping, and asset extraction
  */
 
-const { CLIFramework } = require('../utils/cliFramework.js');
 const FileSystemHelper = require('../utils/FileSystemHelper.js');
 const PathUtils = require('../utils/PathUtils.js');
 const ZipProcessor = require('../utils/ZipProcessor.js');
@@ -22,64 +12,6 @@ const fs = require('fs').promises; // Keep for operations not in FileSystemHelpe
 const path = require('path');
 const { dumpChats } = require('./chat-dumper.js');
 const { extractAssetsFromHtml } = require('./extract-assets.js');
-
-/**
- * Parse command line arguments
- */
-function parseArguments() {
-  const config = {
-    defaults: {
-      tempDir: null,
-      isBuffer: false,
-      preserveOriginal: false,
-      overwrite: false,
-      verbose: false,
-      baseDir: FileSystemHelper.resolvePath(__dirname, '..'),
-    },
-    positional: ['zipPath', 'dumpsterName', 'baseDir'],
-  };
-
-  const options = CLIFramework.parseArguments(config);
-
-  if (options.help) {
-    showHelp();
-    process.exit(0);
-  }
-
-  return options;
-}
-
-function showHelp() {
-  const config = {
-    usage: 'node dumpster-processor.js [zipPath] [dumpsterName] [baseDir] [options]',
-    positional: [
-      { name: 'zipPath', description: 'Path to ChatGPT export ZIP file (required)' },
-      {
-        name: 'dumpsterName',
-        description: 'Name for the dumpster directory (required)',
-      },
-      {
-        name: 'baseDir',
-        description: 'Base directory of the application (default: parent directory)',
-      },
-    ],
-    examples: [
-      '# Basic usage',
-      'node dumpster-processor.js ./chatgpt-export.zip "my-chat-history"',
-      '',
-      '# With custom base directory',
-      'node dumpster-processor.js ./export.zip "work-chat" /path/to/app',
-      '',
-      '# Overwrite existing dumpster',
-      'node dumpster-processor.js ./export.zip "my-chat" --overwrite',
-      '',
-      '# Verbose output',
-      'node dumpster-processor.js ./export.zip "my-chat" --verbose',
-    ],
-  };
-
-  console.log(CLIFramework.generateHelpText(config));
-}
 
 /**
  * Creates a temporary directory within the project's data/temp directory
@@ -345,59 +277,6 @@ async function validateDumpster(dumpsterDir) {
       warnings,
     };
   }
-}
-
-/**
- * Main function for CLI usage
- */
-async function main() {
-  try {
-    const options = parseArguments();
-
-    if (!options.zipPath || !options.dumpsterName) {
-      console.error('zipPath and dumpsterName are required');
-      showHelp();
-      process.exit(1);
-    }
-
-    // Check if ZIP file exists
-    try {
-      await fs.access(options.zipPath);
-    } catch {
-      console.error(`ZIP file not found: ${options.zipPath}`);
-      process.exit(1);
-    }
-
-    // Read ZIP file
-    const zipData = await fs.readFile(options.zipPath);
-
-    // Process dumpster with progress callback
-    await processDumpster(
-      zipData,
-      options.dumpsterName,
-      options.baseDir,
-      false, // isBuffer = false (we're reading from file)
-      progress => {
-        console.log(`[${progress.stage}] ${progress.progress}% - ${progress.message}`);
-      },
-      {
-        preserveOriginal: options.preserveOriginal,
-        overwrite: options.overwrite,
-        verbose: options.verbose,
-        zipPath: options.zipPath,
-      }
-    );
-
-    console.log('Dumpster completed successfully!');
-  } catch (error) {
-    console.error('Dumpster processing failed:', error);
-    process.exit(1);
-  }
-}
-
-// Run the script if called directly
-if (require.main === module) {
-  main();
 }
 
 module.exports = {

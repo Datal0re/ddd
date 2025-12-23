@@ -1,99 +1,11 @@
-#!/usr/bin/env node
-
-/**
- * Enhanced extract-assets.js for direct file processing
- *
+/*
+ * extract-assets.js - Asset extraction utility
  * Extracts assetsJson variables from chat.html files and saves them as assets.json
- *
- * Usage:
- *   node extract-assets.js [inputPath] [outputPath] [options]
- *   node extract-assets.js /path/to/chat.html /path/to/output.json
- *   node extract-assets.js /path/to/directory /output/dir/ --recursive
- *   node extract-assets.js --help
- *
- * Options:
- *   --recursive    Process all HTML files in directory recursively
- *   --overwrite    Overwrite existing assets.json files
- *   --preserve     Keep original HTML files
- *   --verbose      Enable verbose logging
- *   --help         Show this help message
  */
 
-const { CLIFramework } = require('../utils/cliFramework');
 const FileSystemHelper = require('../utils/FileSystemHelper');
 const fs = require('fs').promises; // Keep for operations not in FileSystemHelper
 const path = require('path');
-
-/**
- * Parse command line arguments
- */
-function parseArguments() {
-  const config = {
-    defaults: {
-      recursive: false,
-      overwrite: false,
-      preserve: false,
-      verbose: false,
-    },
-    flags: [
-      {
-        name: 'recursive',
-        flag: '--recursive',
-        type: 'boolean',
-        description: 'Process all HTML files in directory recursively',
-      },
-    ],
-    positional: ['inputPath', 'outputPath'],
-  };
-
-  const options = CLIFramework.parseArguments(config);
-
-  if (options.help) {
-    showHelp();
-    process.exit(0);
-  }
-
-  return options;
-}
-
-function showHelp() {
-  const config = {
-    usage: 'node extract-assets.js [inputPath] [outputPath] [options]',
-    positional: [
-      {
-        name: 'inputPath',
-        description: 'Path to chat.html file or directory containing HTML files',
-      },
-      {
-        name: 'outputPath',
-        description: 'Path for output assets.json file or directory',
-      },
-    ],
-    flags: [
-      {
-        name: 'recursive',
-        flag: '--recursive',
-        type: 'boolean',
-        description: 'Process all HTML files in directory recursively',
-      },
-    ],
-    examples: [
-      '# Process single file',
-      'node extract-assets.js chat.html assets.json',
-      '',
-      '# Process directory',
-      'node extract-assets.js ./extracted-files ./output',
-      '',
-      '# Process directory recursively',
-      'node extract-assets.js ./data ./output --recursive',
-      '',
-      '# Overwrite existing files',
-      'node extract-assets.js chat.html assets.json --overwrite',
-    ],
-  };
-
-  console.log(CLIFramework.generateHelpText(config));
-}
 
 /**
  * Find all HTML files in a directory
@@ -239,98 +151,8 @@ async function processDirectory(inputDir, outputDir, options = {}) {
   }
 }
 
-/**
- * Main function for CLI usage
- */
-async function main() {
-  try {
-    const options = parseArguments();
-
-    if (!options.inputPath) {
-      console.error('Input path is required');
-      showHelp();
-      process.exit(1);
-    }
-
-    // Resolve paths
-    const resolvedInputPath = path.resolve(options.inputPath);
-    let resolvedOutputPath = options.outputPath
-      ? path.resolve(options.outputPath)
-      : null;
-
-    // Check if input is file or directory
-    const stats = await fs.stat(resolvedInputPath);
-
-    if (stats.isFile()) {
-      // Process single file
-      if (!resolvedOutputPath) {
-        // Default output to same directory with assets.json name
-        resolvedOutputPath = path.join(path.dirname(resolvedInputPath), 'assets.json');
-      }
-
-      if (options.verbose) {
-        console.log(
-          `Processing single file: ${resolvedInputPath} -> ${resolvedOutputPath}`
-        );
-      }
-
-      const result = await extractAssetsFromHtml(
-        resolvedInputPath,
-        resolvedOutputPath,
-        options
-      );
-
-      if (result.success) {
-        console.log('Extraction completed successfully');
-        process.exit(0);
-      } else {
-        console.error('Extraction failed');
-        process.exit(1);
-      }
-    } else if (stats.isDirectory()) {
-      // Process directory
-      if (!resolvedOutputPath) {
-        // Default output to subdirectory
-        resolvedOutputPath = path.join(resolvedInputPath, 'extracted-assets');
-      }
-
-      if (options.verbose) {
-        console.log(
-          `Processing directory: ${resolvedInputPath} -> ${resolvedOutputPath}`
-        );
-      }
-
-      const result = await processDirectory(
-        resolvedInputPath,
-        resolvedOutputPath,
-        options
-      );
-
-      if (result.errors > 0) {
-        console.warn(`Processing completed with ${result.errors} errors`);
-        process.exit(1);
-      } else {
-        console.log('Directory processing completed successfully');
-        process.exit(0);
-      }
-    } else {
-      console.error('Input path is not a file or directory');
-      process.exit(1);
-    }
-  } catch (error) {
-    console.error('Script failed:', error);
-    process.exit(1);
-  }
-}
-
-// Run the script if called directly
-if (require.main === module) {
-  main();
-}
-
 module.exports = {
   extractAssetsFromHtml,
   processDirectory,
   findHtmlFiles,
-  parseArguments,
 };
