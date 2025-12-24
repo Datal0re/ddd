@@ -7,7 +7,7 @@ const { validateRequiredParams } = require('./Validators');
 const { logError, logWarning } = require('./upcycleHelpers');
 const FileSystemHelper = require('./FileSystemHelper');
 const ChatUpcycler = require('./ChatUpcycler');
-const { createProgressTracker } = require('./ProgressManager');
+const { createProgressManager } = require('./ProgressManager');
 const fs = require('fs').promises;
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
@@ -74,19 +74,19 @@ class UpcycleManager {
       const formatter = this.formatters[format];
       const chatUpcycler = new ChatUpcycler(this.dumpsterManager.baseDir);
 
-      const progressTracker = createProgressTracker(null, validatedOptions.verbose);
+      const pm = createProgressManager(null, validatedOptions.verbose);
 
-      progressTracker.update('initializing', 0, 'Starting upcycle process...');
+      pm.update('initializing', 0, 'Starting upcycle process...');
 
       // Get all chats from dumpster
-      progressTracker.update('loading', 10, 'Loading chats from dumpster...');
+      pm.update('loading', 10, 'Loading chats from dumpster...');
       const chats = await this.dumpsterManager.getChats(dumpsterName);
 
       if (chats.length === 0) {
         throw new Error(`No chats found in dumpster "${dumpsterName}"`);
       }
 
-      progressTracker.update('processing', 20, `Processing ${chats.length} chats...`);
+      pm.update('processing', 20, `Processing ${chats.length} chats...`);
 
       // Create output directory
       const outputDir = FileSystemHelper.joinPath(
@@ -104,7 +104,7 @@ class UpcycleManager {
         const chat = chats[i];
         const progress = 20 + (i / chats.length) * 60; // 20-80% for chat processing
 
-        progressTracker.update(
+        pm.update(
           'processing',
           progress,
           `Processing chat ${i + 1}/${chats.length}: ${chat.title || 'Untitled'}`
@@ -143,14 +143,14 @@ class UpcycleManager {
         }
       }
 
-      progressTracker.update('finalizing', 90, 'Finalizing upcycle...');
+      pm.update('finalizing', 90, 'Finalizing upcycle...');
 
       // Handle single file option if requested
       if (validatedOptions.singleFile) {
         await this.createCombinedFile(results, outputDir, format, formatter);
       }
 
-      progressTracker.update(
+      pm.update(
         'completed',
         100,
         `Upcycle complete! Processed ${processedCount} chats.`

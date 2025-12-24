@@ -6,7 +6,7 @@
 const BaseFormatter = require('./BaseFormatter');
 const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
-const FileSystemHelper = require('../fsHelpers');
+const FileSystemHelper = require('../FileSystemHelper');
 
 class HTMLFormatter extends BaseFormatter {
   constructor() {

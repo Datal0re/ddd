@@ -3,7 +3,7 @@
  * Provides consistent progress reporting and spinners across application
  */
 
-const ora = require('ora');
+const ora = require('ora').default;
 const chalk = require('chalk');
 const { PROGRESS_STAGES } = require('../config/constants');
 

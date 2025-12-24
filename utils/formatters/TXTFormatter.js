@@ -4,7 +4,7 @@
  */
 
 const BaseFormatter = require('./BaseFormatter');
-const FileSystemHelper = require('../fsHelpers');
+const FileSystemHelper = require('../FileSystemHelper');
 
 class TXTFormatter extends BaseFormatter {
   constructor() {
