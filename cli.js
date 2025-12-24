@@ -2,6 +2,7 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
+const { input, select, confirm } = require('@inquirer/prompts');
 const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
@@ -13,21 +14,99 @@ program
   .description('CLI tool to process and explore exported ChatGPT conversation data')
   .version('0.0.1');
 
+// Helper functions for common prompt patterns
+async function promptForFilePath() {
+  return await input({
+    message: 'Enter the path to your ChatGPT export ZIP file:',
+    validate: async input => {
+      if (!input.trim()) return 'Please enter a file path';
+      if (!input.endsWith('.zip')) return 'Please provide a ZIP file';
+      try {
+        const fs = require('fs').promises;
+        await fs.access(input);
+        return true;
+      } catch {
+        return 'File not found. Please check the path and try again.';
+      }
+    },
+  });
+}
+
+async function promptForDumpsterName(defaultName) {
+  return await input({
+    message: 'Enter a name for this dumpster:',
+    default: defaultName,
+    validate: input => {
+      if (!input.trim()) return 'Please enter a name';
+      SchemaValidator.validateDumpsterName(input, { context: 'dump command' });
+      return true;
+    },
+  });
+}
+
+async function selectFromDumpsters(dumpsters, message) {
+  return await select({
+    message,
+    choices: dumpsters.map(d => ({
+      name: `${d.name} (${d.chatCount || '?'} chats)`,
+      value: d.name,
+    })),
+  });
+}
+
+async function selectExportFormat() {
+  return await select({
+    message: 'Choose export format:',
+    choices: [
+      {
+        name: '📄 Plain Text (.txt) - Simple, universal format',
+        value: 'txt',
+      },
+      {
+        name: '📝 Markdown (.md) - Great for documentation and GitHub',
+        value: 'md',
+      },
+      {
+        name: '🌐 HTML (.html) - Rich formatting with styling',
+        value: 'html',
+      },
+    ],
+  });
+}
+
 program
   .command('dump')
   .description('Unpack and process a ChatGPT export ZIP file')
-  .argument('<file>', 'path to the ZIP file')
-  .option('-n, --name <name>', 'custom name for the dumpster', 'default')
+  .argument('[file]', 'path to the ZIP file (optional - will prompt if not provided)')
+  .option(
+    '-n, --name <name>',
+    'custom name for the dumpster (optional - will prompt if not provided)'
+  )
   .option('-v, --verbose', 'verbose output')
   .action(async (file, options) => {
     const progressManager = createProgressManager(null, options.verbose);
 
     try {
-      // Validate inputs
-      SchemaValidator.validateRequired([{ name: 'file', value: file }], 'dump command');
+      // Prompt for file path if not provided
+      if (!file) {
+        file = await promptForFilePath();
+      } else {
+        SchemaValidator.validateRequired(
+          [{ name: 'file', value: file }],
+          'dump command'
+        );
+      }
 
-      SchemaValidator.validateNonEmptyString(file, 'file', 'dump command');
-      SchemaValidator.validateDumpsterName(options.name, { context: 'dump command' });
+      // Generate suggested name from file path if no name provided
+      const path = require('path');
+      const suggestedName = path.basename(file, '.zip');
+
+      // Prompt for name if not provided
+      if (!options.name || options.name === 'default') {
+        options.name = await promptForDumpsterName(suggestedName);
+      } else {
+        SchemaValidator.validateDumpsterName(options.name, { context: 'dump command' });
+      }
 
       await SchemaValidator.validatePath(file, {
         mustExist: true,
@@ -120,33 +199,75 @@ program
 program
   .command('rummage')
   .description('Rummage through chats in a dumpster')
-  .argument('<dumpster-name>', 'name of dumpster to view')
-  .option('-l, --limit <number>', 'number of chats to show', '10')
+  .argument(
+    '[dumpster-name]',
+    'name of dumpster to view (optional - will prompt for selection)'
+  )
+  .option(
+    '-l, --limit <number>',
+    'number of chats to show (optional - will prompt if not provided)'
+  )
   .action(async (dumpsterName, options) => {
     try {
-      // Validate inputs
-      SchemaValidator.validateRequired(
-        [{ name: 'dumpsterName', value: dumpsterName }],
-        'rummage command'
-      );
-
-      SchemaValidator.validateNonEmptyString(
-        dumpsterName,
-        'dumpsterName',
-        'rummage command'
-      );
-      const limit = SchemaValidator.validateNumber(options.limit, 'limit', {
-        min: 1,
-        max: 100,
-        context: 'rummage command',
-      });
-
-      const progressManager = createProgressManager(null, options.verbose);
-      progressManager.start('initializing', `Loading chats from "${dumpsterName}"...`);
-
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
+
+      // Get available dumpsters
+      const dumpsters = await dm.listDumpsters();
+
+      if (dumpsters.length === 0) {
+        ErrorHandler.logWarning(
+          'No dumpsters found. Use "ddd dump" to process a ZIP file.'
+        );
+        return;
+      }
+
+      // Prompt for dumpster selection if not provided
+      if (!dumpsterName) {
+        dumpsterName = await selectFromDumpsters(
+          dumpsters,
+          'Select a dumpster to rummage through:'
+        );
+      } else {
+        // Validate provided dumpster name
+        SchemaValidator.validateRequired(
+          [{ name: 'dumpsterName', value: dumpsterName }],
+          'rummage command'
+        );
+        SchemaValidator.validateNonEmptyString(
+          dumpsterName,
+          'dumpsterName',
+          'rummage command'
+        );
+      }
+
+      // Prompt for limit if not provided
+      let limit;
+      if (!options.limit || options.limit === '10') {
+        limit = parseInt(
+          await input({
+            message: 'How many chats would you like to see?',
+            default: '10',
+            validate: input => {
+              const num = parseInt(input);
+              if (isNaN(num)) return 'Please enter a number';
+              if (num < 1) return 'Must show at least 1 chat';
+              if (num > 100) return 'Maximum 100 chats at once';
+              return true;
+            },
+          })
+        );
+      } else {
+        limit = SchemaValidator.validateNumber(options.limit, 'limit', {
+          min: 1,
+          max: 100,
+          context: 'rummage command',
+        });
+      }
+
+      const progressManager = createProgressManager(null, options.verbose);
+      progressManager.start('initializing', `Loading chats from "${dumpsterName}"...`);
 
       const chats = await dm.getChats(dumpsterName, limit);
 
@@ -179,39 +300,58 @@ program
 program
   .command('burn')
   .description('Set a dumpster on fire - watch it burn to ashes')
-  .argument('<dumpster-name>', 'name of dumpster to burn')
+  .argument(
+    '[dumpster-name]',
+    'name of dumpster to burn (optional - will prompt for selection)'
+  )
   .option('-f, --force', 'skip confirmation prompt')
   .option('--dry-run', 'show what would be burned without actually burning')
   .action(async (dumpsterName, options) => {
     const progressManager = createProgressManager(null, false); // No spinner for burn
 
     try {
-      // Validate inputs
-      SchemaValidator.validateRequired(
-        [{ name: 'dumpsterName', value: dumpsterName }],
-        'burn command'
-      );
-
-      SchemaValidator.validateNonEmptyString(
-        dumpsterName,
-        'dumpsterName',
-        'burn command'
-      );
-
-      const force = SchemaValidator.validateBoolean(
-        options.force,
-        'force',
-        'burn command'
-      );
-      const dryRun = SchemaValidator.validateBoolean(
-        options.dryRun,
-        'dryRun',
-        'burn command'
-      );
-
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
+
+      // Get available dumpsters
+      const dumpsters = await dm.listDumpsters();
+
+      if (dumpsters.length === 0) {
+        ErrorHandler.logWarning(
+          'No dumpsters found. Use "ddd dump" to process a ZIP file.'
+        );
+        return;
+      }
+
+      // Prompt for dumpster selection if not provided
+      if (!dumpsterName) {
+        dumpsterName = await selectFromDumpsters(
+          dumpsters,
+          'Select a dumpster to burn:'
+        );
+      } else {
+        // Validate provided dumpster name
+        SchemaValidator.validateRequired(
+          [{ name: 'dumpsterName', value: dumpsterName }],
+          'burn command'
+        );
+        SchemaValidator.validateNonEmptyString(
+          dumpsterName,
+          'dumpsterName',
+          'burn command'
+        );
+      }
+
+      // Handle optional boolean flags
+      const force =
+        options.force !== undefined
+          ? SchemaValidator.validateBoolean(options.force, 'force', 'burn command')
+          : false;
+      const dryRun =
+        options.dryRun !== undefined
+          ? SchemaValidator.validateBoolean(options.dryRun, 'dryRun', 'burn command')
+          : false;
 
       // Check if dumpster exists
       const dumpster = dm.getDumpster(dumpsterName);
@@ -243,26 +383,28 @@ program
 
       // Confirm deletion unless force flag is used
       if (!force) {
-        const readline = require('readline');
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
+        const shouldBurn = await confirm({
+          message: `Are you sure you want to permanently delete "${dumpsterName}"? This will destroy ${chatCount} chats (${sizeInMB}MB) and cannot be undone.`,
+          default: false,
         });
 
-        const answer = await new Promise(resolve => {
-          rl.question(
-            chalk.red('Are you sure you want to watch this dumpster burn? (y/N): '),
-            resolve
-          );
-        });
-        rl.close();
-
-        if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+        if (!shouldBurn) {
           console.log(
             chalk.yellow('🔥 Fire extinguished - dumpster lives to see another day')
           );
           return;
         }
+
+        // Additional safety challenge for destructive action
+        await input({
+          message: `Type "${dumpsterName}" to confirm deletion:`,
+          validate: input => {
+            if (input !== dumpsterName) {
+              return `Please type "${dumpsterName}" exactly to confirm`;
+            }
+            return true;
+          },
+        });
       }
 
       // Perform the burning
@@ -294,8 +436,14 @@ program
 program
   .command('upcycle')
   .description('Upcycle dumpsters to various formats')
-  .argument('<format>', 'Export format: txt, md, html')
-  .argument('<dumpster-name>', 'Name of dumpster to upcycle')
+  .argument(
+    '[format]',
+    'Export format: txt, md, html (optional - will prompt for selection)'
+  )
+  .argument(
+    '[dumpster-name]',
+    'Name of dumpster to upcycle (optional - will prompt for selection)'
+  )
   .option('-o, --output <path>', 'Output directory', './upcycles')
   .option('-s, --single-file', 'Combine all chats into single file')
   .option('--per-chat', 'Create separate file per chat (default)')
@@ -306,25 +454,50 @@ program
     const progressManager = createProgressManager(null, options.verbose);
 
     try {
-      // Validate required parameters
-      SchemaValidator.validateRequired(
-        [
-          { name: 'format', value: format },
-          { name: 'dumpsterName', value: dumpsterName },
-        ],
-        'upcycle command'
-      );
+      const { DumpsterManager } = require('./utils/DumpsterManager');
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
 
-      const normalizedFormat = SchemaValidator.validateExportFormat(
-        format,
-        ['txt', 'md', 'html'],
-        'upcycle command'
-      );
-      SchemaValidator.validateNonEmptyString(
-        dumpsterName,
-        'dumpsterName',
-        'upcycle command'
-      );
+      // Get available dumpsters
+      const dumpsters = await dm.listDumpsters();
+
+      if (dumpsters.length === 0) {
+        ErrorHandler.logWarning(
+          'No dumpsters found. Use "ddd dump" to process a ZIP file.'
+        );
+        return;
+      }
+
+      // Prompt for format selection if not provided
+      if (!format) {
+        format = await selectExportFormat();
+      } else {
+        // Validate provided format
+        SchemaValidator.validateRequired(
+          [{ name: 'format', value: format }],
+          'upcycle command'
+        );
+        format = SchemaValidator.validateExportFormat(
+          format,
+          ['txt', 'md', 'html'],
+          'upcycle command'
+        );
+      }
+
+      // Prompt for dumpster selection if not provided
+      if (!dumpsterName) {
+        dumpsterName = await selectFromDumpsters(
+          dumpsters,
+          'Select a dumpster to upcycle:'
+        );
+      } else {
+        // Validate provided dumpster name
+        SchemaValidator.validateNonEmptyString(
+          dumpsterName,
+          'dumpsterName',
+          'upcycle command'
+        );
+      }
 
       // Validate options
       const validatedOptions = SchemaValidator.validateSchema(
@@ -342,10 +515,10 @@ program
 
       progressManager.start(
         'initializing',
-        `Preparing to upcycle "${dumpsterName}" to ${normalizedFormat.toUpperCase()}...`
+        `Preparing to upcycle "${dumpsterName}" to ${format.toUpperCase()}...`
       );
       console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
-      console.log(chalk.dim(`Format: ${normalizedFormat.toUpperCase()}`));
+      console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
 
       if (validatedOptions.verbose) {
         ErrorHandler.logInfo(
@@ -355,16 +528,11 @@ program
       }
 
       // Initialize UpcycleManager
-      const { DumpsterManager } = require('./utils/DumpsterManager');
       const UpcycleManager = require('./utils/UpcycleManager');
-
-      const dm = new DumpsterManager(__dirname);
-      await dm.initialize();
 
       const upcycleManager = new UpcycleManager(dm);
 
       // Check if dumpster exists
-      const dumpsters = await dm.listDumpsters();
       const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
       if (!dumpster) {
@@ -381,11 +549,10 @@ program
         progressManager.update(progress.stage, progress.progress, progress.message);
       };
 
-      const result = await upcycleManager.upcycleDumpster(
-        dumpsterName,
-        normalizedFormat,
-        { ...validatedOptions, onProgress }
-      );
+      const result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
+        ...validatedOptions,
+        onProgress,
+      });
 
       // Display results
       const { generateExportReport } = require('./utils/upcycleHelpers');
@@ -393,7 +560,7 @@ program
       console.log(report);
 
       progressManager.succeed(
-        `Upcycle of "${dumpsterName}" to ${normalizedFormat.toUpperCase()} complete!`
+        `Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`
       );
     } catch (error) {
       progressManager.fail(`Upcycle failed: ${error.message}`);
