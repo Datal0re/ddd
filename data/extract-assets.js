@@ -80,7 +80,9 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
         ? assetJsonData.length
         : Object.keys(assetJsonData).length;
 
-      console.log(`Extracted ${assetCount} assets to ${outputPath}`);
+      if (verbose) {
+        console.log(`Extracted ${assetCount} assets to ${outputPath}`);
+      }
 
       return {
         success: true,
@@ -104,17 +106,21 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
  * Process a directory of HTML files
  */
 async function processDirectory(inputDir, outputDir, options = {}) {
-  const { recursive = false } = options;
+  const { recursive = false, verbose = false } = options;
 
   try {
     const htmlFiles = await findHtmlFiles(inputDir, recursive);
 
     if (htmlFiles.length === 0) {
-      console.warn(`No HTML files found in ${inputDir}`);
+      if (verbose) {
+        console.warn(`No HTML files found in ${inputDir}`);
+      }
       return { processed: 0, skipped: 0, errors: 0 };
     }
 
-    console.log(`Found ${htmlFiles.length} HTML files to process`);
+    if (verbose) {
+      console.log(`Found ${htmlFiles.length} HTML files to process`);
+    }
 
     let processed = 0;
     let skipped = 0;
@@ -140,9 +146,11 @@ async function processDirectory(inputDir, outputDir, options = {}) {
       }
     }
 
-    console.log(
-      `Directory processing complete: ${processed} processed, ${skipped} skipped, ${errors} errors`
-    );
+    if (verbose) {
+      console.log(
+        `Directory processing complete: ${processed} processed, ${skipped} skipped, ${errors} errors`
+      );
+    }
 
     return { processed, skipped, errors };
   } catch (error) {

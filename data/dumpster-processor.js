@@ -102,7 +102,9 @@ async function processDumpster(
     // Clean up existing dumpster directory if overwriting
     if (overwrite) {
       await FileSystemHelper.removeDirectory(paths.dumpsterPath);
-      console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
+      if (verbose) {
+        console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
+      }
     }
 
     progress.extracting(5, 'Setting up directories...');
@@ -147,7 +149,7 @@ async function processDumpster(
       verbose,
     });
 
-    if (dumpResult.errors > 0) {
+    if (verbose && dumpResult.errors > 0) {
       console.warn(`Dump completed with ${dumpResult.errors} errors`);
     }
 
@@ -162,10 +164,12 @@ async function processDumpster(
       verbose,
     });
 
-    if (assetResult.success) {
-      console.log(`Extracted ${assetResult.assetCount} assets`);
-    } else {
-      console.warn('No assets found or asset extraction failed');
+    if (verbose) {
+      if (assetResult.success) {
+        console.log(`Extracted ${assetResult.assetCount} assets`);
+      } else {
+        console.warn('No assets found or asset extraction failed');
+      }
     }
 
     progress.organizing(85, 'Organizing media files...');
@@ -188,11 +192,6 @@ async function processDumpster(
     }
 
     progress.completed('Dumpster processing complete!');
-
-    console.log(`Dumpster "${sanitizedDumpsterName}" created successfully`);
-    console.log(
-      `Conversations: ${dumpResult.processed}, Assets: ${assetResult.assetCount || 0}`
-    );
 
     return {
       success: true,

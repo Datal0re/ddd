@@ -124,12 +124,17 @@ program
         pm.update(progress.stage, progress.progress, progress.message);
       };
 
-      await dm.createDumpster(file, options.name, false, onProgress, {
+      const result = await dm.createDumpster(file, options.name, false, onProgress, {
         zipPath: file,
       });
 
-      pm.succeed(`Dumpster "${options.name}" created successfully!`);
-      ErrorHandler.logInfo(`Dumpster name: ${options.name}`, 'dump complete');
+      const stats = result.stats || {};
+      const chatCount = stats.chats || 0;
+      const assetCount = stats.assets || 0;
+
+      pm.succeed(
+        `Dumpster "${options.name}" created successfully!\n${chatCount} conversations processed, ${assetCount} assets extracted`
+      );
     } catch (error) {
       pm.fail(`Dumpster creation failed: ${error.message}`);
 
@@ -412,18 +417,14 @@ program
       const success = await dm.deleteDumpster(dumpsterName);
 
       if (success) {
-        pm.succeed(
-          `Dumpster "${dumpsterName}" burned to ashes successfully!`
-        );
+        pm.succeed(`Dumpster "${dumpsterName}" burned to ashes successfully!`);
         console.log(
           chalk.dim(
             `All ${chatCount} chats and ${sizeInMB}MB of data reduced to cinders`
           )
         );
       } else {
-        pm.fail(
-          `Failed to ignite dumpster "${dumpsterName}" - flames died out`
-        );
+        pm.fail(`Failed to ignite dumpster "${dumpsterName}" - flames died out`);
         process.exit(1);
       }
     } catch (error) {
@@ -559,9 +560,7 @@ program
       const report = generateExportReport(result);
       console.log(report);
 
-      pm.succeed(
-        `Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`
-      );
+      pm.succeed(`Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`);
     } catch (error) {
       pm.fail(`Upcycle failed: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);

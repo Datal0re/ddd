@@ -53,7 +53,9 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     ? FileSystemHelper.joinPath(outputDir, 'chats')
     : outputDir;
 
-  console.log(`Dumping chats from ${resolvedInputPath} to ${finalOutputDir}`);
+  if (verbose) {
+    console.log(`Dumping chats from ${resolvedInputPath} to ${finalOutputDir}`);
+  }
 
   try {
     // Read and validate input file
@@ -63,7 +65,9 @@ async function dumpChats(inputPath, outputDir, options = {}) {
       throw new Error('Expected an array of chats in input file');
     }
 
-    console.log(`Found ${chats.length} chats to process`);
+    if (verbose) {
+      console.log(`Found ${chats.length} chats to process`);
+    }
 
     // Sort newest first
     chats.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
@@ -112,15 +116,19 @@ async function dumpChats(inputPath, outputDir, options = {}) {
       try {
         const fs = require('fs').promises; // Use original fs for unlink since FileSystemHelper doesn't have it
         await fs.unlink(resolvedInputPath);
-        console.log('Removed original conversations.json file');
+        if (verbose) {
+          console.log('Removed original conversations.json file');
+        }
       } catch (err) {
         console.warn(`Failed to remove original file: ${err.message}`);
       }
     }
 
-    console.log(
-      `dump completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
-    );
+    if (verbose) {
+      console.log(
+        `dump completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
+      );
+    }
 
     return {
       processed,
