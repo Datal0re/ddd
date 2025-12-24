@@ -15,7 +15,10 @@
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "node tests/full-suite-test.js",
+    "test:help": "node tests/help-test.js",
+    "test:validate": "node tests/test-utils.js --validate-only"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.1.0",

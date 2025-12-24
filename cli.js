@@ -249,7 +249,7 @@ program
 
       // Prompt for limit if not provided
       let limit;
-      if (!options.limit || options.limit === '10') {
+      if (!options.limit) {
         limit = parseInt(
           await input({
             message: 'How many chats would you like to see?',
