@@ -3,26 +3,17 @@
 # Define variables
 zip="./test.zip"
 dumpster_name="test_dumpster"
-output_file="test_output.txt"
+output_file="./logs/full_suite_test_output.txt"
 ddd_commands=("dump" "hoard" "rummage" "upcycle" "burn")
 upcycle_formats=("md" "txt" "html")
 
-# Start the dumpster lifecycle test
-echo "Beginning dumpster lifecycle test..."
+# Start the dumpster full suite test
+echo "Beginning dumpster full suite test..."
 echo "Test started on: " $(date) "\n" > $output_file
 
-echo "=========== TESTING HELP COMMANDS ===========\n" >> $output_file
-
-# Test help commands for each ddd command
-for command in "${ddd_commands[@]}"; do
-    echo "Testing output of 'ddd help $command'... "
-
-    echo "\n------------------------------------------" >> $output_file
-    echo "Testing output of 'ddd help $command'... " >> $output_file
-    echo "------------------------------------------\n" >> $output_file
-    ddd help $command &>> $output_file
-done
-echo "Help commands test complete."
+#Run help test
+echo "Testing help commands..."
+./help.test.zsh >> $output_file
 
 # Test creating a new dumpster
 echo "Testing creation of new dumpster '$dumpster_name'... "
@@ -44,7 +35,7 @@ ddd $ddd_commands[2] &>> $output_file
 
 echo "hoard test comlete."
 
-# Test rummaging through the dumpster
+# # Test rummaging through the dumpster (currently broken, commenting out for now)
 # echo "Testing rummaging through dumpster '$dumpster_name'... "
 
 # echo "\n------------------------------------------" >> $output_file
