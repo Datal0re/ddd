@@ -17,7 +17,7 @@ This is a focused CLI tool for processing ChatGPT conversation data:
 
 - **cli.js**: Command-line interface with Commander.js
 - **utils/DumpsterManager.js**: Core dumpster lifecycle management
-- **utils/fsHelpers.js**: File operations and validation
+- **utils/FileSystemHelper.js**: File operations and validation
 - **utils/ChatUpcycler.js**: Chat message processing and export functionality
 - **utils/UpcycleManager.js**: Export format management and coordination
 - **data/**: Processing scripts for dumping and extraction
@@ -74,7 +74,7 @@ data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point
 ├── utils/                    # Core utilities
 │   ├── DumpsterManager.js    # Dumpster management
-│   ├── fsHelpers.js         # File operations
+│   ├── FileSystemHelper.js         # File operations
 │   ├── pathUtils.js          # Path operations & searching
 │   ├── assetUtils.js         # Asset handling utilities
 │   ├── ChatUpcycler.js      # Chat message processing & export

@@ -318,8 +318,8 @@ data-dumpster-diver/
 │   ├── ProgressManager.js   # Progress tracking system
 │   ├── SchemaValidator.js   # Data validation schemas
 │   ├── UpcycleManager.js    # Export format management
-│   ├── assetUtils.js         # Asset handling utilities
-│   ├── pathUtils.js          # Path operations & searching
+│   ├── AssetUtils.js         # Asset handling utilities
+│   ├── PathUtils.js          # Path operations & searching
 │   ├── upcycleHelpers.js    # Export helper functions
 │   ├── Validators.js         # Input validation
 │   ├── ZipProcessor.js       # ZIP processing & security

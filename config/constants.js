@@ -54,7 +54,7 @@ const MEDIA_PATTERNS = [
   /^audio\//, // Audio files
   /^dalle-generations\//, // DALL-E images
   /\.(jpeg|jpg|png|gif|webp)$/i, // Image extensions
-  /\.(wav|mp3|m4a|ogg)$/i, // Audio extensions
+  /\.(dat|wav|mp3|m4a|ogg)$/i, // Audio extensions
 ];
 
 // Progress stages
