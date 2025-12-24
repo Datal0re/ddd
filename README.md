@@ -164,6 +164,40 @@ ddd upcycle html my-chats --self-contained --single-file
 ddd upcycle md my-chats --include-media --verbose
 ```
 
+### 📝 Export Formatters
+
+The project uses a modular formatter system with a base class and format-specific implementations:
+
+#### BaseFormatter
+
+Abstract base class that defines the interface for all formatters:
+
+- `formatChat(processedChat, options)` - Format individual chat
+- `combineChats(results)` - Combine multiple chats for single-file export
+- `getFileExtension()` - Get file extension for the format
+- `getMimeType()` - Get MIME type for the format
+
+#### HTMLFormatter
+
+- **Features**: Full HTML export with CSS styling
+- **Media Support**: Embedded or linked assets
+- **Self-contained**: Option to include all assets inline
+- **Rich Content**: Preserves formatting, links, and structure
+
+#### MDFormatter
+
+- **Format**: Clean Markdown with proper headers
+- **Code Blocks**: Preserves code formatting with syntax highlighting hints
+- **Links**: Maintains clickable links and references
+- **Compatibility**: Works with all Markdown viewers
+
+#### TXTFormatter
+
+- **Simplicity**: Plain text with minimal formatting
+- **Readability**: Clean, accessible format
+- **Compatibility**: Works with any text editor
+- **Size**: Most compact export option
+
 ## 🏗️ Architecture
 
 The codebase follows a clean, modular architecture with clear separation of concerns:
@@ -171,8 +205,8 @@ The codebase follows a clean, modular architecture with clear separation of conc
 ```text
 CLI Layer (cli.js)
 ├── Commands: dump, hoard, rummage, burn, upcycle
-├── User Interface & Error Handling
-└── Progress Display
+├── User Interface & Error Handling (@inquirer/prompts)
+└── Progress Display (ProgressManager.js)
 
 Business Logic Layer (DumpsterManager.js)
 ├── Dumpster Lifecycle Management
@@ -184,21 +218,30 @@ Export Layer (UpcycleManager.js)
 ├── Asset Processing & Copying
 └── Output Generation
 
+Formatter System (utils/formatters/)
+├── BaseFormatter.js - Abstract base class
+├── HTMLFormatter.js - HTML export with media support
+├── MDFormatter.js - Markdown export formatting
+└── TXTFormatter.js - Plain text export
+
 Processing Layer (data/)
 ├── dumpster-processor.js - Main orchestration
 ├── chat-dumper.js - Conversation processing
 └── extract-assets.js - Asset extraction
 
 Utility Layer (utils/)
-├── fsHelpers.js - File system operations
+├── FileSystemHelper.js - File system operations
+├── ProgressManager.js - Progress tracking system
+├── ErrorHandler.js - Centralized error handling
+├── SchemaValidator.js - Data validation
+├── CommonUtils.js - Shared utility functions
 ├── pathUtils.js - Path manipulation & searching
-├── assetUtils.js - Asset handling
+├── assetUtils.js - Asset handling utilities
 ├── ChatUpcycler.js - Chat processing for export
 ├── upcycleHelpers.js - Export helper functions
 ├── zipProcessor.js - ZIP processing & security
 ├── validators.js - Input validation
-├── progressTracker.js - Progress tracking
-└── formatters/ - Export format handlers
+└── progressTracker.js - Legacy progress tracking (deprecated)
 ```
 
 ## 🗂️ Data Organization
@@ -268,21 +311,25 @@ data-dumpster-diver/
 │   ├── chat-dumper.js      # Chat data processing
 │   └── extract-assets.js     # Asset extraction from HTML
 ├── utils/
-│   ├── DumpsterManager.js    # Core dumpster management
-│   ├── fsHelpers.js         # File system operations
-│   ├── pathUtils.js          # Path operations & searching
-│   ├── assetUtils.js         # Asset handling utilities
 │   ├── ChatUpcycler.js      # Chat message processing & export
+│   ├── CommonUtils.js       # Common utility functions
+│   ├── DumpsterManager.js    # Core dumpster management
+│   ├── ErrorHandler.js      # Centralized error handling
+│   ├── FileSystemHelper.js   # File system operations
+│   ├── ProgressManager.js   # Progress tracking system
+│   ├── SchemaValidator.js   # Data validation schemas
 │   ├── UpcycleManager.js    # Export format management
-│   ├── zipProcessor.js       # ZIP processing & security
-│   ├── validators.js         # Input validation
-│   ├── progressTracker.js    # Progress tracking
+│   ├── assetUtils.js         # Asset handling utilities
+│   ├── pathUtils.js          # Path operations & searching
+│   ├── progressTracker.js    # Legacy progress tracking (deprecated)
 │   ├── upcycleHelpers.js    # Export helper functions
+│   ├── validators.js         # Input validation
+│   ├── zipProcessor.js       # ZIP processing & security
 │   └── formatters/          # Export formatters
-│       ├── BaseFormatter.js
-│       ├── HTMLFormatter.js
-│       ├── MDFormatter.js
-│       └── TXTFormatter.js
+│       ├── BaseFormatter.js  # Base formatter class
+│       ├── HTMLFormatter.js  # HTML export formatter
+│       ├── MDFormatter.js    # Markdown export formatter
+│       └── TXTFormatter.js   # Plain text export formatter
 ├── AGENTS.md               # Development guidelines
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License
@@ -331,12 +378,51 @@ Configuration is handled through `config/constants.js`:
   - `createProjectTempDir()` for project temp directories
 - **Enhanced Documentation**: Comprehensive JSDoc explaining consolidation rationale
 
+### Utility System Updates
+
+- **ProgressManager.js**: New progress tracking system replacing deprecated `progressTracker.js`
+  - Consistent progress updates across export operations
+  - Better integration with CLI display
+  - Improved error handling and reporting
+- **FileSystemHelper.js**: Renamed from `fsHelpers.js` for better consistency
+- **CommonUtils.js**: Shared utility functions for common operations
+- **ErrorHandler.js**: Centralized error handling and logging
+- **SchemaValidator.js**: Data validation schemas for integrity checking
+
 ### Architecture Improvements
 
 - **Clear Separation of Concerns**: Utility modules have focused responsibilities
 - **Better Error Handling**: Consistent patterns across all modules
 - **Improved Performance**: Better APIs and reduced redundancy
 - **Enhanced Security**: Centralized path validation with comprehensive checks
+
+### CLI and User Experience
+
+- **@inquirer/prompts**: Modern interactive prompts for better user experience
+- **Enhanced Commands**: Improved CLI structure with better error handling
+- **Legacy Removal**: Cleaned up deprecated code and streamlined interfaces
+
+## 🧪 Testing
+
+## 📦 Dependencies
+
+### Core Dependencies
+
+- **@inquirer/prompts**: Interactive command-line prompts for better user experience
+- **chalk**: Terminal string styling for colorful output
+- **commander**: Complete solution for Node.js command-line interfaces
+- **decompress**: Decompress ZIP files with security validation
+- **marked**: Markdown parser for HTML exports
+- **ora**: Elegant terminal spinners for progress indication
+- **sanitize-html**: HTML sanitizer for secure content processing
+- **uuid**: Generate RFC-compliant UUIDs for unique identifiers
+
+### Development Dependencies
+
+- **eslint**: JavaScript linting for code quality
+- **eslint-config-prettier**: ESLint configuration for Prettier compatibility
+- **nodemon**: Auto-restart development server on file changes
+- **prettier**: Opinionated code formatter
 
 ## 🧪 Testing
 
