@@ -7,7 +7,7 @@ const FileSystemHelper = require('../utils/FileSystemHelper.js');
 const PathUtils = require('../utils/PathUtils.js');
 const ZipProcessor = require('../utils/ZipProcessor.js');
 const AssetUtils = require('../utils/AssetUtils.js');
-const { createProgressTracker } = require('../utils/ProgressTracker.js');
+const { createProgressManager } = require('../utils/ProgressManager.js');
 const fs = require('fs').promises; // Keep for operations not in FileSystemHelper
 const path = require('path');
 const { dumpChats } = require('./chat-dumper.js');
@@ -53,7 +53,7 @@ async function processDumpster(
   }
 
   // Create unified progress tracker
-  const baseTracker = createProgressTracker(onProgress, verbose);
+  const baseTracker = createProgressManager(onProgress, verbose);
   const progress = {
     initializing: message => baseTracker.update('initializing', 0, message),
     extracting: (percent, message) =>

@@ -71,34 +71,40 @@ node cli.js upcycle    # Export dumpsters to various formats
 
 ```text
 data-dumpster-diver/
-├── cli.js                    # Main CLI entry point
-├── utils/                    # Core utilities
-│   ├── DumpsterManager.js    # Dumpster management
-│   ├── FileSystemHelper.js         # File operations
-│   ├── pathUtils.js          # Path operations & searching
-│   ├── assetUtils.js         # Asset handling utilities
-│   ├── ChatUpcycler.js      # Chat message processing & export
-│   ├── UpcycleManager.js    # Export format management
-│   ├── ZipProcessor.js       # ZIP processing & security
-│   ├── Validators.js         # Input validation
-│   ├── progressTracker.js    # Progress tracking
-│   ├── upcycleHelpers.js    # Export helper functions
-│   └── formatters/          # Export formatters
-│       ├── BaseFormatter.js
-│       ├── HTMLFormatter.js
-│       ├── MDFormatter.js
-│       └── TXTFormatter.js
-├── data/                    # Data processing
-│   ├── dumpster-processor.js # Main processing orchestration
-│   ├── chat-dumper.js      # Chat data processing
-│   └── extract-assets.js   # Asset extraction from HTML
+├── cli.js                  # Main CLI entry point
+├── package.json            # Dependencies and scripts
+├── eslint.config.js        # ESLint configuration
+├── .prettierrc.json        # Prettier configuration
+├── .prettierignore         # Prettier ignore rules
 ├── config/
-│   └── constants.js         # Configuration constants
-├── package.json             # Dependencies and scripts
-├── README.md                # User documentation
-├── AGENTS.md               # Development guidelines
+│   └── constants.js          # Configuration constants
+├── data/
+│   ├── dumpster-processor.js # Main processing orchestration
+│   ├── chat-dumper.js        # Chat data processing
+│   └── extract-assets.js     # Asset extraction from HTML
+├── utils/
+│   ├── ChatUpcycler.js       # Chat message processing & export
+│   ├── CommonUtils.js        # Common utility functions
+│   ├── DumpsterManager.js    # Core dumpster management
+│   ├── ErrorHandler.js       # Centralized error handling
+│   ├── FileSystemHelper.js   # File system operations
+│   ├── ProgressManager.js    # Progress tracking system
+│   ├── SchemaValidator.js    # Data validation schemas
+│   ├── UpcycleManager.js     # Export format management
+│   ├── AssetUtils.js         # Asset handling utilities
+│   ├── PathUtils.js          # Path operations & searching
+│   ├── upcycleHelpers.js     # Export helper functions
+│   ├── Validators.js         # Input validation
+│   ├── ZipProcessor.js       # ZIP processing & security
+│   └── formatters/          # Export formatters
+│       ├── BaseFormatter.js  # Base formatter class
+│       ├── HTMLFormatter.js  # HTML export formatter
+│       ├── MDFormatter.js    # Markdown export formatter
+│       └── TXTFormatter.js   # Plain text export formatter
+├── AGENTS.md               # This file
 ├── CHANGELOG.md            # Version history
-└── LICENSE                 # MIT License
+├── LICENSE                 # MIT License
+└── README.md               # README
 ```
 
 ## Testing

@@ -249,7 +249,7 @@ class ZipProcessor {
     isBuffer = true,
     onProgress = null
   ) {
-    const { createProgressTracker } = require('./ProgressTracker');
+    const { createProgressManager } = require('./ProgressManager');
     const { moveFilesToFinalLocations } = require('./AssetUtils');
 
     const decompress = await getDecompress();
@@ -262,7 +262,7 @@ class ZipProcessor {
       );
 
       // Create unified progress tracker
-      const progress = createProgressTracker(onProgress);
+      const progress = createProgressManager(onProgress);
 
       // Validate upload before processing
       progress.update('validating', 0, 'Validating upload...');

@@ -12,7 +12,7 @@ const program = new Command();
 program
   .name('ddd')
   .description('CLI tool to process and explore exported ChatGPT conversation data')
-  .version('0.0.1');
+  .version('0.0.2');
 
 // Helper functions for common prompt patterns
 async function promptForFilePath() {
@@ -84,7 +84,7 @@ program
   )
   .option('-v, --verbose', 'verbose output')
   .action(async (file, options) => {
-    const progressManager = createProgressManager(null, options.verbose);
+    const pm = createProgressManager(null, options.verbose);
 
     try {
       // Prompt for file path if not provided
@@ -114,24 +114,24 @@ program
       });
 
       // Create progress spinner
-      progressManager.start('initializing', 'Initializing dumpster creation...');
+      pm.start('initializing', 'Initializing dumpster creation...');
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
 
       const onProgress = progress => {
-        progressManager.update(progress.stage, progress.progress, progress.message);
+        pm.update(progress.stage, progress.progress, progress.message);
       };
 
       await dm.createDumpster(file, options.name, false, onProgress, {
         zipPath: file,
       });
 
-      progressManager.succeed(`Dumpster "${options.name}" created successfully!`);
+      pm.succeed(`Dumpster "${options.name}" created successfully!`);
       ErrorHandler.logInfo(`Dumpster name: ${options.name}`, 'dump complete');
     } catch (error) {
-      progressManager.fail(`Dumpster creation failed: ${error.message}`);
+      pm.fail(`Dumpster creation failed: ${error.message}`);
 
       if (options.verbose) {
         console.error(error.stack);
@@ -266,17 +266,17 @@ program
         });
       }
 
-      const progressManager = createProgressManager(null, options.verbose);
-      progressManager.start('initializing', `Loading chats from "${dumpsterName}"...`);
+      const pm = createProgressManager(null, options.verbose);
+      pm.start('initializing', `Loading chats from "${dumpsterName}"...`);
 
       const chats = await dm.getChats(dumpsterName, limit);
 
       if (chats.length === 0) {
-        progressManager.warn(`No chats found in "${dumpsterName}"`);
+        pm.warn(`No chats found in "${dumpsterName}"`);
         return;
       }
 
-      progressManager.succeed(
+      pm.succeed(
         `Found ${chats.length} chat${chats.length !== 1 ? 's' : ''} in "${dumpsterName}"`
       );
       console.log(chalk.blue(`💬 Chats in ${dumpsterName}:`));
@@ -307,7 +307,7 @@ program
   .option('-f, --force', 'skip confirmation prompt')
   .option('--dry-run', 'show what would be burned without actually burning')
   .action(async (dumpsterName, options) => {
-    const progressManager = createProgressManager(null, false); // No spinner for burn
+    const pm = createProgressManager(null, false); // No spinner for burn
 
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');
@@ -356,7 +356,7 @@ program
       // Check if dumpster exists
       const dumpster = dm.getDumpster(dumpsterName);
       if (!dumpster) {
-        ErrorHandler.logError(
+        ErrorHandler.handleFileError(
           `Dumpster "${dumpsterName}" not found - nothing to burn`,
           'burn command'
         );
@@ -412,7 +412,7 @@ program
       const success = await dm.deleteDumpster(dumpsterName);
 
       if (success) {
-        progressManager.succeed(
+        pm.succeed(
           `Dumpster "${dumpsterName}" burned to ashes successfully!`
         );
         console.log(
@@ -421,13 +421,13 @@ program
           )
         );
       } else {
-        progressManager.fail(
+        pm.fail(
           `Failed to ignite dumpster "${dumpsterName}" - flames died out`
         );
         process.exit(1);
       }
     } catch (error) {
-      progressManager.fail(`Failed to start dumpster fire: ${error.message}`);
+      pm.fail(`Failed to start dumpster fire: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'burning dumpster', null, false);
       process.exit(1);
     }
@@ -451,7 +451,7 @@ program
   .option('--self-contained', 'Embed assets in output (HTML only)')
   .option('-v, --verbose', 'Verbose output')
   .action(async (format, dumpsterName, options) => {
-    const progressManager = createProgressManager(null, options.verbose);
+    const pm = createProgressManager(null, options.verbose);
 
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');
@@ -513,7 +513,7 @@ program
         'upcycle command'
       );
 
-      progressManager.start(
+      pm.start(
         'initializing',
         `Preparing to upcycle "${dumpsterName}" to ${format.toUpperCase()}...`
       );
@@ -536,7 +536,7 @@ program
       const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
       if (!dumpster) {
-        progressManager.fail(`Dumpster "${dumpsterName}" not found`);
+        pm.fail(`Dumpster "${dumpsterName}" not found`);
         ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
         dumpsters.forEach(d => {
           console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
@@ -546,7 +546,7 @@ program
 
       // Perform upcycle with progress tracking
       const onProgress = progress => {
-        progressManager.update(progress.stage, progress.progress, progress.message);
+        pm.update(progress.stage, progress.progress, progress.message);
       };
 
       const result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
@@ -559,11 +559,11 @@ program
       const report = generateExportReport(result);
       console.log(report);
 
-      progressManager.succeed(
+      pm.succeed(
         `Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`
       );
     } catch (error) {
-      progressManager.fail(`Upcycle failed: ${error.message}`);
+      pm.fail(`Upcycle failed: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);
       process.exit(1);
     }
