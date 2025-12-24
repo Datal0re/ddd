@@ -8,8 +8,7 @@ const PathUtils = require('../utils/PathUtils.js');
 const ZipProcessor = require('../utils/ZipProcessor.js');
 const AssetUtils = require('../utils/AssetUtils.js');
 const { createProgressManager } = require('../utils/ProgressManager.js');
-const fs = require('fs').promises; // Keep for operations not in FileSystemHelper
-const path = require('path');
+const Validators = require('../utils/Validators.js');
 const { dumpChats } = require('./chat-dumper.js');
 const { extractAssetsFromHtml } = require('./extract-assets.js');
 
@@ -48,9 +47,17 @@ async function processDumpster(
   const { overwrite = false, verbose = false, zipPath = null } = options;
 
   // Validate inputs
-  if (!zipData || !dumpsterName || !baseDir) {
-    throw new Error('zipData, dumpsterName, and baseDir are required');
-  }
+  Validators.validateRequiredParams(
+    [
+      { name: 'zipData', value: zipData },
+      { name: 'dumpsterName', value: dumpsterName },
+      { name: 'baseDir', value: baseDir },
+    ],
+    'processDumpster'
+  );
+
+  Validators.validateNonEmptyString(dumpsterName, 'dumpsterName');
+  Validators.validateNonEmptyString(baseDir, 'baseDir');
 
   // Create unified progress tracker
   const baseTracker = createProgressManager(onProgress, verbose);
@@ -76,20 +83,16 @@ async function processDumpster(
 
   // Create base directories
   await FileSystemHelper.ensureDirectory(baseDir);
-  const dumpsterDir = path.join(baseDir, 'data', 'dumpsters', sanitizedDumpsterName);
+  const paths = FileSystemHelper.getDumpsterPaths(baseDir, sanitizedDumpsterName);
   const tempDir = createProjectTempDir(baseDir);
 
   // Check if dumpster already exists
   if (!overwrite) {
-    try {
-      await fs.access(dumpsterDir);
+    const exists = await FileSystemHelper.fileExists(paths.dumpsterPath);
+    if (exists) {
       throw new Error(
         `Dumpster "${sanitizedDumpsterName}" already exists. Use --overwrite to replace it.`
       );
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        throw error;
-      }
     }
   }
 
@@ -98,21 +101,15 @@ async function processDumpster(
 
     // Clean up existing dumpster directory if overwriting
     if (overwrite) {
-      try {
-        await PathUtils.removeDirectories(dumpsterDir);
-        console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
-      } catch (error) {
-        if (error.code !== 'ENOENT') {
-          console.warn(`Failed to remove existing directory: ${error.message}`);
-        }
-      }
+      await FileSystemHelper.removeDirectory(paths.dumpsterPath);
+      console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
     }
 
     progress.extracting(5, 'Setting up directories...');
 
     // Ensure directories exist
     await FileSystemHelper.ensureDirectory(tempDir);
-    await FileSystemHelper.ensureDirectory(dumpsterDir);
+    await FileSystemHelper.ensureDumpsterStructure(paths.dumpsterPath);
 
     progress.extracting(10, 'Extracting ZIP file...');
 
@@ -141,7 +138,7 @@ async function processDumpster(
 
     // Dump conversations using detected paths (previously hardcoded)
     const chatsInput = dirStructure.chatsPath;
-    const chatsOutput = path.join(dumpsterDir, 'chats');
+    const chatsOutput = paths.chatsPath;
 
     const dumpResult = await dumpChats(chatsInput, chatsOutput, {
       createSubdirs: false,
@@ -158,7 +155,7 @@ async function processDumpster(
 
     // Extract assets using detected path (previously hardcoded)
     const chatHtmlPath = dirStructure.chatHtmlPath;
-    const assetsJsonPath = path.join(dumpsterDir, 'assets.json');
+    const assetsJsonPath = paths.assetsJsonPath;
 
     const assetResult = await extractAssetsFromHtml(chatHtmlPath, assetsJsonPath, {
       overwrite: true,
@@ -174,7 +171,7 @@ async function processDumpster(
     progress.organizing(85, 'Organizing media files...');
 
     // Create media directory and move files
-    const dumpsterMediaDir = path.join(dumpsterDir, 'media');
+    const dumpsterMediaDir = paths.mediaPath;
 
     const mediaResult = await AssetUtils.moveMediaFiles(dumpsterMediaDir, {
       verbose,
@@ -184,7 +181,7 @@ async function processDumpster(
     progress.validating(95, 'Validating dumpster...');
 
     // Validate dumpster structure
-    const validation = await validateDumpster(dumpsterDir);
+    const validation = await validateDumpster(paths.dumpsterPath);
 
     if (!validation.isValid) {
       throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
@@ -200,7 +197,7 @@ async function processDumpster(
     return {
       success: true,
       dumpsterName: sanitizedDumpsterName,
-      dumpsterDir,
+      dumpsterDir: paths.dumpsterPath,
       stats: {
         chats: dumpResult.processed,
         assets: assetResult.assetCount || 0,
@@ -212,13 +209,9 @@ async function processDumpster(
     throw error;
   } finally {
     // Always clean up temporary directory
-    try {
-      await PathUtils.removeDirectories(tempDir);
-      if (verbose) {
-        console.debug('Cleaned up temporary directory');
-      }
-    } catch (cleanupError) {
-      console.warn(`Failed to cleanup temp directory: ${cleanupError.message}`);
+    await FileSystemHelper.removeDirectory(tempDir);
+    if (verbose) {
+      console.debug('Cleaned up temporary directory');
     }
   }
 }
@@ -226,41 +219,44 @@ async function processDumpster(
 /**
  * Validate dumpster structure
  */
-async function validateDumpster(dumpsterDir) {
+async function validateDumpster(dumpsterPath) {
   const errors = [];
   const warnings = [];
 
   try {
-    // Check required directories
-    const requiredDirs = ['chats', 'media'];
-    for (const dir of requiredDirs) {
-      const dirPath = path.join(dumpsterDir, dir);
-      try {
-        await fs.access(dirPath);
-      } catch {
-        errors.push(`Missing required directory: ${dir}`);
-      }
+    // Use FileSystemHelper for basic structure validation
+    const structureValidation =
+      await FileSystemHelper.validateDumpsterStructure(dumpsterPath);
+
+    if (!structureValidation.isValid) {
+      errors.push(
+        ...structureValidation.missing.map(
+          path => `Missing required directory: ${path}`
+        )
+      );
     }
 
+    // Get standard paths for this dumpster
+    const paths = FileSystemHelper.getDumpsterPaths(
+      FileSystemHelper.getDirName(dumpsterPath),
+      FileSystemHelper.getBaseName(dumpsterPath)
+    );
+
     // Check chat files
-    const chatsDir = path.join(dumpsterDir, 'chats');
     try {
-      const files = await fs.readdir(chatsDir);
+      const files = await FileSystemHelper.listDirectory(paths.chatsPath);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
 
       if (jsonFiles.length === 0) {
         errors.push('No chat files found');
       }
     } catch {
-      // Already caught above
+      // Already caught above in structure validation
     }
 
     // Check assets.json
-    const assetsPath = path.join(dumpsterDir, 'assets.json');
     try {
-      await fs.access(assetsPath);
-      const content = await fs.readFile(assetsPath, 'utf8');
-      JSON.parse(content); // Validate JSON
+      await FileSystemHelper.readJsonFile(paths.assetsJsonPath);
     } catch {
       warnings.push('assets.json missing or invalid');
     }
