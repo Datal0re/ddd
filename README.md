@@ -239,9 +239,8 @@ Utility Layer (utils/)
 ├── assetUtils.js - Asset handling utilities
 ├── ChatUpcycler.js - Chat processing for export
 ├── upcycleHelpers.js - Export helper functions
-├── zipProcessor.js - ZIP processing & security
-├── validators.js - Input validation
-└── progressTracker.js - Legacy progress tracking (deprecated)
+├── ZipProcessor.js - ZIP processing & security
+└── Validators.js - Input validation
 ```
 
 ## 🗂️ Data Organization
@@ -321,10 +320,9 @@ data-dumpster-diver/
 │   ├── UpcycleManager.js    # Export format management
 │   ├── assetUtils.js         # Asset handling utilities
 │   ├── pathUtils.js          # Path operations & searching
-│   ├── progressTracker.js    # Legacy progress tracking (deprecated)
 │   ├── upcycleHelpers.js    # Export helper functions
-│   ├── validators.js         # Input validation
-│   ├── zipProcessor.js       # ZIP processing & security
+│   ├── Validators.js         # Input validation
+│   ├── ZipProcessor.js       # ZIP processing & security
 │   └── formatters/          # Export formatters
 │       ├── BaseFormatter.js  # Base formatter class
 │       ├── HTMLFormatter.js  # HTML export formatter
@@ -401,8 +399,6 @@ Configuration is handled through `config/constants.js`:
 - **@inquirer/prompts**: Modern interactive prompts for better user experience
 - **Enhanced Commands**: Improved CLI structure with better error handling
 - **Legacy Removal**: Cleaned up deprecated code and streamlined interfaces
-
-## 🧪 Testing
 
 ## 📦 Dependencies
 

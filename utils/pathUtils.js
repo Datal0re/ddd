@@ -171,7 +171,7 @@ class PathUtils {
    * Consolidated path validation to prevent traversal attacks
    *
    * This is the primary implementation for path security validation. Previously
-   * duplicated in zipProcessor.js - now consolidated here as single source of truth.
+   * duplicated in ZipProcessor.js - now consolidated here as single source of truth.
    * Validates against path traversal, null bytes, and dangerous characters.
    *
    * @param {string} filePath - File path to validate for security

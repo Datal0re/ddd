@@ -79,8 +79,8 @@ data-dumpster-diver/
 │   ├── assetUtils.js         # Asset handling utilities
 │   ├── ChatUpcycler.js      # Chat message processing & export
 │   ├── UpcycleManager.js    # Export format management
-│   ├── zipProcessor.js       # ZIP processing & security
-│   ├── validators.js         # Input validation
+│   ├── ZipProcessor.js       # ZIP processing & security
+│   ├── Validators.js         # Input validation
 │   ├── progressTracker.js    # Progress tracking
 │   ├── upcycleHelpers.js    # Export helper functions
 │   └── formatters/          # Export formatters
