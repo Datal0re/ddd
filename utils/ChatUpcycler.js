@@ -71,6 +71,13 @@ function extractFilenameFromPointer(assetPointer) {
     assetKey = assetKey.replace(/\.(dat|wav|mp3|m4a)$/i, '');
   }
 
+  // Clean up any remaining URL encoding or special characters
+  try {
+    assetKey = decodeURIComponent(assetKey);
+  } catch {
+    // If decoding fails, use the original key
+  }
+
   return assetKey;
 }
 
@@ -133,79 +140,102 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
 
   // Extract filename from asset pointer
   const assetKey = extractFilenameFromPointer(assetPointer);
+  if (!assetKey) {
+    return null;
+  }
+
   const mediaDir = getMediaDir(baseDir, dumpsterName);
 
-  // First try to use asset mapping if available
-  if (assetMapping[assetPointer]) {
-    const mappedFile = assetMapping[assetPointer];
-    const filename =
-      typeof mappedFile === 'string' ? mappedFile : mappedFile.name || '';
+  // Enhanced asset mapping search with multiple strategies
+  const mappingStrategies = [
+    // Direct pointer mapping
+    () => assetMapping[assetPointer],
+    // Try without prefix
+    () => assetMapping[assetKey],
+    // Try with common prefixes removed
+    () => assetMapping[`file-${assetKey.replace(/^file-/, '')}`],
+    // Try matching any key that contains the asset key
+    () => {
+      const matchingKeys = Object.keys(assetMapping).filter(
+        key =>
+          key.includes(assetKey) ||
+          assetKey.includes(key.replace(/^(file-service:\/\/|sediment:\/\/)/, ''))
+      );
+      return matchingKeys.length > 0 ? assetMapping[matchingKeys[0]] : null;
+    },
+  ];
 
-    if (filename) {
-      try {
-        const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, filename);
-        if (files.length > 0) {
-          // Extract relative path from the found file
-          const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
-          if (relativePath) {
-            return FileSystemHelper.joinPath('media', relativePath);
+  // Try all mapping strategies
+  for (const strategy of mappingStrategies) {
+    try {
+      const mappedFile = strategy();
+      if (mappedFile) {
+        const filename =
+          typeof mappedFile === 'string' ? mappedFile : mappedFile.name || '';
+        if (filename) {
+          const foundPath = await searchForFileInMedia(
+            mediaDir,
+            filename,
+            dumpsterName
+          );
+          if (foundPath) {
+            return foundPath;
           }
-          // Fallback to original behavior
-          return FileSystemHelper.joinPath('media', filename);
         }
-      } catch (error) {
-        logWarning(`Error finding mapped asset file ${assetKey}`, error);
       }
+    } catch {
+      // Continue to next strategy
     }
   }
 
-  // Try to extract base filename and search for files
+  // Enhanced filename search with more possibilities
   const baseAssetId = assetPointer.replace(/^(file-service:\/\/|sediment:\/\/)/, '');
   const possibleNames = [
+    assetKey,
     baseAssetId,
+    `file-${baseAssetId.replace(/^file-/, '')}`,
     baseAssetId + '.jpeg',
     baseAssetId + '.jpg',
     baseAssetId + '.png',
+    baseAssetId + '.webp',
+    baseAssetId + '.gif',
+    baseAssetId + '.mp4',
+    baseAssetId + '.webm',
+    baseAssetId + '.wav',
+    baseAssetId + '.mp3',
+    baseAssetId + '.m4a',
+    baseAssetId + '.dat',
   ];
 
-  // Search in main media directory and all subdirectories
-  const searchDirs = [mediaDir];
-
-  // Add subdirectories of media directory to search paths
-  try {
-    const subdirs = await PathUtils.findFiles(mediaDir, {
-      recursive: false,
-      includeDirs: true,
-      filter: (filename, fullPath, stats) => stats.isDirectory(),
-    });
-    searchDirs.push(...subdirs);
-  } catch (error) {
-    // If we can't list subdirectories, continue with just the main media directory
-    logWarning(`Could not list subdirectories in ${mediaDir}`, error);
+  // Search with all possible names
+  const foundPath = await searchWithMultipleNames(
+    mediaDir,
+    possibleNames,
+    dumpsterName
+  );
+  if (foundPath) {
+    return foundPath;
   }
 
-  for (const searchDir of searchDirs) {
-    for (const name of possibleNames) {
-      try {
-        const files = await PathUtils.cachedRecursivelyFindFiles(searchDir, name);
-        if (files.length > 0) {
-          // Extract relative path from the found file
-          const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
-          if (relativePath) {
-            return FileSystemHelper.joinPath('media', relativePath);
-          }
-          // Fallback to original behavior
-          return FileSystemHelper.joinPath('media', name);
-        }
-      } catch {
-        continue;
-      }
-    }
+  // Last resort: partial match search
+  const partialMatchPath = await searchWithPartialMatch(
+    mediaDir,
+    assetKey,
+    dumpsterName
+  );
+  if (partialMatchPath) {
+    return partialMatchPath;
   }
 
-  // Fallback search
+  return null;
+}
+
+/**
+ * Helper function to search for a specific file in media directory
+ */
+async function searchForFileInMedia(mediaDir, filename, _dumpsterName) {
   try {
-    const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, assetKey);
+    const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, filename);
     if (files.length > 0) {
       // Extract relative path from the found file
       const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
@@ -213,19 +243,61 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
         return FileSystemHelper.joinPath('media', relativePath);
       }
       // Fallback to original behavior
-      return FileSystemHelper.joinPath('media', assetKey);
+      return FileSystemHelper.joinPath('media', filename);
     }
-  } catch (error) {
-    logWarning(`Error finding asset ${assetPointer}`, error);
+  } catch {
+    // Continue if partial search fails
   }
+  return null;
+}
 
+/**
+ * Helper function to search with multiple possible names
+ */
+async function searchWithMultipleNames(mediaDir, possibleNames, _dumpsterName) {
+  for (const name of possibleNames) {
+    if (!name) continue;
+
+    const foundPath = await searchForFileInMedia(mediaDir, name, _dumpsterName);
+    if (foundPath) {
+      return foundPath;
+    }
+  }
+  return null;
+}
+
+/**
+ * Helper function to search for partial matches
+ */
+async function searchWithPartialMatch(mediaDir, assetKey, _dumpsterName) {
+  try {
+    // Get all files in media directory and look for partial matches
+    const allFiles = await PathUtils.cachedRecursivelyFindFiles(mediaDir, '*');
+    const partialMatches = allFiles.filter(file => {
+      const fileName = file.split('/').pop();
+      return (
+        fileName.includes(assetKey) ||
+        assetKey.includes(fileName.replace(/\.[^/.]+$/, ''))
+      );
+    });
+
+    if (partialMatches.length > 0) {
+      const relativePath = extractRelativePathFromMedia(partialMatches[0], mediaDir);
+      if (relativePath) {
+        return FileSystemHelper.joinPath('media', relativePath);
+      }
+      return FileSystemHelper.joinPath('media', partialMatches[0].split('/').pop());
+    }
+  } catch {
+    // Continue to next strategy
+  }
   return null;
 }
 
 /**
  * Generate content for different asset types for export
  * @param {Object} asset - The asset object
- * @param {string} dumpsterName - The dumpster name
+ * @param {string} _dumpsterName - The dumpster name (unused, kept for interface compatibility)
  * @param {string} baseDir - Base directory of the application
  * @param {string} format - Export format (md, txt, html)
  * @param {Object} assetMapping - Asset mapping from assets.json
@@ -233,7 +305,7 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
  */
 async function generateAssetContent(
   asset,
-  dumpsterName,
+  _dumpsterName,
   baseDir,
   format,
   assetMapping = {}
@@ -242,18 +314,32 @@ async function generateAssetContent(
     const assetPointer = asset.asset_pointer || asset.pointer || '';
     const contentType = asset.content_type || '';
 
+    if (!assetPointer) {
+      return {
+        type: 'missing',
+        pointer: 'unknown',
+        contentType,
+        message: 'Asset pointer missing',
+        error: 'no_pointer',
+      };
+    }
+
     const assetPath = await findAssetFile(
       assetPointer,
-      dumpsterName,
+      _dumpsterName,
       baseDir,
       assetMapping
     );
+
     if (!assetPath) {
+      const filename = extractFilenameFromPointer(assetPointer);
       return {
         type: 'missing',
         pointer: assetPointer,
+        filename,
         contentType,
-        message: `Asset not found: ${assetPointer}`,
+        message: `Asset file not found: ${filename || assetPointer}`,
+        error: 'file_not_found',
       };
     }
 
@@ -274,8 +360,14 @@ async function generateAssetContent(
         };
     }
   } catch (error) {
-    logWarning(`Error generating asset content`, error);
-    return null;
+    return {
+      type: 'error',
+      pointer: asset.asset_pointer || asset.pointer || 'unknown',
+      contentType: asset.content_type || '',
+      message: `Error processing asset: ${error.message}`,
+      error: 'processing_error',
+      errorDetails: error,
+    };
   }
 }
 
@@ -427,6 +519,8 @@ async function processChatForExport(
   format = 'md',
   _options = {}
 ) {
+  const assetErrorTracker = _options.assetErrorTracker;
+
   try {
     validateRequiredParams([{ name: 'chat', value: chat }], 'processChatForExport');
 
@@ -497,16 +591,31 @@ async function processChatForExport(
             );
             if (assetContent) {
               parts.push(assetContent);
-              assets.push({
+              const assetInfo = {
                 pointer: p.asset_pointer,
                 contentType: p.content_type,
                 filename: extractFilenameFromPointer(p.asset_pointer),
-              });
+              };
+
+              // Include error information if available
+              if (assetContent.error) {
+                assetInfo.error = assetContent.error;
+                assetInfo.message = assetContent.message;
+              }
+
+              assets.push(assetInfo);
             }
           } else {
-            console.warn(
-              `Asset missing asset_pointer in chat "${exportName}", skipping`
-            );
+            if (assetErrorTracker) {
+              assetErrorTracker.addWarning(
+                'asset_missing_pointer',
+                'Asset missing asset_pointer',
+                {
+                  contentType: p.content_type,
+                  exportName,
+                }
+              );
+            }
           }
         } else if (p.video_container_asset_pointer) {
           // Process video asset
@@ -520,16 +629,30 @@ async function processChatForExport(
             );
             if (assetContent) {
               parts.push(assetContent);
-              assets.push({
+              const assetInfo = {
                 pointer: p.video_container_asset_pointer,
                 contentType: CONTENT_TYPES.VIDEO,
                 filename: extractFilenameFromPointer(p.video_container_asset_pointer),
-              });
+              };
+
+              // Include error information if available
+              if (assetContent.error) {
+                assetInfo.error = assetContent.error;
+                assetInfo.message = assetContent.message;
+              }
+
+              assets.push(assetInfo);
             }
           } else {
-            console.warn(
-              `Video asset missing video_container_asset_pointer in chat "${exportName}", skipping`
-            );
+            if (assetErrorTracker) {
+              assetErrorTracker.addWarning(
+                'video_asset_missing_pointer',
+                'Video asset missing video_container_asset_pointer',
+                {
+                  exportName,
+                }
+              );
+            }
           }
         } else if (Array.isArray(p.frames_asset_pointers)) {
           // Process frame assets
@@ -544,16 +667,30 @@ async function processChatForExport(
               );
               if (assetContent) {
                 parts.push(assetContent);
-                assets.push({
+                const assetInfo = {
                   pointer: f,
                   contentType: CONTENT_TYPES.IMAGE,
                   filename: extractFilenameFromPointer(f),
-                });
+                };
+
+                // Include error information if available
+                if (assetContent.error) {
+                  assetInfo.error = assetContent.error;
+                  assetInfo.message = assetContent.message;
+                }
+
+                assets.push(assetInfo);
               }
             } else {
-              console.warn(
-                `Frame asset pointer is null in chat "${exportName}", skipping`
-              );
+              if (assetErrorTracker) {
+                assetErrorTracker.addWarning(
+                  'frame_asset_null',
+                  'Frame asset pointer is null',
+                  {
+                    exportName,
+                  }
+                );
+              }
             }
           }
         }

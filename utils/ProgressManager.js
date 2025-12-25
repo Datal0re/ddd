@@ -61,11 +61,11 @@ class ProgressManager {
 
     // Update spinner if active and spinning
     if (this.spinner && this.spinnerActive) {
-      const percentage = Math.round(progressData.progress);
-      const stageName = this._formatStageName(stage);
-      this.spinner.text = `${stageName}: ${message} (${percentage}%)`;
+      // Keep spinner text simple and clean
+      this.spinner.text = message;
 
       if (progressData.progress >= 100) {
+        const stageName = this._formatStageName(stage);
         this.spinner.succeed(`${stageName}: ${message} completed`);
         this.spinnerActive = false;
       }
@@ -92,9 +92,8 @@ class ProgressManager {
    */
   start(stage, message, initialProgress = 0) {
     if (this.spinner && !this.spinnerActive) {
-      const stageName = this._formatStageName(stage);
-      const initialText = `${stageName}: ${message} (${initialProgress}%)`;
-      this.spinner.start(initialText);
+      // Keep spinner text simple - just the message
+      this.spinner.start(message);
       this.spinnerActive = true;
     }
     this.update(stage, initialProgress, message);
@@ -240,6 +239,7 @@ class ProgressManager {
 
     let processed = 0;
     const startTime = Date.now();
+    let lastOutputLength = 0;
 
     return (value = 1, payload = {}) => {
       processed = value;
@@ -249,26 +249,52 @@ class ProgressManager {
       const remaining = total - processed;
       const eta = remaining / rate;
 
+      // Get terminal width for proper truncation
+      const terminalWidth = process.stdout.columns || 80;
+      const reservedWidth = 10; // Reserve space for "100% | X/total"
+
       // Create simple text progress bar that works in any environment
-      const barLength = 20;
+      const barLength = Math.min(20, Math.floor((terminalWidth - reservedWidth) / 3));
       const filledChars = Math.floor((progress / 100) * barLength);
       const emptyChars = barLength - filledChars;
       const bar = '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
 
+      // Truncate message if needed
+      const maxMessageLength = Math.max(10, terminalWidth - 60); // Minimum 10 chars for message
+      const truncatedMessage =
+        message.length > maxMessageLength
+          ? message.substring(0, maxMessageLength - 3) + '...'
+          : message;
+
       // Format with additional payload info
       let payloadStr = '';
       if (payload && Object.keys(payload).length > 0) {
-        payloadStr =
-          ' | ' +
-          Object.entries(payload)
-            .map(([key, val]) => `${key}: ${val}`)
-            .join(', ');
+        const payloadInfo = Object.entries(payload)
+          .map(([key, val]) => `${key}: ${val}`)
+          .join(', ');
+
+        // Reserve space for payload but truncate if too long
+        const maxPayloadLength = Math.max(
+          0,
+          terminalWidth - (truncatedMessage.length + bar.length + 40)
+        );
+        if (maxPayloadLength > 5) {
+          payloadStr =
+            ' | ' +
+            (payloadInfo.length > maxPayloadLength
+              ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
+              : payloadInfo);
+        }
       }
 
-      const output = `${message} ${bar} ${Math.round(progress)}% | ${processed}/${total} | Speed: ${rate.toFixed(1)}/s | ETA: ${Math.round(eta)}s${payloadStr}`;
+      const output = `${truncatedMessage} ${bar} ${Math.round(progress)}% | ${processed}/${total} | ${rate.toFixed(1)}/s | ETA: ${Math.round(eta)}s${payloadStr}`;
 
-      // Clear line and write new progress (works in most terminals)
-      process.stdout.write('\r' + output);
+      // Clear previous output and write new progress
+      if (lastOutputLength > 0) {
+        process.stdout.write('\r' + ' '.repeat(lastOutputLength) + '\r');
+      }
+      process.stdout.write(output);
+      lastOutputLength = output.length;
 
       if (processed >= total) {
         process.stdout.write('\n');
@@ -291,6 +317,7 @@ class ProgressManager {
   createMultiProgressBar(_options = {}) {
     const bars = new Map();
     let barCounter = 0;
+    this.multiBarReservedLines = 0;
 
     return {
       createBar: (total, message, _barOptions = {}) => {
@@ -302,27 +329,51 @@ class ProgressManager {
             processed = value;
             const progress = (processed / total) * 100;
 
+            // Get terminal width for proper truncation
+            const terminalWidth = process.stdout.columns || 80;
+            const reservedWidth = 15; // Reserve space for progress info
+
             // Create simple text progress bar
-            const barLength = 15;
+            const barLength = Math.min(
+              15,
+              Math.floor((terminalWidth - reservedWidth) / 4)
+            );
             const filledChars = Math.floor((progress / 100) * barLength);
             const emptyChars = barLength - filledChars;
             const progressBar =
               '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
 
+            // Truncate message if needed
+            const maxMessageLength = Math.max(5, terminalWidth - 40);
+            const truncatedMessage =
+              message.length > maxMessageLength
+                ? message.substring(0, maxMessageLength - 3) + '...'
+                : message;
+
             let payloadStr = '';
             if (payload && Object.keys(payload).length > 0) {
-              payloadStr =
-                ' | ' +
-                Object.entries(payload)
-                  .map(([key, val]) => `${key}: ${val}`)
-                  .join(', ');
+              const payloadInfo = Object.entries(payload)
+                .map(([key, val]) => `${key}: ${val}`)
+                .join(', ');
+
+              const maxPayloadLength = Math.max(
+                0,
+                terminalWidth - (truncatedMessage.length + progressBar.length + 25)
+              );
+              if (maxPayloadLength > 5) {
+                payloadStr =
+                  ' | ' +
+                  (payloadInfo.length > maxPayloadLength
+                    ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
+                    : payloadInfo);
+              }
             }
 
-            const output = `${message}: ${progressBar} ${Math.round(progress)}% | ${processed}/${total}${payloadStr}`;
+            const output = `${truncatedMessage}: ${progressBar} ${Math.round(progress)}% | ${processed}/${total}${payloadStr}`;
 
             // Store for batch display
             bars.set(barId, {
-              message: message.split(' ')[0], // First word as label
+              message: truncatedMessage,
               output,
               priority: bars.size,
             });
@@ -332,6 +383,14 @@ class ProgressManager {
           },
           stop: () => {
             bars.delete(barId);
+
+            // If no more bars, clean up the reserved lines
+            if (bars.size === 0 && this.multiBarReservedLines > 0) {
+              // Move to the line after the last reserved line
+              process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
+              process.stdout.write('\n'); // Final newline
+              this.multiBarReservedLines = 0;
+            }
           },
         };
 
@@ -339,7 +398,12 @@ class ProgressManager {
       },
       stop: () => {
         bars.clear();
-        console.log(); // New line after all bars complete
+        if (this.multiBarReservedLines > 0) {
+          // Move to the line after the last reserved line
+          process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
+          process.stdout.write('\n'); // Final newline
+          this.multiBarReservedLines = 0;
+        }
       },
     };
   }
@@ -349,17 +413,42 @@ class ProgressManager {
    * @private
    */
   displayMultipleBars(bars) {
-    // Clear previous lines and redraw
-    process.stdout.write('\n');
+    const barCount = bars.size;
+
+    // If this is the first display, we need to reserve space
+    if (!this.multiBarReservedLines) {
+      this.multiBarReservedLines = barCount;
+      process.stdout.write('\n'.repeat(barCount - 1)); // Reserve lines
+    }
+
+    // Move cursor up to the first bar line
+    if (barCount > 0) {
+      process.stdout.write(`\x1b[${barCount - 1}A`); // Move cursor up
+    }
 
     // Sort by priority and display
     const sortedBars = Array.from(bars.entries()).sort(
       ([, a], [, b]) => a.priority - b.priority
     );
 
+    const terminalWidth = process.stdout.columns || 80;
+
     sortedBars.forEach(([, barData], index) => {
-      if (index > 0) process.stdout.write('\n');
-      process.stdout.write(`\r${barData.output}`);
+      // Clear the entire line
+      process.stdout.write('\r' + ' '.repeat(terminalWidth) + '\r');
+
+      // Truncate output if needed
+      const truncatedOutput =
+        barData.output.length > terminalWidth
+          ? barData.output.substring(0, terminalWidth - 3) + '...'
+          : barData.output;
+
+      process.stdout.write(truncatedOutput);
+
+      // Move to next line except for the last one
+      if (index < sortedBars.length - 1) {
+        process.stdout.write('\n');
+      }
     });
   }
 

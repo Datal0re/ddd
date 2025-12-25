@@ -4,7 +4,7 @@
  */
 
 const { validateRequiredParams } = require('./Validators');
-const { logError, logWarning } = require('./upcycleHelpers');
+const { logError, AssetErrorTracker } = require('./upcycleHelpers');
 const FileSystemHelper = require('./FileSystemHelper');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
@@ -15,8 +15,9 @@ const TXTFormatter = require('./formatters/TXTFormatter');
 const HTMLFormatter = require('./formatters/HTMLFormatter');
 
 class UpcycleManager {
-  constructor(dumpsterManager) {
+  constructor(dumpsterManager, progressManager = null) {
     this.dumpsterManager = dumpsterManager;
+    this.progressManager = progressManager;
     this.formatters = {
       md: new MDFormatter(),
       txt: new TXTFormatter(),
@@ -70,16 +71,16 @@ class UpcycleManager {
    * @returns {Promise<Object>} Upcycle result
    */
   async upcycleDumpster(dumpsterName, format, options = {}) {
+    const assetErrorTracker = new AssetErrorTracker();
+
     try {
       const validatedOptions = this.validateUpcycleOptions(format, options);
       const formatter = this.formatters[format];
       const chatUpcycler = new ChatUpcycler(this.dumpsterManager.baseDir);
 
-      const pm = createProgressManager(null, validatedOptions.verbose);
-
-      // Use spinner for initial operations
-      pm.start('initializing', 'Starting upcycle process...', 0);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for spinner animation
+      // Use the passed progress manager if available, otherwise create one
+      const pm =
+        this.progressManager || createProgressManager(null, validatedOptions.verbose);
 
       // Get all chats from dumpster
       pm.update('loading', 10, 'Loading chats from dumpster...');
@@ -91,7 +92,10 @@ class UpcycleManager {
 
       pm.succeed(`Found ${chats.length} chats to process`);
 
-      // Switch to progress bar for chat processing
+      // Switch to progress bar for chat processing - stop spinner to avoid conflicts
+      if (pm.spinner && pm.spinnerActive) {
+        pm.stop();
+      }
       pm.update('processing', 20, `Processing ${chats.length} chats...`);
 
       // Create a progress bar for chat processing
@@ -129,7 +133,7 @@ class UpcycleManager {
             const processedChat = await chatUpcycler.processChatForExport(
               chat,
               format,
-              { ...validatedOptions, dumpsterName }
+              { ...validatedOptions, dumpsterName, assetErrorTracker }
             );
             results.push({
               filename: `chat-${i + 1}.${format}`,
@@ -145,13 +149,17 @@ class UpcycleManager {
               formatter,
               chatUpcycler,
               outputDir,
-              validatedOptions
+              validatedOptions,
+              assetErrorTracker
             );
             results.push(result);
           }
           processedCount++;
         } catch (error) {
-          logWarning(`Failed to process chat "${chat.title || 'Untitled'}"`, error);
+          assetErrorTracker.addError('chat_processing', error.message, {
+            chatTitle: chat.title || 'Untitled',
+            chatIndex: i,
+          });
           skippedCount++;
         }
       }
@@ -174,6 +182,8 @@ class UpcycleManager {
         `Upcycle complete! Processed ${processedCount} chats.`
       );
 
+      const assetErrorSummary = assetErrorTracker.getErrorSummary();
+
       return {
         success: true,
         dumpsterName,
@@ -186,6 +196,7 @@ class UpcycleManager {
           ? [`combined.${format}`]
           : results.map(r => r.filename).filter(f => f), // Filter out null filenames from single-file mode
         options: validatedOptions,
+        assetErrors: assetErrorSummary,
       };
     } catch (error) {
       logError(`Upcycle failed for dumpster "${dumpsterName}"`, error);
@@ -202,6 +213,7 @@ class UpcycleManager {
    * @param {ChatUpcycler} chatUpcycler - Chat upcycler instance
    * @param {string} outputDir - Output directory
    * @param {Object} options - Export options
+   * @param {AssetErrorTracker} assetErrorTracker - Error tracking instance
    * @returns {Promise<Object>} Export result
    */
   async upcycleChat(
@@ -211,7 +223,8 @@ class UpcycleManager {
     formatter,
     chatUpcycler,
     outputDir,
-    options
+    options,
+    assetErrorTracker = null
   ) {
     validateRequiredParams(
       [
@@ -227,12 +240,30 @@ class UpcycleManager {
     );
 
     // Process chat content
-    const processOptions = { ...options, dumpsterName };
+    const processOptions = { ...options, dumpsterName, assetErrorTracker };
     const processedChat = await chatUpcycler.processChatForExport(
       chat,
       format,
       processOptions
     );
+
+    // Track asset errors from processed chat
+    if (assetErrorTracker && processedChat.assets) {
+      processedChat.assets.forEach(asset => {
+        if (asset.error) {
+          assetErrorTracker.addError(
+            asset.error,
+            asset.message || 'Unknown asset error',
+            {
+              pointer: asset.pointer,
+              filename: asset.filename,
+              contentType: asset.contentType,
+              chatTitle: chat.title || 'Untitled',
+            }
+          );
+        }
+      });
+    }
 
     // Generate formatted content
     const formattedContent = await formatter.formatChat(processedChat, options);
@@ -246,7 +277,12 @@ class UpcycleManager {
 
     // Handle media assets if requested
     if (options.includeMedia && processedChat.assets.length > 0) {
-      await this.copyChatAssets(processedChat.assets, outputDir, dumpsterName);
+      await this.copyChatAssets(
+        processedChat.assets,
+        outputDir,
+        dumpsterName,
+        assetErrorTracker
+      );
     }
 
     return {
@@ -281,9 +317,10 @@ class UpcycleManager {
    * @param {Array} assets - Array of asset objects
    * @param {string} outputDir - Output directory
    * @param {string} dumpsterName - Source dumpster name
+   * @param {AssetErrorTracker} assetErrorTracker - Error tracking instance
    * @returns {Promise<void>}
    */
-  async copyChatAssets(assets, outputDir, dumpsterName) {
+  async copyChatAssets(assets, outputDir, dumpsterName, assetErrorTracker = null) {
     if (assets.length === 0) return;
 
     const mediaDir = FileSystemHelper.joinPath(outputDir, 'media');
@@ -300,13 +337,26 @@ class UpcycleManager {
     for (const asset of assets) {
       try {
         if (!asset || !asset.pointer) {
+          if (assetErrorTracker) {
+            assetErrorTracker.addWarning(
+              'invalid_asset',
+              'Asset missing pointer',
+              asset
+            );
+          }
           continue;
         }
 
         // Get actual filename from asset mapping
         const actualFilename = assetMapping[asset.pointer];
         if (!actualFilename) {
-          logWarning(`No mapping found for asset ${asset.pointer}`, asset);
+          if (assetErrorTracker) {
+            assetErrorTracker.addWarning(
+              'asset_mapping_missing',
+              `No mapping found for asset ${asset.pointer}`,
+              asset
+            );
+          }
           continue;
         }
 
@@ -326,10 +376,29 @@ class UpcycleManager {
           await FileSystemHelper.ensureDirectory(FileSystemHelper.getDirName(destPath));
           await fs.copyFile(sourcePath, destPath);
         } else {
-          logWarning(`Asset file not found: ${actualFilename}`, { sourcePath });
+          if (assetErrorTracker) {
+            assetErrorTracker.addError(
+              'asset_file_not_found',
+              `Asset file not found: ${actualFilename}`,
+              {
+                ...asset,
+                sourcePath,
+                actualFilename,
+              }
+            );
+          }
         }
       } catch (error) {
-        logWarning(`Failed to copy asset ${asset.pointer}`, error);
+        if (assetErrorTracker) {
+          assetErrorTracker.addError(
+            'asset_copy_failed',
+            `Failed to copy asset ${asset.pointer}`,
+            {
+              ...asset,
+              error: error.message,
+            }
+          );
+        }
       }
     }
 
@@ -346,7 +415,16 @@ class UpcycleManager {
         await PathUtils.copyDirectory(dumpsterMediaDir, mediaDir);
       }
     } catch (error) {
-      logWarning(`Failed to recursively copy media directory`, error);
+      if (assetErrorTracker) {
+        assetErrorTracker.addWarning(
+          'media_directory_copy_failed',
+          'Failed to recursively copy media directory',
+          {
+            dumpsterName,
+            error: error.message,
+          }
+        );
+      }
     }
   }
 

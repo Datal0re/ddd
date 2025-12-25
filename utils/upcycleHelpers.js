@@ -7,6 +7,66 @@ const FileSystemHelper = require('./FileSystemHelper');
 const { validateNonEmptyString } = require('./Validators');
 
 /**
+ * Asset error tracking class
+ */
+class AssetErrorTracker {
+  constructor() {
+    this.errors = [];
+    this.warnings = [];
+  }
+
+  addError(type, details, assetInfo = {}) {
+    this.errors.push({
+      type,
+      details,
+      assetInfo,
+      timestamp: Date.now(),
+    });
+  }
+
+  addWarning(type, details, assetInfo = {}) {
+    this.warnings.push({
+      type,
+      details,
+      assetInfo,
+      timestamp: Date.now(),
+    });
+  }
+
+  getErrorSummary() {
+    const errorsByType = {};
+    this.errors.forEach(error => {
+      errorsByType[error.type] = (errorsByType[error.type] || 0) + 1;
+    });
+
+    const warningsByType = {};
+    this.warnings.forEach(warning => {
+      warningsByType[warning.type] = (warningsByType[warning.type] || 0) + 1;
+    });
+
+    return {
+      totalErrors: this.errors.length,
+      totalWarnings: this.warnings.length,
+      errorsByType,
+      warningsByType,
+    };
+  }
+
+  hasErrors() {
+    return this.errors.length > 0;
+  }
+
+  hasWarnings() {
+    return this.warnings.length > 0;
+  }
+
+  clear() {
+    this.errors = [];
+    this.warnings = [];
+  }
+}
+
+/**
  * Log error with consistent formatting
  * @param {string} message - Error message
  * @param {Error|string} error - Optional error object or additional message
@@ -240,9 +300,10 @@ function formatChatSummary(metadata) {
 /**
  * Generate export report
  * @param {Object} upcycleResult - Result from UpcycleManager
+ * @param {boolean} verbose - Whether to show verbose report
  * @returns {string} Formatted report
  */
-function generateExportReport(upcycleResult) {
+function generateExportReport(upcycleResult, verbose = false) {
   const {
     success,
     dumpsterName,
@@ -253,6 +314,7 @@ function generateExportReport(upcycleResult) {
     skipped,
     files,
     options,
+    assetErrors,
   } = upcycleResult;
 
   let report = '\n' + '='.repeat(50) + '\n';
@@ -273,21 +335,59 @@ function generateExportReport(upcycleResult) {
 
     report += `\n📁 Output: ${outputDir}\n`;
 
+    // Show file summary (not full list) for non-verbose mode
     if (files.length > 0) {
-      report += `\n📄 Files created:\n`;
-      files.forEach((file, index) => {
-        report += `   ${index + 1}. ${file}\n`;
-      });
+      if (verbose && files.length <= 10) {
+        report += `\n📄 Files created:\n`;
+        files.forEach((file, index) => {
+          report += `   ${index + 1}. ${file}\n`;
+        });
+      } else if (verbose) {
+        report += `\n📄 Files created (${files.length} files):\n`;
+        files.slice(0, 10).forEach((file, index) => {
+          report += `   ${index + 1}. ${file}\n`;
+        });
+        if (files.length > 10) {
+          report += `   ... and ${files.length - 10} more files\n`;
+        }
+      } else {
+        report += `\n📄 Files: ${files.length} file${files.length !== 1 ? 's' : ''} created\n`;
+      }
     }
 
-    if (options.includeMedia) {
-      report += `\n🎨 Media: ${options.includeMedia ? 'Included' : 'Referenced'}\n`;
+    // Add asset error summary if available
+    if (assetErrors && (assetErrors.totalErrors > 0 || assetErrors.totalWarnings > 0)) {
+      report += `\n⚠️  Asset Issues:\n`;
+
+      if (assetErrors.totalErrors > 0) {
+        report += `   Errors: ${assetErrors.totalErrors}\n`;
+        if (verbose) {
+          Object.entries(assetErrors.errorsByType).forEach(([type, count]) => {
+            report += `     ${type}: ${count}\n`;
+          });
+        }
+      }
+
+      if (assetErrors.totalWarnings > 0) {
+        report += `   Warnings: ${assetErrors.totalWarnings}\n`;
+        if (verbose) {
+          Object.entries(assetErrors.warningsByType).forEach(([type, count]) => {
+            report += `     ${type}: ${count}\n`;
+          });
+        }
+      }
     }
 
-    if (options.singleFile) {
-      report += `\n📄 Format: Single combined file\n`;
-    } else {
-      report += `\n📄 Format: Separate files per chat\n`;
+    if (verbose) {
+      if (options.includeMedia) {
+        report += `\n🎨 Media: ${options.includeMedia ? 'Included' : 'Referenced'}\n`;
+      }
+
+      if (options.singleFile) {
+        report += `\n📄 Format: Single combined file\n`;
+      } else {
+        report += `\n📄 Format: Separate files per chat\n`;
+      }
     }
   } else {
     report += `❌ Failed to upcycle dumpster "${dumpsterName}"\n`;
@@ -310,4 +410,5 @@ module.exports = {
   generateExportReport,
   logError,
   logWarning,
+  AssetErrorTracker,
 };

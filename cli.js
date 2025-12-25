@@ -525,10 +525,10 @@ program
         'initializing',
         `Preparing to upcycle "${dumpsterName}" to ${format.toUpperCase()}...`
       );
-      console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
-      console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
 
       if (validatedOptions.verbose) {
+        console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
+        console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
         ErrorHandler.logInfo(
           `Options: ${JSON.stringify(validatedOptions, null, 2)}`,
           'upcycle'
@@ -538,7 +538,7 @@ program
       // Initialize UpcycleManager
       const UpcycleManager = require('./utils/UpcycleManager');
 
-      const upcycleManager = new UpcycleManager(dm);
+      const upcycleManager = new UpcycleManager(dm, pm);
 
       // Check if dumpster exists
       const dumpster = dumpsters.find(d => d.name === dumpsterName);
@@ -564,8 +564,23 @@ program
 
       // Display results
       const { generateExportReport } = require('./utils/upcycleHelpers');
-      const report = generateExportReport(result);
-      console.log(report);
+      const report = generateExportReport(result, validatedOptions.verbose);
+
+      if (validatedOptions.verbose) {
+        console.log(report);
+      } else {
+        // Show minimal summary in non-verbose mode
+        const reportLines = report
+          .split('\n')
+          .filter(
+            line =>
+              line.includes('✅ Success!') ||
+              line.includes('Total chats:') ||
+              line.includes('Output:') ||
+              line.includes('===')
+          );
+        console.log(reportLines.join('\n'));
+      }
 
       pm.succeed(`Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`);
     } catch (error) {
