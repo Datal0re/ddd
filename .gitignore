@@ -67,8 +67,10 @@ cookies*.txt
 
 # Project-specific data (generated/user content)
 sessions/
+dumpsters/
 backups/
 public/media/
+data/dumpsters.json
 data/sessions.json
 data/upload-progress.json
 
