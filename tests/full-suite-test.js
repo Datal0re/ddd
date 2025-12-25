@@ -201,7 +201,7 @@ async function runFullSuiteTests() {
         try {
           console.log(`Upcycling dumpster to ${format} format...`);
 
-          let upcycleArgs = ['upcycle', format];
+          const upcycleArgs = ['upcycle', format];
 
           if (format === 'html') {
             upcycleArgs.push('--self-contained');

@@ -249,7 +249,7 @@ class ZipProcessor {
     isBuffer = true,
     onProgress = null
   ) {
-    const { createProgressManager } = require('./ProgressManager');
+    const { createProgressBarManager } = require('./ProgressManager');
     const { moveFilesToFinalLocations } = require('./AssetUtils');
 
     const decompress = await getDecompress();
@@ -261,12 +261,13 @@ class ZipProcessor {
         `Processing zip upload: isBuffer=${isBuffer}, dumpsterName=${dumpsterName}`
       );
 
-      // Create unified progress tracker
-      const progress = createProgressManager(onProgress);
+      // Create unified progress tracker with bar preference for file operations
+      const progress = createProgressBarManager(onProgress);
 
-      // Validate upload before processing
-      progress.update('validating', 0, 'Validating upload...');
+      // Use spinner for validation
+      progress.start('validating', 'Validating upload...', 0);
       await this.validateUpload(zipData);
+      progress.succeed('Upload validated successfully!');
 
       // Save or copy zip file to temp location
       if (isBuffer) {
@@ -280,8 +281,23 @@ class ZipProcessor {
       progress.update('extracting', 10, 'Extracting archive...');
       console.log('Starting zip extraction...');
 
+      // Create progress bar for file extraction
+      let extractionProgress = 0;
+      const totalFiles = files.length || 1;
+      const extractProgressBar = progress.createFileProgressBar(
+        totalFiles,
+        'Extracting files'
+      );
+
       // Extract zip to temp directory first (security)
-      const files = await decompress(tempZipPath, tempDir);
+      const files = await decompress(tempZipPath, tempDir, {
+        filter: _file => {
+          // Update progress bar for each file processed during extraction
+          extractionProgress++;
+          extractProgressBar(extractionProgress);
+          return true;
+        },
+      });
 
       // Provide concise extraction summary
       const imageFiles = files.filter(
@@ -290,6 +306,12 @@ class ZipProcessor {
       const otherFiles = files.filter(
         f => f.type === 'file' && !/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.path)
       ).length;
+
+      extractProgressBar(files.length, {
+        total_files: files.length,
+        images: imageFiles,
+        others: otherFiles,
+      });
 
       console.log(
         `Extracted ${files.length} files (${imageFiles} images, ${otherFiles} other files)`
@@ -313,14 +335,36 @@ class ZipProcessor {
 
       progress.update('organizing', 50, 'Organizing files...');
 
+      // Create progress bar for file organization
+      const organizeProgressBar = progress.createFileProgressBar(
+        files.length,
+        'Organizing files'
+      );
+
       // Move files from temp to final locations
       progress.update('finalizing', 80, 'Finalizing organization...');
+
+      let processedFiles = 0;
       const conversationsPath = await moveFilesToFinalLocations(
         tempDir,
         exportDir,
         mediaDir,
         files
       );
+
+      // Update progress bar as files are being organized
+      for (let i = 0; i < files.length; i++) {
+        processedFiles++;
+        organizeProgressBar(processedFiles, {
+          moved: processedFiles,
+          remaining: files.length - processedFiles,
+        });
+      }
+
+      organizeProgressBar(files.length, {
+        organized: files.length,
+        destination: exportDir,
+      });
 
       console.log('Files moved, conversationsPath:', conversationsPath);
 

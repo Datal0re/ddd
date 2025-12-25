@@ -77,7 +77,9 @@ class UpcycleManager {
 
       const pm = createProgressManager(null, validatedOptions.verbose);
 
-      pm.update('initializing', 0, 'Starting upcycle process...');
+      // Use spinner for initial operations
+      pm.start('initializing', 'Starting upcycle process...', 0);
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for spinner animation
 
       // Get all chats from dumpster
       pm.update('loading', 10, 'Loading chats from dumpster...');
@@ -87,7 +89,16 @@ class UpcycleManager {
         throw new Error(`No chats found in dumpster "${dumpsterName}"`);
       }
 
+      pm.succeed(`Found ${chats.length} chats to process`);
+
+      // Switch to progress bar for chat processing
       pm.update('processing', 20, `Processing ${chats.length} chats...`);
+
+      // Create a progress bar for chat processing
+      const chatProgressBar = pm.createFileProgressBar(
+        chats.length,
+        'Processing chats'
+      );
 
       // Create output directory
       const outputDir = FileSystemHelper.joinPath(
@@ -105,11 +116,12 @@ class UpcycleManager {
         const chat = chats[i];
         const progress = 20 + (i / chats.length) * 60; // 20-80% for chat processing
 
-        pm.update(
-          'processing',
-          progress,
-          `Processing chat ${i + 1}/${chats.length}: ${chat.title || 'Untitled'}`
-        );
+        pm.update('processing', progress, `Processing ${chat.title || 'Untitled'}...`);
+
+        chatProgressBar(i + 1, {
+          chat: chat.title || 'Untitled',
+          files: processedCount + skippedCount,
+        });
 
         try {
           // For single file mode, we only need to process the content, not create files
@@ -150,6 +162,11 @@ class UpcycleManager {
       if (validatedOptions.singleFile) {
         await this.createCombinedFile(results, outputDir, format, formatter);
       }
+
+      chatProgressBar(chats.length, {
+        total_files: results.length,
+        skipped: skippedCount,
+      });
 
       pm.update(
         'completed',

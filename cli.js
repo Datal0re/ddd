@@ -271,7 +271,14 @@ program
         });
       }
 
-      const pm = createProgressManager(null, options.verbose);
+      const pm = createProgressManager(progress => {
+        // Allow both spinner updates and progress tracking
+        if (options.verbose) {
+          console.log(
+            `[${progress.stage}] ${progress.message} (${Math.round(progress.progress)}%)`
+          );
+        }
+      }, options.verbose);
       pm.start('initializing', `Loading chats from "${dumpsterName}"...`);
 
       const chats = await dm.getChats(dumpsterName, limit);
