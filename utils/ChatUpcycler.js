@@ -11,6 +11,28 @@ const { validateRequiredParams, validateNonEmptyString } = require('./Validators
 const { logError, logWarning } = require('./upcycleHelpers');
 
 /**
+ * Extract relative path from media directory for a file
+ * @param {string} fullPath - Full absolute path to file
+ * @param {string} mediaDir - Media directory path
+ * @returns {string} Relative path from media directory
+ */
+function extractRelativePathFromMedia(fullPath, mediaDir) {
+  if (!fullPath || !mediaDir) return null;
+
+  // Normalize both paths and extract relative path
+  const normalizedMedia = FileSystemHelper.resolvePath(mediaDir);
+  const normalizedFile = FileSystemHelper.resolvePath(fullPath);
+
+  if (normalizedFile.startsWith(normalizedMedia)) {
+    const relativePath = normalizedFile.slice(normalizedMedia.length);
+    // Remove leading separator if present
+    return relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+  }
+
+  return null;
+}
+
+/**
  * Get media directory path for a dumpster
  * @param {string} baseDir - Base directory of application
  * @param {string} dumpsterName - The dumpster name
@@ -123,6 +145,12 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
       try {
         const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, filename);
         if (files.length > 0) {
+          // Extract relative path from the found file
+          const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
+          if (relativePath) {
+            return FileSystemHelper.joinPath('media', relativePath);
+          }
+          // Fallback to original behavior
           return FileSystemHelper.joinPath('media', filename);
         }
       } catch (error) {
@@ -161,6 +189,12 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
       try {
         const files = await PathUtils.cachedRecursivelyFindFiles(searchDir, name);
         if (files.length > 0) {
+          // Extract relative path from the found file
+          const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
+          if (relativePath) {
+            return FileSystemHelper.joinPath('media', relativePath);
+          }
+          // Fallback to original behavior
           return FileSystemHelper.joinPath('media', name);
         }
       } catch {
@@ -173,6 +207,12 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
   try {
     const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, assetKey);
     if (files.length > 0) {
+      // Extract relative path from the found file
+      const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
+      if (relativePath) {
+        return FileSystemHelper.joinPath('media', relativePath);
+      }
+      // Fallback to original behavior
       return FileSystemHelper.joinPath('media', assetKey);
     }
   } catch (error) {

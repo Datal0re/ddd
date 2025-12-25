@@ -8,6 +8,7 @@ const { logError, logWarning } = require('./upcycleHelpers');
 const FileSystemHelper = require('./FileSystemHelper');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
+const PathUtils = require('./PathUtils');
 const fs = require('fs').promises;
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
@@ -278,6 +279,7 @@ class UpcycleManager {
       this.dumpsterManager.baseDir
     );
 
+    // Process individual assets from mapping
     for (const asset of assets) {
       try {
         if (!asset || !asset.pointer) {
@@ -303,6 +305,8 @@ class UpcycleManager {
 
         if (await FileSystemHelper.fileExists(sourcePath)) {
           const destPath = FileSystemHelper.joinPath(mediaDir, actualFilename);
+          // Ensure destination subdirectory exists
+          await FileSystemHelper.ensureDirectory(FileSystemHelper.getDirName(destPath));
           await fs.copyFile(sourcePath, destPath);
         } else {
           logWarning(`Asset file not found: ${actualFilename}`, { sourcePath });
@@ -310,6 +314,22 @@ class UpcycleManager {
       } catch (error) {
         logWarning(`Failed to copy asset ${asset.pointer}`, error);
       }
+    }
+
+    // Additionally, copy the entire media directory recursively to catch any files not in mapping
+    try {
+      const dumpsterMediaDir = FileSystemHelper.joinPath(
+        this.dumpsterManager.baseDir,
+        'data/dumpsters',
+        dumpsterName,
+        'media'
+      );
+
+      if (await FileSystemHelper.fileExists(dumpsterMediaDir)) {
+        await PathUtils.copyDirectory(dumpsterMediaDir, mediaDir);
+      }
+    } catch (error) {
+      logWarning(`Failed to recursively copy media directory`, error);
     }
   }
 
