@@ -130,7 +130,6 @@ data/
 2. **Processing**: Data extraction and migration
 3. **Active**: Available for user interaction
 4. **Expiration**: Automatic cleanup after 24 hours
-5. **Backup**: Optional manual/automatic backups
 
 ### ProgressManager (`utils/ProgressManager.js`)
 

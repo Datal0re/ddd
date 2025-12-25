@@ -184,12 +184,6 @@ All endpoints use `/api/` prefix and run on port 3001.
 - `GET /api/upload/progress/:uploadId` - Get upload progress status
 - `DELETE /api/upload/progress/:uploadId` - Cancel upload and cleanup
 
-### **Backup Management**
-
-- `POST /api/sessions/:sessionId/backup` - Create backup
-- `GET /api/sessions/:sessionId/backups` - List backups
-- `POST /api/sessions/:sessionId/restore` - Restore from backup
-
 ### **System**
 
 - `GET /api/health` - Health check endpoint

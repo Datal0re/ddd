@@ -85,23 +85,23 @@ async function cachedRecursivelyFindFiles(dir, filename) {
 }
 
 /**
- * Get the media directory path for a session
+ * Get the media directory path for an export
  * @param {string} baseDir - Base directory of the application
- * @param {string} sessionId - The session ID
+ * @param {string} exportName - The export name
  * @returns {string} Media directory path
  */
-function getMediaDir(baseDir, sessionId) {
+function getMediaDir(baseDir, exportName) {
   validateRequiredParams(
     [
       { name: 'baseDir', value: baseDir },
-      { name: 'sessionId', value: sessionId },
+      { name: 'exportName', value: exportName },
     ],
     'getMediaDir'
   );
   validateNonEmptyString(baseDir, 'baseDir');
-  validateNonEmptyString(sessionId, 'sessionId');
+  validateNonEmptyString(exportName, 'exportName');
 
-  return path.join(baseDir, 'public', 'media', 'sessions', sessionId);
+  return path.join(baseDir, 'data', 'exports', exportName, 'media');
 }
 
 /**
@@ -140,24 +140,24 @@ function handleFileError(error, operation, context = '') {
 
 /**
  * Load asset mapping from assets.json file (preferred) or fallback to chat.html
- * @param {string} sessionId - The session ID
+ * @param {string} exportName - The export name
  * @param {string} baseDir - Base directory of the application
  * @returns {Promise<Object>} Asset mapping object
  */
-async function loadAssetMapping(sessionId, baseDir) {
+async function loadAssetMapping(exportName, baseDir) {
   try {
     validateRequiredParams(
       [
-        { name: 'sessionId', value: sessionId },
+        { name: 'exportName', value: exportName },
         { name: 'baseDir', value: baseDir },
       ],
       'loadAssetMapping'
     );
-    validateNonEmptyString(sessionId, 'sessionId');
+    validateNonEmptyString(exportName, 'exportName');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
     logger.warn('Invalid parameters for loadAssetMapping:', {
-      sessionId,
+      exportName,
       baseDir,
       error: error.message,
     });
@@ -168,8 +168,8 @@ async function loadAssetMapping(sessionId, baseDir) {
   const assetsJsonPath = path.join(
     baseDir,
     'data',
-    'sessions',
-    sessionId,
+    'exports',
+    exportName,
     'assets.json'
   );
 
@@ -177,7 +177,7 @@ async function loadAssetMapping(sessionId, baseDir) {
     const assetsContent = await fs.readFile(assetsJsonPath, 'utf8');
     const assetMapping = JSON.parse(assetsContent);
     logger.debug(
-      `Loaded asset mapping from assets.json for session ${sessionId} with ${Object.keys(assetMapping).length} assets`
+      `Loaded asset mapping from assets.json for export ${exportName} with ${Object.keys(assetMapping).length} assets`
     );
     return assetMapping;
   } catch (error) {
@@ -190,9 +190,9 @@ async function loadAssetMapping(sessionId, baseDir) {
   const chatHtmlPath = path.join(
     baseDir,
     'data',
-    'sessions',
-    sessionId,
-    'Test-Chat-Combine',
+    'exports',
+    exportName,
+    'media',
     'chat.html'
   );
 
@@ -208,14 +208,14 @@ async function loadAssetMapping(sessionId, baseDir) {
       // Parse JSON string
       const assetJsonString = assetJsonMatch[1];
       logger.debug(
-        `Found asset mapping in chat.html for session ${sessionId} (fallback method)`
+        `Found asset mapping in chat.html for export ${exportName} (fallback method)`
       );
       return JSON.parse(assetJsonString);
     } else {
-      logger.debug(`No asset mapping found in chat.html for session ${sessionId}`);
+      logger.debug(`No asset mapping found in chat.html for export ${exportName}`);
     }
   } catch (error) {
-    handleFileError(error, 'loading asset mapping from chat.html', sessionId);
+    handleFileError(error, 'loading asset mapping from chat.html', exportName);
   }
 
   return {};
@@ -224,16 +224,16 @@ async function loadAssetMapping(sessionId, baseDir) {
 /**
  * Find the actual file path for an asset pointer
  * @param {string} assetPointer - The asset pointer (e.g., "file-service://file-abc123")
- * @param {string} sessionId - The session ID
+ * @param {string} exportName - The export name
  * @param {string} baseDir - Base directory of the application
  * @param {Object} assetMapping - Asset mapping from assets.json or chat.html
  * @returns {string|null} The URL to access the asset or null if not found
  */
-async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}) {
-  if (!assetPointer || !sessionId || !baseDir) {
+async function findAssetFile(assetPointer, exportName, baseDir, assetMapping = {}) {
+  if (!assetPointer || !exportName || !baseDir) {
     logger.warn('Invalid parameters for findAssetFile:', {
       assetPointer,
-      sessionId,
+      exportName,
       baseDir,
     });
     return null;
@@ -249,7 +249,7 @@ async function findAssetFile(assetPointer, sessionId, baseDir, assetMapping = {}
     assetKey = assetKey.replace(/\.(dat|wav|mp3|m4a)$/i, '');
   }
 
-  const mediaDir = getMediaDir(baseDir, sessionId);
+  const mediaDir = getMediaDir(baseDir, exportName);
 
   // First try to use asset mapping if available
   if (assetMapping[assetPointer]) {
@@ -368,48 +368,48 @@ async function recursivelyFindFiles(dir, filename) {
 /**
  * Generate a URL for an asset pointer
  * @param {string} assetPointer - The asset pointer (e.g., "file-service://file-abc123")
- * @param {string} sessionId - The session ID
+ * @param {string} exportName - The export name
  * @param {string} baseDir - Base directory of the application
  * @param {Object} assetMapping - Asset mapping from assets.json or chat.html (optional)
  * @returns {Promise<string|null>} The URL to access the asset or null if not found
  */
-async function generateAssetUrl(assetPointer, sessionId, baseDir, assetMapping = {}) {
-  if (!assetPointer || !sessionId || !baseDir) {
+async function generateAssetUrl(assetPointer, exportName, baseDir, assetMapping = {}) {
+  if (!assetPointer || !exportName || !baseDir) {
     logger.warn('Invalid parameters for generateAssetUrl:', {
       assetPointer,
-      sessionId,
+      exportName,
       baseDir,
     });
     return null;
   }
 
-  return await findAssetFile(assetPointer, sessionId, baseDir, assetMapping);
+  return await findAssetFile(assetPointer, exportName, baseDir, assetMapping);
 }
 
 /**
  * Generate HTML for different asset types
  * @param {Object} asset - The asset object
- * @param {string} sessionId - The session ID
+ * @param {string} exportName - The export name
  * @param {string} baseDir - Base directory of the application
  * @param {Object} assetMapping - Asset mapping from assets.json or chat.html (optional)
  * @returns {Promise<Object|null>} Object with html property or null if asset can't be processed
  */
-async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
+async function generateAssetHtml(asset, exportName, baseDir, assetMapping = {}) {
   try {
     validateRequiredParams(
       [
         { name: 'asset', value: asset },
-        { name: 'sessionId', value: sessionId },
+        { name: 'exportName', value: exportName },
         { name: 'baseDir', value: baseDir },
       ],
       'generateAssetHtml'
     );
-    validateNonEmptyString(sessionId, 'sessionId');
+    validateNonEmptyString(exportName, 'exportName');
     validateNonEmptyString(baseDir, 'baseDir');
   } catch (error) {
     logger.warn('Invalid parameters for generateAssetHtml:', {
       asset: asset ? 'present' : 'missing',
-      sessionId,
+      exportName,
       baseDir,
       error: error.message,
     });
@@ -423,7 +423,7 @@ async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
 
   const assetUrl = await generateAssetUrl(
     assetPointer,
-    sessionId,
+    exportName,
     baseDir,
     assetMapping
   );
@@ -512,15 +512,19 @@ async function generateAssetHtml(asset, sessionId, baseDir, assetMapping = {}) {
   }
 }
 
-async function getConversationMessages(conversation, sessionId = null, baseDir = null) {
+async function getConversationMessages(
+  conversation,
+  exportName = null,
+  baseDir = null
+) {
   try {
     validateRequiredParams(
       [{ name: 'conversation', value: conversation }],
       'getConversationMessages'
     );
 
-    if (sessionId) {
-      validateNonEmptyString(sessionId, 'sessionId');
+    if (exportName) {
+      validateNonEmptyString(exportName, 'exportName');
     }
     if (baseDir) {
       validateNonEmptyString(baseDir, 'baseDir');
@@ -538,8 +542,8 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
 
   // Load asset mapping once for the entire conversation (performance optimization)
   let assetMapping = {};
-  if (sessionId && baseDir) {
-    assetMapping = await loadAssetMapping(sessionId, baseDir);
+  if (exportName && baseDir) {
+    assetMapping = await loadAssetMapping(exportName, baseDir);
   }
 
   for (const node of nodes) {
@@ -595,7 +599,7 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
         logger.debug(
           `Processing asset: ${p.asset_pointer}, content_type: ${p.content_type}`
         );
-        const assetHtml = await generateAssetHtml(p, sessionId, baseDir, assetMapping);
+        const assetHtml = await generateAssetHtml(p, exportName, baseDir, assetMapping);
         if (assetHtml) {
           logger.debug(
             `Successfully processed asset: ${p.asset_pointer} -> ${assetHtml.type}`
@@ -608,7 +612,7 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
       } else if (p.video_container_asset_pointer) {
         const videoHtml = await generateAssetHtml(
           p.video_container_asset_pointer,
-          sessionId,
+          exportName,
           baseDir,
           assetMapping
         );
@@ -621,7 +625,7 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
         for (const f of p.frames_asset_pointers) {
           const frameHtml = await generateAssetHtml(
             f,
-            sessionId,
+            exportName,
             baseDir,
             assetMapping
           );
@@ -645,4 +649,5 @@ async function getConversationMessages(conversation, sessionId = null, baseDir =
   messages.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return messages;
 }
+
 module.exports = { getConversationMessages };

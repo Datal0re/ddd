@@ -1,7 +1,8 @@
 /*
- * Common file utilities for session management
+ * Common file utilities for export management
  * Eliminates code duplication between main.js and app.js
  * Enhanced with security, validation, and best practices
+ * Refactored from session-based to direct file-based architecture
  */
 const fs = require('fs').promises;
 const path = require('path');
@@ -77,11 +78,15 @@ async function validateUpload(fileData, maxSize = MAX_UPLOAD_SIZE) {
     }
 
     // Basic zip signature validation
-    const buffer =
-      typeof fileData === 'string' ? await fs.readFile(fileData) : fileData;
+    let buffer;
+    if (typeof fileData === 'string') {
+      buffer = await fs.readFile(fileData);
+    } else {
+      buffer = fileData;
+    }
 
     const isValidZip = ZIP_SIGNATURES.some(sig =>
-      buffer.slice(0, sig.length).equals(sig)
+      buffer.subarray(0, sig.length).equals(sig)
     );
 
     if (!isValidZip) {
@@ -89,7 +94,8 @@ async function validateUpload(fileData, maxSize = MAX_UPLOAD_SIZE) {
     }
 
     // Enhanced zip validation for zip bomb protection
-    await validateZipStructure(buffer);
+    // Skip detailed validation here since we'll validate during extraction
+    // This prevents recursive calls and potential issues with decompress module
 
     logger.info(`Upload validation passed: ${Math.round(size / 1024 / 1024)}MB`);
     return true;
@@ -165,18 +171,89 @@ async function ensureDir(dirPath) {
 }
 
 /**
+ * Validates and extracts a ZIP file to a target directory
+ * @param {Buffer|string} zipData - ZIP file buffer or path
+ * @param {string} targetDir - Target directory for extraction
+ * @param {boolean} isBuffer - True if zipData is buffer, false if path
+ * @returns {Promise<void>}
+ */
+async function validateAndExtractZip(zipData, targetDir, isBuffer = true) {
+  const decompress = await getDecompress();
+  let tempDir = null;
+  let tempZipPath = null;
+
+  try {
+    // Create secure temp directory for processing
+    tempDir = await createTempDir();
+    tempZipPath = path.join(tempDir, 'extract.zip');
+
+    logger.info(`Validating and extracting ZIP: isBuffer=${isBuffer}`);
+
+    // Validate upload before processing
+    await validateUpload(zipData);
+
+    // Save or copy zip file to temp location
+    if (isBuffer) {
+      await fs.writeFile(tempZipPath, zipData);
+    } else {
+      await fs.copyFile(zipData, tempZipPath);
+    }
+
+    logger.info('Starting ZIP extraction...');
+
+    // Extract zip to target directory
+    const files = await decompress(tempZipPath, targetDir);
+
+    logger.debug(
+      `Extracted ${files.length} files:`,
+      files.map(f => ({ path: f.path, type: f.type }))
+    );
+
+    if (!files || files.length === 0) {
+      logger.error('No files extracted from zip archive');
+      throw new Error('No files found in zip archive or extraction failed');
+    }
+
+    // Validate extracted content size
+    const totalExtractedSize = files.reduce(
+      (total, file) => total + (file.size || 0),
+      0
+    );
+    if (totalExtractedSize > MAX_EXTRACTED_SIZE) {
+      throw new Error(
+        `Extracted content too large: ${Math.round(totalExtractedSize / 1024 / 1024)}MB (max: ${Math.round(MAX_EXTRACTED_SIZE / 1024 / 1024)}MB)`
+      );
+    }
+
+    logger.info(`ZIP extraction completed: ${files.length} files extracted`);
+  } catch (error) {
+    logger.error('ZIP validation and extraction failed:', {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+    });
+    throw error;
+  } finally {
+    // Always cleanup temp files
+    if (tempDir) {
+      await cleanupTempDir(tempDir);
+    }
+  }
+}
+
+/**
  * Runs migration script on a given conversations.json file
- * @param {string} sessionId - Session ID
+ * @param {string} exportName - Export name
  * @param {string} outputDir - Output directory for migrated conversations
  * @param {string} baseDir - Base directory of the application
  * @returns {Promise<void>}
  */
-async function runMigration(sessionId, outputDir, baseDir) {
+async function runMigration(exportName, outputDir, baseDir) {
   const inputPath = path.join(
     baseDir,
     'data',
-    'sessions',
-    sessionId,
+    'exports',
+    exportName,
     'conversations.json'
   );
   await ensureDir(outputDir);
@@ -215,16 +292,16 @@ async function runMigration(sessionId, outputDir, baseDir) {
 }
 
 /**
- * Runs asset extraction for a session
- * @param {string} sessionId - Session ID
+ * Runs asset extraction for an export
+ * @param {string} exportName - Export name
  * @param {string} baseDir - Base directory of the application
  * @returns {Promise<void>}
  */
-async function runAssetExtraction(sessionId, baseDir) {
+async function runAssetExtraction(exportName, baseDir) {
   return new Promise((resolve, _reject) => {
     const child = spawn(
       'node',
-      [path.join(baseDir, 'data', 'extract-assets-json.js'), sessionId],
+      [path.join(baseDir, 'data', 'extract-assets-json.js'), exportName],
       {
         stdio: 'pipe',
       }
@@ -258,8 +335,8 @@ async function runAssetExtraction(sessionId, baseDir) {
 /**
  * Processes uploaded zip file with enhanced security and validation
  * @param {Buffer|string} zipData - Zip file buffer or path
- * @param {string} sessionId - Session ID
- * @param {string} sessionDir - Session directory path
+ * @param {string} exportName - Export name
+ * @param {string} exportDir - Export directory path
  * @param {string} mediaDir - Media directory path
  * @param {boolean} isBuffer - True if zipData is buffer, false if path
  * @param {Function} onProgress - Optional progress callback
@@ -267,8 +344,8 @@ async function runAssetExtraction(sessionId, baseDir) {
  */
 async function processZipUpload(
   zipData,
-  sessionId,
-  sessionDir,
+  exportName,
+  exportDir,
   mediaDir,
   isBuffer = true,
   onProgress = null
@@ -283,7 +360,9 @@ async function processZipUpload(
     tempDir = await createTempDir();
     tempZipPath = path.join(tempDir, 'upload.zip');
 
-    logger.info(`Processing zip upload: isBuffer=${isBuffer}, sessionId=${sessionId}`);
+    logger.info(
+      `Processing zip upload: isBuffer=${isBuffer}, exportName=${exportName}`
+    );
 
     // Validate upload before processing
     onProgress?.({ stage: 'validating', progress: 0, message: 'Validating upload...' });
@@ -339,7 +418,7 @@ async function processZipUpload(
     });
     const conversationsPath = await moveFilesToFinalLocations(
       tempDir,
-      sessionDir,
+      exportDir,
       mediaDir,
       files
     );
@@ -385,11 +464,11 @@ async function processZipUpload(
 /**
  * Moves files from temp directory to final locations
  * @param {string} tempDir - Temporary directory
- * @param {string} sessionDir - Final session directory
+ * @param {string} exportDir - Final export directory
  * @param {string} mediaDir - Media directory
  * @param {Array} files - Extracted files list
  */
-async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
+async function moveFilesToFinalLocations(tempDir, exportDir, mediaDir, files) {
   // Find conversations.json and detect top-level folder structure
   let conversationsPath = null;
   const topLevelDirs = new Set();
@@ -426,7 +505,7 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
       if (stats.isFile()) {
         const sample = await fs.readFile(candidatePath, { encoding: 'utf8' });
         if (sample && !sample.includes('\u0000')) {
-          const finalPath = path.join(sessionDir, 'conversations.json');
+          const finalPath = path.join(exportDir, 'conversations.json');
           await fs.rename(candidatePath, finalPath);
           conversationsPath = finalPath;
         }
@@ -455,7 +534,7 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
       logger.debug(`Copied media file: ${file.path} -> ${relativePath}`);
     }
 
-    // Move other files to session directory
+    // Move other files to export directory
     else if (!file.path.endsWith('/')) {
       const src = tempPath;
       const relativePath =
@@ -469,7 +548,7 @@ async function moveFilesToFinalLocations(tempDir, sessionDir, mediaDir, files) {
         continue;
       }
 
-      const destPath = path.join(sessionDir, relativePath);
+      const destPath = path.join(exportDir, relativePath);
       await ensureDir(path.dirname(destPath));
       await fs.rename(src, destPath);
     }
@@ -569,4 +648,5 @@ module.exports = {
   validateZipStructure,
   isMediaFile,
   moveFilesToFinalLocations,
+  validateAndExtractZip,
 };

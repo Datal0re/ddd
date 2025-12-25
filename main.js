@@ -3,12 +3,14 @@ const path = require('path');
 const axios = require('axios');
 const fs = require('fs').promises;
 const { createLogger } = require('./utils/logger');
+// const { MigrationManager } = require('./utils/MigrationManager');
 const { getProgressManager } = require('./utils/ProgressManager');
 const logger = createLogger({ module: path.basename(__filename, '.js') });
 
 let mainWindow;
 const API_BASE_URL = `http://localhost:${process.env.API_PORT || 3001}/api`;
 const progressManager = getProgressManager();
+// const migrationManager = new MigrationManager(__dirname);
 
 logger.info('Electron: API_BASE_URL =', API_BASE_URL);
 logger.info('Electron: process.env.API_PORT =', process.env.API_PORT);
@@ -36,6 +38,9 @@ async function waitForApiServer(maxRetries = 5, delay = 1000) {
 // Wait for API server to be ready before creating window
 app.whenReady().then(async () => {
   logger.info('Electron app ready, waiting for API server...');
+
+  // Initialize migration manager
+  // await migrationManager.initialize();
 
   // Wait for API server with retry mechanism
   const apiReady = await waitForApiServer();
@@ -159,7 +164,7 @@ ipcMain.handle('select-file', async () => {
 });
 
 // IPC handler for upload processing
-ipcMain.handle('process-upload', async (_, filePath) => {
+ipcMain.handle('process-upload', async (_, filePath, exportName) => {
   let uploadId = null;
   const eventSource = null;
 
@@ -180,6 +185,11 @@ ipcMain.handle('process-upload', async (_, filePath) => {
       filename: 'chatgpt-export.zip',
       contentType: 'application/zip',
     });
+
+    // Add export name if provided
+    if (exportName) {
+      form.append('exportName', exportName);
+    }
 
     logger.info('Sending file to API...');
     const response = await axios.post(`${API_BASE_URL}/upload`, form, {
@@ -242,7 +252,10 @@ ipcMain.handle('process-upload', async (_, filePath) => {
                   if (!resolved) {
                     resolved = true;
                     clearInterval(pollInterval);
-                    resolve({ success: true, sessionId: progress.sessionId });
+                    resolve({
+                      success: true,
+                      exportName: progress.exportName || progress.sessionId,
+                    });
                   }
                 } else if (progress.status === 'error') {
                   if (!resolved) {
@@ -314,23 +327,33 @@ ipcMain.handle('get-file-path', async (_, _fileObject) => {
   };
 });
 
-// IPC handler for getting all sessions
-ipcMain.handle('get-all-sessions', async () => {
+// IPC handler for getting all exports
+ipcMain.handle('get-all-exports', async () => {
   try {
-    logger.debug('IPC: get-all-sessions called');
-    const response = await apiCall('GET', '/sessions');
-    logger.debug('IPC: get-all-sessions response:', response);
+    logger.debug('IPC: get-all-exports called');
+    const response = await apiCall('GET', '/exports');
+    logger.debug('IPC: get-all-exports response:', response);
     return response;
   } catch (err) {
-    logger.error('IPC: get-all-sessions error:', err);
-    return { success: false, error: err.message || 'Error getting sessions.' };
+    logger.error('IPC: get-all-exports error:', err);
+    return { success: false, error: err.message || 'Error getting exports.' };
+  }
+});
+
+// IPC handler for getting export info
+ipcMain.handle('get-export', async (_, exportName) => {
+  try {
+    const response = await apiCall('GET', `/exports/${exportName}`);
+    return response;
+  } catch (err) {
+    return { success: false, error: err.message || 'Error loading export.' };
   }
 });
 
 // IPC handler for getting conversations
-ipcMain.handle('get-conversations', async (_, sessionId) => {
+ipcMain.handle('get-conversations', async (_, exportName) => {
   try {
-    const response = await apiCall('GET', `/sessions/${sessionId}/conversations`);
+    const response = await apiCall('GET', `/conversations/${exportName}`);
     return response;
   } catch (err) {
     return { success: false, error: err.message || 'Error loading conversations.' };
@@ -338,11 +361,11 @@ ipcMain.handle('get-conversations', async (_, sessionId) => {
 });
 
 // IPC handler for getting conversation details
-ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
+ipcMain.handle('get-conversation', async (_, exportName, conversationId) => {
   try {
     const response = await apiCall(
       'GET',
-      `/sessions/${sessionId}/conversations/${conversationId}`
+      `/conversations/${exportName}/${conversationId}`
     );
     return response;
   } catch (err) {
@@ -350,23 +373,13 @@ ipcMain.handle('get-conversation', async (_, sessionId, conversationId) => {
   }
 });
 
-// IPC handler for deleting a session
-ipcMain.handle('delete-session', async (_, sessionId) => {
+// IPC handler for deleting an export
+ipcMain.handle('delete-export', async (_, exportName) => {
   try {
-    const response = await apiCall('DELETE', `/sessions/${sessionId}`);
+    const response = await apiCall('DELETE', `/exports/${exportName}`);
     return response;
   } catch (err) {
-    return { success: false, error: err.message || 'Error deleting session.' };
-  }
-});
-
-// IPC handler for session cleanup
-ipcMain.handle('cleanup-sessions', async () => {
-  try {
-    const response = await apiCall('POST', '/sessions/cleanup');
-    return response;
-  } catch (err) {
-    return { success: false, error: err.message || 'Error cleaning up sessions.' };
+    return { success: false, error: err.message || 'Error deleting export.' };
   }
 });
 
@@ -429,10 +442,10 @@ ipcMain.handle('clear-upload-progress', async () => {
 // IPC handler for AI conversation analysis
 ipcMain.handle(
   'ai-analyze-conversation',
-  async (_, sessionId, conversationId, analysisType) => {
+  async (_, exportName, conversationId, analysisType) => {
     try {
       const response = await apiCall('POST', '/ai/analyze-conversation', {
-        sessionId,
+        exportName,
         conversationId,
         analysisType,
       });
@@ -444,10 +457,10 @@ ipcMain.handle(
 );
 
 // IPC handler for AI conversation search
-ipcMain.handle('ai-search-conversations', async (_, sessionId, query, searchType) => {
+ipcMain.handle('ai-search-conversations', async (_, exportName, query, searchType) => {
   try {
     const response = await apiCall('POST', '/ai/search-conversations', {
-      sessionId,
+      exportName,
       query,
       searchType,
     });
@@ -457,11 +470,11 @@ ipcMain.handle('ai-search-conversations', async (_, sessionId, query, searchType
   }
 });
 
-// IPC handler for AI session summarization
-ipcMain.handle('ai-summarize-session', async (_, sessionId, summaryType) => {
+// IPC handler for AI export summarization
+ipcMain.handle('ai-summarize-export', async (_, exportName, summaryType) => {
   try {
-    const response = await apiCall('POST', '/ai/summarize-session', {
-      sessionId,
+    const response = await apiCall('POST', '/ai/summarize-export', {
+      exportName,
       summaryType,
     });
     return response;
@@ -470,36 +483,22 @@ ipcMain.handle('ai-summarize-session', async (_, sessionId, summaryType) => {
   }
 });
 
-// ===== BACKUP MANAGEMENT IPC HANDLERS =====
-
-// IPC handler for creating session backup
-ipcMain.handle('create-backup', async (_, sessionId) => {
+// IPC handler for getting migration progress
+ipcMain.handle('get-migration-progress', async (_, migrationId) => {
   try {
-    const response = await apiCall('POST', `/sessions/${sessionId}/backup`);
-    return response;
+    // This is a simplified implementation
+    // In a real scenario, you'd want to track migration progress more robustly
+    return {
+      success: true,
+      migrationId,
+      status: 'processing',
+      message: 'Migration in progress',
+    };
   } catch (err) {
-    return { success: false, error: err.message || 'Backup creation failed.' };
-  }
-});
-
-// IPC handler for listing session backups
-ipcMain.handle('list-backups', async (_, sessionId) => {
-  try {
-    const response = await apiCall('GET', `/sessions/${sessionId}/backups`);
-    return response;
-  } catch (err) {
-    return { success: false, error: err.message || 'Failed to list backups.' };
-  }
-});
-
-// IPC handler for restoring session backup
-ipcMain.handle('restore-backup', async (_, sessionId, backupFile) => {
-  try {
-    const response = await apiCall('POST', `/sessions/${sessionId}/restore`, {
-      backupFile,
-    });
-    return response;
-  } catch (err) {
-    return { success: false, error: err.message || 'Backup restore failed.' };
+    logger.error('IPC: get-migration-progress error:', err);
+    return {
+      success: false,
+      error: err.message || 'Error getting migration progress.',
+    };
   }
 });

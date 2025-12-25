@@ -1,23 +1,110 @@
 #!/usr/bin/env node
-// migration.js - CommonJS style, async I/O
+// migration.js - Enhanced version for direct file processing
 const fs = require('fs').promises;
 const path = require('path');
 const { createLogger } = require('../utils/logger');
 const logger = createLogger({ module: 'migration' });
+
+/**
+ * Configuration options
+ */
+function parseArguments() {
+  const args = process.argv.slice(2);
+  const options = {
+    inputPath: null,
+    outputDir: null,
+    createSubdirs: false,
+    preserveOriginal: false,
+    overwrite: false,
+    verbose: false,
+  };
+
+  // Parse arguments
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    switch (arg) {
+      case '--create-subdirs':
+        options.createSubdirs = true;
+        break;
+      case '--preserve':
+        options.preserveOriginal = true;
+        break;
+      case '--overwrite':
+        options.overwrite = true;
+        break;
+      case '--verbose':
+        options.verbose = true;
+        break;
+      case '--help':
+        showHelp();
+        process.exit(0);
+        break;
+      default:
+        if (!options.inputPath) {
+          options.inputPath = arg;
+        } else if (!options.outputDir) {
+          options.outputDir = arg;
+        }
+        break;
+    }
+  }
+
+  // Set defaults
+  options.inputPath = options.inputPath || 'conversations.json';
+  options.outputDir =
+    options.outputDir || path.join(path.dirname(options.inputPath), 'conversations');
+
+  return options;
+}
+
+function showHelp() {
+  console.log(`
+Usage: node migration.js [inputPath] [outputDir] [options]
+
+Arguments:
+  inputPath    Path to conversations.json file (default: conversations.json)
+  outputDir    Directory to save individual conversation files (default: ./conversations)
+
+Options:
+  --create-subdirs    Create a 'conversations' subdirectory in outputDir
+  --preserve         Keep original conversations.json file
+  --overwrite        Overwrite existing files (default: skip existing)
+  --verbose          Enable verbose logging
+  --help             Show this help message
+
+Examples:
+  node migration.js                                    # Use defaults
+  node migration.js /path/to/conversations.json       # Custom input path
+  node migration.js data.json ./output                # Custom input and output
+  node migration.js data.json ./out --create-subdirs   # Create conversations subdirectory
+  node migration.js data.json ./out --overwrite       # Overwrite existing files
+`);
+}
+
+/**
+ * Utility functions
+ */
 function sanitizeFilename(rawTitle) {
   // Remove characters not suitable for filenames, then replace spaces with underscores
   const noBad = rawTitle.replace(/[^\w\s-]/g, '');
-  return noBad.trim().replace(/\s+/g, '_');
+  const sanitized = noBad.trim().replace(/\s+/g, '_');
+
+  // Limit length and ensure it's not empty
+  return sanitized.length > 0 ? sanitized.substring(0, 100) : 'untitled';
 }
+
 function toNumber(v) {
   const n = Number(v);
   return Number.isNaN(n) ? 0 : n;
 }
+
 function extractTimestamp(conv) {
   if (conv.update_time != null) return toNumber(conv.update_time);
   if (conv.create_time != null) return toNumber(conv.create_time);
   return 0;
 }
+
 function formatDateFromTimestamp(ts) {
   const dt = new Date(ts * 1000); // ts is in seconds
   const year = dt.getUTCFullYear();
@@ -25,57 +112,154 @@ function formatDateFromTimestamp(ts) {
   const day = String(dt.getUTCDate()).padStart(2, '0');
   return `${year}.${month}.${day}`;
 }
-async function main() {
-  let inputJsonPath = 'conversations.json';
-  let outputDir = null;
-  if (process.argv.length > 2) {
-    inputJsonPath = process.argv[2];
-  }
-  if (process.argv.length > 3) {
-    outputDir = process.argv[3];
-  }
 
-  const inputPath = path.isAbsolute(inputJsonPath)
-    ? inputJsonPath
-    : path.resolve(inputJsonPath);
-  let raw;
+/**
+ * Enhanced migration function for direct file processing
+ */
+async function migrateConversations(inputPath, outputDir, options = {}) {
+  const {
+    createSubdirs = false,
+    preserveOriginal = false,
+    overwrite = false,
+    verbose = false,
+  } = options;
+
+  // Resolve input path
+  const resolvedInputPath = path.isAbsolute(inputPath)
+    ? inputPath
+    : path.resolve(inputPath);
+
+  // Determine final output directory
+  const finalOutputDir = createSubdirs
+    ? path.join(outputDir, 'conversations')
+    : outputDir;
+
+  logger.info(`Migrating conversations from ${resolvedInputPath} to ${finalOutputDir}`);
+
   try {
-    raw = await fs.readFile(inputPath, 'utf8');
+    // Read and validate input file
+    const raw = await fs.readFile(resolvedInputPath, 'utf8');
+    const conversations = JSON.parse(raw);
+
+    if (!Array.isArray(conversations)) {
+      throw new Error('Expected an array of conversations in input file');
+    }
+
+    logger.info(`Found ${conversations.length} conversations to process`);
+
+    // Sort newest first
+    conversations.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
+
+    // Create output directory if it doesn't exist
+    await fs.mkdir(finalOutputDir, { recursive: true });
+
+    // Process each conversation
+    let processed = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const conv of conversations) {
+      try {
+        const ts = extractTimestamp(conv);
+        const dateStr = formatDateFromTimestamp(ts);
+        const rawTitle = conv.title || 'untitled';
+        const cleanTitle = sanitizeFilename(rawTitle);
+        const filename = `${dateStr}_${cleanTitle}.json`;
+        const filepath = path.join(finalOutputDir, filename);
+
+        // Check if file exists
+        if (!overwrite) {
+          try {
+            await fs.access(filepath);
+            if (verbose) {
+              logger.info(`Skipping existing file: ${filename}`);
+            }
+            skipped++;
+            continue;
+          } catch {
+            // File doesn't exist, proceed
+          }
+        }
+
+        // Write conversation file
+        await fs.writeFile(filepath, JSON.stringify(conv, null, 2), 'utf8');
+        processed++;
+
+        if (verbose) {
+          logger.info(`Processed: ${filename}`);
+        }
+      } catch (err) {
+        logger.error(`Error processing conversation: ${err.message}`);
+        errors++;
+      }
+    }
+
+    // Remove original file if requested
+    if (!preserveOriginal && processed > 0) {
+      try {
+        await fs.unlink(resolvedInputPath);
+        logger.info('Removed original conversations.json file');
+      } catch (err) {
+        logger.warn(`Failed to remove original file: ${err.message}`);
+      }
+    }
+
+    logger.info(
+      `Migration completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
+    );
+
+    return {
+      processed,
+      skipped,
+      errors,
+      total: conversations.length,
+    };
   } catch (err) {
-    logger.error(`Error reading input file ${inputPath}: ${err.message}`);
-    process.exit(1);
-  }
-  let conversations;
-  try {
-    conversations = JSON.parse(raw);
-  } catch (err) {
-    logger.error(`Invalid JSON in ${inputPath}: ${err.message}`);
-    process.exit(1);
-  }
-  // Validate it's an array
-  if (!Array.isArray(conversations)) {
-    logger.error(`Expected an array of conversations in ${inputPath}`);
-    process.exit(1);
-  }
-  // Sort newest first
-  conversations.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
-  // Output folder side-by-side with script or custom outputDir
-  const outputFolder = outputDir || path.join(__dirname, 'conversations');
-  try {
-    await fs.access(outputFolder);
-  } catch {
-    await fs.mkdir(outputFolder, { recursive: true });
-  }
-  for (const conv of conversations) {
-    const ts = extractTimestamp(conv);
-    const dateStr = formatDateFromTimestamp(ts);
-    const rawTitle = conv.title || 'untitled';
-    const cleanTitle = sanitizeFilename(rawTitle);
-    const filename = `${dateStr}_${cleanTitle}.json`;
-    const filepath = path.join(outputFolder, filename);
-    await fs.writeFile(filepath, JSON.stringify(conv, null, 2), 'utf8');
+    logger.error(`Migration failed: ${err.message}`);
+    throw err;
   }
 }
+
+/**
+ * Main function for CLI usage
+ */
+async function main() {
+  try {
+    const options = parseArguments();
+
+    if (options.verbose) {
+      logger.info('Starting migration with options:', options);
+    }
+
+    const result = await migrateConversations(
+      options.inputPath,
+      options.outputDir,
+      options
+    );
+
+    if (result.errors > 0) {
+      logger.warn(`Migration completed with ${result.errors} errors`);
+      process.exit(1);
+    } else {
+      logger.info('Migration completed successfully');
+      process.exit(0);
+    }
+  } catch (err) {
+    logger.error('Migration failed:', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Export function for programmatic usage
+ */
+module.exports = {
+  migrateConversations,
+  sanitizeFilename,
+  extractTimestamp,
+  formatDateFromTimestamp,
+  parseArguments,
+};
 // Ensure the script runs only when executed directly, not when imported
 if (require.main === module) {
   main().catch(err => {

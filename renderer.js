@@ -8,31 +8,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAppPath: pathName => ipcRenderer.invoke('get-app-path', pathName),
   selectFile: () => ipcRenderer.invoke('select-file'),
   processUpload: filePath => ipcRenderer.invoke('process-upload', filePath),
-  getConversations: sessionId => ipcRenderer.invoke('get-conversations', sessionId),
-  getConversation: (sessionId, conversationId) =>
-    ipcRenderer.invoke('get-conversation', sessionId, conversationId),
-  cleanupSessions: () => ipcRenderer.invoke('cleanup-sessions'),
-  deleteSession: sessionId => ipcRenderer.invoke('delete-session', sessionId),
-  getAllSessions: () => ipcRenderer.invoke('get-all-sessions'),
+  getConversations: exportName => ipcRenderer.invoke('get-conversations', exportName),
+  getConversation: (exportName, conversationId) =>
+    ipcRenderer.invoke('get-conversation', exportName, conversationId),
+  deleteExport: exportName => ipcRenderer.invoke('delete-export', exportName),
+  getAllExports: () => ipcRenderer.invoke('get-all-exports'),
 
-  // AI Integration methods
-  aiAnalyzeConversation: (sessionId, conversationId, analysisType) =>
+  // AI Integration methods (updated for export-based architecture)
+  aiAnalyzeConversation: (exportName, conversationId, analysisType) =>
     ipcRenderer.invoke(
       'ai-analyze-conversation',
-      sessionId,
+      exportName,
       conversationId,
       analysisType
     ),
-  aiSearchConversations: (sessionId, query, searchType) =>
-    ipcRenderer.invoke('ai-search-conversations', sessionId, query, searchType),
-  aiSummarizeSession: (sessionId, summaryType) =>
-    ipcRenderer.invoke('ai-summarize-session', sessionId, summaryType),
-
-  // Backup management methods
-  createBackup: sessionId => ipcRenderer.invoke('create-backup', sessionId),
-  listBackups: sessionId => ipcRenderer.invoke('list-backups', sessionId),
-  restoreBackup: (sessionId, backupFile) =>
-    ipcRenderer.invoke('restore-backup', sessionId, backupFile),
+  aiSearchConversations: (exportName, query, searchType) =>
+    ipcRenderer.invoke('ai-search-conversations', exportName, query, searchType),
+  aiSummarizeExport: (exportName, summaryType) =>
+    ipcRenderer.invoke('ai-summarize-export', exportName, summaryType),
 
   // Progress management methods
   onUploadProgress: callback => {
