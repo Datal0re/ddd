@@ -51,7 +51,7 @@ class UpcycleManager {
     }
 
     const defaultOptions = {
-      outputDir: './upcycles',
+      outputDir: './upcycle-bin',
       singleFile: false,
       perChat: true,
       includeMedia: false,
