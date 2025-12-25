@@ -120,7 +120,14 @@ class UpcycleManager {
         const chat = chats[i];
         const progress = 20 + (i / chats.length) * 60; // 20-80% for chat processing
 
-        pm.update('processing', progress, `Processing ${chat.title || 'Untitled'}...`);
+        // Only update progress if not using progress bar (verbose mode)
+        if (validatedOptions.verbose) {
+          pm.update(
+            'processing',
+            progress,
+            `Processing ${chat.title || 'Untitled'}...`
+          );
+        }
 
         chatProgressBar(i + 1, {
           chat: chat.title || 'Untitled',
@@ -176,11 +183,14 @@ class UpcycleManager {
         skipped: skippedCount,
       });
 
-      pm.update(
-        'completed',
-        100,
-        `Upcycle complete! Processed ${processedCount} chats.`
-      );
+      // Only add final progress update if in verbose mode (since progress bar already shows completion)
+      if (validatedOptions.verbose) {
+        pm.update(
+          'completed',
+          100,
+          `Upcycle complete! Processed ${processedCount} chats.`
+        );
+      }
 
       const assetErrorSummary = assetErrorTracker.getErrorSummary();
 
