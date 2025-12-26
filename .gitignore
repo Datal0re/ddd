@@ -76,6 +76,7 @@ public/media/
 data/sessions.json
 data/upload-progress.json
 data/dumpsters.json
+data/selection-bin.json
 upcycles/*
 upcycle-bin/*
 
