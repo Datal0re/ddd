@@ -5,7 +5,7 @@
  */
 
 const ora = require('ora').default;
-const { createProgressManager } = require('./utils/ProgressManager');
+const { createProgressManager } = require('../utils/ProgressManager');
 
 async function testSpinner() {
   console.log('🌀 Testing ora spinner directly...\n');
