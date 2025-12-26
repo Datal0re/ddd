@@ -24,6 +24,8 @@ coverage/
 .nyc_output
 lib-cov
 *.zip
+tests/*.txt
+tests/upcycles/
 
 # Build outputs
 dist/
@@ -73,8 +75,10 @@ public/media/
 data/dumpsters.json
 data/sessions.json
 data/upload-progress.json
+data/dumpsters.json
 data/selection-bin.json
-upcycle-bin/
+upcycles/*
+upcycle-bin/*
 
 # Database files
 *.db

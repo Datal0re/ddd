@@ -1,160 +1,459 @@
-# DDD - Data Dumpster Diver
+# Data Dumpster Diver
 
-A desktop application for exploring and visualizing your ChatGPT conversation data locally and securely.
+A Node.js CLI tool to process and explore exported ChatGPT conversation data. Transform ZIP exports into organized, searchable dumpsters with extracted media assets.
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
-![Node.js](https://img.shields.io/badge/node.js-18%2B-green.svg)
-![License](https://img.shields.io/badge/license-MIT-purple.svg)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)
+## 🗑️ What It Does
 
-## ✨ Features
-
-- **🔒 Privacy-First**: All data processing happens locally on your machine
-- **📁 Smart Organization**: Automatically extracts and organizes conversations, media, and assets
-- **🔍 Instant Search**: Real-time filtering of conversation titles and content
-- **📱 Beautiful Interface**: Modern dark mode with smooth animations and responsive design
-- **⚡ Fast Performance**: Optimized for handling large conversation datasets
-- **🎨 Rich Display**: Markdown rendering, code highlighting, and media embedding
-
-- **⌨️ Keyboard Friendly**: Full keyboard navigation and shortcuts
-- **📊 Progress Tracking**: Real-time upload progress with detailed status updates
+- **Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters
+- **Hoard**: View your collection of processed dumpsters
+- **Rummage**: Explore chats within specific dumpsters
+- **Burn**: Safely delete dumpsters with confirmation prompts
+- **Organize**: Automatically extract and organize media assets (images, files, audio)
+- **Secure**: Validate ZIP files against path traversal and zip bomb attacks
 
 ## 🚀 Quick Start
-
-### Prerequisites
-
-- **Node.js 18+** - [Download Node.js](https://nodejs.org/)
-- **ChatGPT Data Export** - Export your data from [ChatGPT Settings](https://chat.openai.com/settings/data-controls)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/Datal0re/ddd.git
-cd ddd
+git clone <repository-url>
+cd data-dumpster-diver
 
 # Install dependencies
 npm install
 
-# Start the application
-npm start
+# Make CLI globally available (optional)
+npm link
 ```
 
-The desktop application will launch automatically.
-
-### Usage
-
-1. **Export your ChatGPT data**
-   - Go to ChatGPT Settings → Data controls → Export
-   - Wait for the email notification and download the zip file
-
-2. **Upload to DDD**
-   - Launch the desktop application
-   - Drag the zip file onto the upload area or click to select
-   - Wait for processing to complete
-
-3. **Explore your conversations**
-   - Browse the conversation list with real-time search
-   - Click any conversation to view detailed messages
-   - Use keyboard shortcuts for efficient navigation
-
-## 📸 Screenshots
-
-<!-- TODO: Add screenshots of the application -->
-
-_Main dashboard with conversation list_
-_Conversation viewer with rich message display_
-_Upload interface with progress tracking_
-
-## 🔒 Privacy & Security
-
-- **🏠 Local Processing**: All data processing happens locally on your machine
-- **🚫 No External APIs**: No data is sent to external services
-- **🔐 Session Isolation**: Each upload session is completely isolated
-- **🛡️ Multi-layer Validation**: File size, type, and ZIP bomb protection
-- **🔒 Secure File Handling**: Path traversal prevention and content sanitization
-- **🧹 Automatic Cleanup**: Temporary files are automatically removed
-
-## 🛠️ For Developers
-
-DDD is built with modern web technologies and follows best practices for security and performance.
-
-**Tech Stack:**
-
-- **Frontend**: Electron + HTML/CSS/JavaScript
-- **Backend**: Express.js + Node.js
-- **Architecture**: Hybrid desktop application with local API server
-
-**Development:**
+### Basic Usage
 
 ```bash
-# Full development (recommended)
-npm run dev-full  # Starts API server + Electron app
+# Process a ChatGPT export
+ddd dump chatgpt-export.zip --name "my-chats"
 
-# Web-only development
-npm run web       # Starts Express server only
+# View all dumpsters
+ddd hoard
 
-# Code quality
-npm run lint      # ESLint checking
-npm run format    # Prettier formatting
+# Explore chats in a dumpster
+ddd rummage my-chats --limit 10
+
+# Burn (delete) a dumpster
+ddd burn my-chats
+
+# Export dumpsters to various formats
+ddd upcycle txt my-chats --output ./exports
+ddd upcycle html my-chats --include-media --self-contained
+ddd upcycle md my-chats --single-file
+
+# Get help
+ddd --help
 ```
 
-**Documentation:**
+## 📋 Commands
 
-- 📖 **[API Documentation](./docs/API.md)** - Complete API reference
-- 🏗️ **[Architecture Guide](./docs/ARCHITECTURE.md)** - Technical architecture
-- 👨‍💻 **[Development Guidelines](./AGENTS.md)** - Contributing and development practices
-- 📋 **[Changelog](./docs/CHANGELOG.md)** - Version history and updates
+### `dump <file>`
 
-## 📁 Project Structure
+Unpack and process a ChatGPT export ZIP file.
+
+```bash
+ddd dump <path-to-zip> [options]
+```
+
+**Options:**
+
+- `-n, --name <name>`: Custom name for the dumpster (default: "default")
+- `-v, --verbose`: Enable verbose output
+
+**Example:**
+
+```bash
+ddd dump ./exports/chatgpt-2024.zip --name "2024-chats" --verbose
+```
+
+### `hoard`
+
+View your dumpster hoard - lists all processed dumpsters.
+
+```bash
+ddd hoard [options]
+```
+
+**Options:**
+
+- `-v, --verbose`: Show detailed information (creation date, chat count)
+
+**Example:**
+
+```bash
+ddd hoard --verbose
+```
+
+### `rummage <dumpster-name>`
+
+Rummage through chats in a specific dumpster.
+
+```bash
+ddd rummage <dumpster-name> [options]
+```
+
+**Options:**
+
+- `-l, --limit <number>`: Number of chats to show (default: 10)
+
+**Example:**
+
+```bash
+ddd rummage 2024-chats --limit 5
+```
+
+### `burn <dumpster-name>`
+
+Set a dumpster on fire - permanently delete it with confirmation.
+
+```bash
+ddd burn <dumpster-name> [options]
+```
+
+**Options:**
+
+- `-f, --force`: Skip confirmation prompt
+- `--dry-run`: Show what would be burned without actually burning
+
+**Example:**
+
+```bash
+ddd burn old-chats --dry-run
+ddd burn old-chats --force
+```
+
+### `upcycle <format> <dumpster-name>`
+
+Upcycle dumpsters to various export formats.
+
+```bash
+ddd upcycle <format> <dumpster-name> [options]
+```
+
+**Formats:**
+
+- `txt`: Plain text format
+- `md`: Markdown format
+- `html`: HTML format
+
+**Options:**
+
+- `-o, --output <path>`: Output directory (default: `./upcycles`)
+- `-s, --single-file`: Combine all chats into single file
+- `--per-chat`: Create separate file per chat (default)
+- `--include-media`: Copy media assets to export directory
+- `--self-contained`: Embed assets in output (HTML only)
+- `-v, --verbose`: Verbose output
+
+**Examples:**
+
+```bash
+# Export to text with separate files
+ddd upcycle txt my-chats --output ./text-exports
+
+# Export to HTML with embedded assets
+ddd upcycle html my-chats --self-contained --single-file
+
+# Export to Markdown with media included
+ddd upcycle md my-chats --include-media --verbose
+```
+
+### 📝 Export Formatters
+
+The project uses a modular formatter system with a base class and format-specific implementations:
+
+#### BaseFormatter
+
+Abstract base class that defines the interface for all formatters:
+
+- `formatChat(processedChat, options)` - Format individual chat
+- `combineChats(results)` - Combine multiple chats for single-file export
+- `getFileExtension()` - Get file extension for the format
+- `getMimeType()` - Get MIME type for the format
+
+#### HTMLFormatter
+
+- **Features**: Full HTML export with CSS styling
+- **Media Support**: Embedded or linked assets
+- **Self-contained**: Option to include all assets inline
+- **Rich Content**: Preserves formatting, links, and structure
+
+#### MDFormatter
+
+- **Format**: Clean Markdown with proper headers
+- **Code Blocks**: Preserves code formatting with syntax highlighting hints
+- **Links**: Maintains clickable links and references
+- **Compatibility**: Works with all Markdown viewers
+
+#### TXTFormatter
+
+- **Simplicity**: Plain text with minimal formatting
+- **Readability**: Clean, accessible format
+- **Compatibility**: Works with any text editor
+- **Size**: Most compact export option
+
+## 🏗️ Architecture
+
+The codebase follows a clean, modular architecture with clear separation of concerns:
 
 ```text
-ddd/
-├── main.js                    # Electron main process
-├── app.js                     # Express API server
-├── renderer.js                # Electron preload script
-├── package.json               # Dependencies and scripts
-├── utils/                     # Core utilities
-├── views/                     # Frontend HTML files
-├── public/                    # Static assets (styles, fonts, scripts)
-├── data/                      # Data storage and sessions
-├── scripts/                   # Maintenance and utility scripts
+CLI Layer (cli.js)
+├── Commands: dump, hoard, rummage, burn, upcycle
+├── User Interface & Error Handling (@inquirer/prompts)
+└── Progress Display (ProgressManager.js)
 
-├── docs/                      # Documentation
-├── LICENSE                    # MIT License
-└── AGENTS.md                  # Development guidelines
+Business Logic Layer (DumpsterManager.js)
+├── Dumpster Lifecycle Management
+├── Metadata Persistence
+└── High-Level Operations
+
+Export Layer (UpcycleManager.js)
+├── Export Format Management
+├── Asset Processing & Copying
+└── Output Generation
+
+Formatter System (utils/formatters/)
+├── BaseFormatter.js - Abstract base class
+├── HTMLFormatter.js - HTML export with media support
+├── MDFormatter.js - Markdown export formatting
+└── TXTFormatter.js - Plain text export
+
+Processing Layer (data/)
+├── dumpster-processor.js - Main orchestration
+├── chat-dumper.js - Conversation processing
+└── extract-assets.js - Asset extraction
+
+Utility Layer (utils/)
+├── FileSystemHelper.js - File system operations
+├── ProgressManager.js - Progress tracking system
+├── ErrorHandler.js - Centralized error handling
+├── SchemaValidator.js - Data validation
+├── CommonUtils.js - Shared utility functions
+├── pathUtils.js - Path manipulation & searching
+├── assetUtils.js - Asset handling utilities
+├── ChatUpcycler.js - Chat processing for export
+├── upcycleHelpers.js - Export helper functions
+├── ZipProcessor.js - ZIP processing & security
+└── Validators.js - Input validation
 ```
 
-## 📈 Roadmap
+## 🗂️ Data Organization
 
-### Version 1.1 (Planned)
+Processed exports are organized as follows:
 
-- [ ] Advanced search and filtering options
-- [ ] Data visualization and analytics dashboard
-- [ ] Export functionality (PDF, JSON, CSV, MD)
+```text
+data/
+├── dumpsters/
+│   └── {dumpster-name}/
+│       ├── chats/
+│       │   ├── conversation-1.json
+│       │   ├── conversation-2.json
+│       │   └── ...
+│       ├── media/
+│       │   ├── file-attachments/
+│       │   ├── dalle-generations/
+│       │   └── audio/
+│       └── chat.html
+├── temp/           # Temporary processing files
+└── dumpsters.json   # Dumpster registry
+```
 
-### Version 1.2 (Future)
+## 🛡️ Security Features
 
-- [ ] Theme customization (light mode, custom colors)
-- [ ] API for external integrations
-- [ ] Mobile app companion
+- **Path Traversal Protection**: Validates all file paths against directory traversal attacks
+- **ZIP Bomb Protection**: Validates compression ratios and file counts
+- **Size Limits**: Configurable limits for uploads and extracted content
+- **Input Validation**: Comprehensive parameter validation throughout
+
+## 🔧 Development
+
+### Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
+
+# Lint code
+npm run lint
+npm run lint:fix
+
+# Format code
+npm run format
+npm run format:check
+
+# Run specific data processing
+npm run extract-assets
+```
+
+### Project Structure
+
+```text
+data-dumpster-diver/
+├── cli.js                    # Main CLI entry point
+├── package.json              # Dependencies and scripts
+├── eslint.config.js         # ESLint configuration
+├── .prettierrc.json         # Prettier configuration
+├── .prettierignore          # Prettier ignore rules
+├── config/
+│   └── constants.js          # Configuration constants
+├── data/
+│   ├── dumpster-processor.js  # Main processing orchestration
+│   ├── chat-dumper.js      # Chat data processing
+│   └── extract-assets.js     # Asset extraction from HTML
+├── utils/
+│   ├── ChatUpcycler.js      # Chat message processing & export
+│   ├── CommonUtils.js       # Common utility functions
+│   ├── DumpsterManager.js    # Core dumpster management
+│   ├── ErrorHandler.js      # Centralized error handling
+│   ├── FileSystemHelper.js   # File system operations
+│   ├── ProgressManager.js   # Progress tracking system
+│   ├── SchemaValidator.js   # Data validation schemas
+│   ├── UpcycleManager.js    # Export format management
+│   ├── AssetUtils.js         # Asset handling utilities
+│   ├── PathUtils.js          # Path operations & searching
+│   ├── upcycleHelpers.js    # Export helper functions
+│   ├── Validators.js         # Input validation
+│   ├── ZipProcessor.js       # ZIP processing & security
+│   └── formatters/          # Export formatters
+│       ├── BaseFormatter.js  # Base formatter class
+│       ├── HTMLFormatter.js  # HTML export formatter
+│       ├── MDFormatter.js    # Markdown export formatter
+│       └── TXTFormatter.js   # Plain text export formatter
+├── AGENTS.md               # Development guidelines
+├── CHANGELOG.md            # Version history
+├── LICENSE                 # MIT License
+└── README.md               # This file
+```
+
+### Code Quality
+
+- **ESLint**: Configured for consistent code style
+- **Prettier**: Automatic code formatting
+- **CommonJS**: Module system for maximum compatibility
+- **JSDoc**: Comprehensive documentation for all functions
+
+## 📝 Configuration
+
+Configuration is handled through `config/constants.js`:
+
+```javascript
+{
+  LIMITS: {
+    MAX_UPLOAD_SIZE: 500 * 1024 * 1024,      // 500MB
+    MAX_EXTRACTED_SIZE: 2 * 1024 * 1024 * 1024, // 2GB
+    MAX_FILES_IN_ZIP: 10000,
+    MAX_COMPRESSION_RATIO: 100
+  },
+  FILE_EXTENSIONS: {
+    // Supported file extensions for various asset types
+  },
+  ASSET_PREFIXES: {
+    // Asset path prefixes for different types
+  }
+}
+```
+
+## 🔄 Recent Improvements (v0.0.1)
+
+### Codebase Refactoring
+
+- **Duplicate Elimination**: Removed 106 lines of duplicate code
+- **Consolidated Functions**: Single source of truth for core operations
+  - `moveMediaFiles()` → `AssetUtils.moveMediaFiles()`
+  - `validatePath()` → `PathUtils.validatePath()`
+  - `copyDirectory()` → `PathUtils.copyDirectory()`
+- **Standardized Temp Directory Logic**:
+  - `createSystemTempDir()` for OS temp directories
+  - `createProjectTempDir()` for project temp directories
+- **Enhanced Documentation**: Comprehensive JSDoc explaining consolidation rationale
+
+### Utility System Updates
+
+- **ProgressManager.js**: New progress tracking system replacing deprecated `progressTracker.js`
+  - Consistent progress updates across export operations
+  - Better integration with CLI display
+  - Improved error handling and reporting
+- **FileSystemHelper.js**: Renamed from `fsHelpers.js` for better consistency
+- **CommonUtils.js**: Shared utility functions for common operations
+- **ErrorHandler.js**: Centralized error handling and logging
+- **SchemaValidator.js**: Data validation schemas for integrity checking
+
+### Architecture Improvements
+
+- **Clear Separation of Concerns**: Utility modules have focused responsibilities
+- **Better Error Handling**: Consistent patterns across all modules
+- **Improved Performance**: Better APIs and reduced redundancy
+- **Enhanced Security**: Centralized path validation with comprehensive checks
+
+### CLI and User Experience
+
+- **@inquirer/prompts**: Modern interactive prompts for better user experience
+- **Enhanced Commands**: Improved CLI structure with better error handling
+- **Legacy Removal**: Cleaned up deprecated code and streamlined interfaces
+
+## 📦 Dependencies
+
+### Core Dependencies
+
+- **@inquirer/prompts**: Interactive command-line prompts for better user experience
+- **chalk**: Terminal string styling for colorful output
+- **commander**: Complete solution for Node.js command-line interfaces
+- **decompress**: Decompress ZIP files with security validation
+- **marked**: Markdown parser for HTML exports
+- **ora**: Elegant terminal spinners for progress indication
+- **sanitize-html**: HTML sanitizer for secure content processing
+- **uuid**: Generate RFC-compliant UUIDs for unique identifiers
+
+### Development Dependencies
+
+- **eslint**: JavaScript linting for code quality
+- **eslint-config-prettier**: ESLint configuration for Prettier compatibility
+- **nodemon**: Auto-restart development server on file changes
+- **prettier**: Opinionated code formatter
+
+## 🧪 Testing
+
+The codebase includes comprehensive testing for core functionality:
+
+```bash
+# Run individual tests
+node -e "require('./utils/AssetUtils').test()"
+node -e "require('./utils/PathUtils').test()"
+```
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 🤝 Contributing
 
-- Built with [Electron](https://electronjs.org/) and [Express.js](https://expressjs.com/)
-- Fonts powered by [FiraCode](https://firacode.org)
-- Icons and emojis from native browser support
+1. Follow the development guidelines in [AGENTS.md](AGENTS.md)
+2. Maintain consistent code style (ESLint + Prettier)
+3. Add comprehensive JSDoc for new functions
+4. Test all changes thoroughly
+5. Keep security best practices in mind
 
----
+## 🔍 Future Enhancements
 
-<div align="center">
+Planned improvements include:
 
-**⭐ Star this repo if it helped you explore your ChatGPT data!**
+- **Additional CLI Commands**: `inspect`, `stats`, `search`
+- **Service Layer**: Better abstraction for business logic
+- **Error Handling**: Standardized error framework
+- **Configuration**: User-configurable settings
+- **Export Formats**: Support for different output formats
+- **Search Functionality**: Full-text search across chats
+- **Enhanced Burn Command**: Batch deletion and recycling bin functionality
 
-Made with ❤️ for data privacy and exploration
+## 📞 Support
 
-</div>
+For issues, questions, or contributions, please refer to the project repository or development guidelines in `AGENTS.md`.

@@ -1,273 +1,598 @@
 /*
- * Progress Manager
- * Handles persistent progress tracking for upload operations
- * Supports progress persistence across navigation and app restarts
+ * ProgressManager.js - Centralized progress tracking using ora and cli-progress
+ * Provides consistent progress reporting, spinners, and progress bars across application
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const { createLogger } = require('./logger');
+const ora = require('ora').default;
+const chalk = require('chalk');
+const { PROGRESS_STAGES } = require('../config/constants');
 
-const logger = createLogger({ module: 'ProgressManager' });
-
+/**
+ * Centralized progress management class
+ */
 class ProgressManager {
-  constructor() {
-    this.progress = new Map();
-    this.progressFile = path.join(__dirname, '..', 'data', 'upload-progress.json');
-    this.cleanupInterval = null;
-    this.initialize();
-  }
-
   /**
-   * Initialize progress manager
+   * Create a new progress manager with optional spinner
+   * @param {Function} onProgress - Optional callback for progress updates
+   * @param {boolean} useSpinner - Whether to use ora spinner (default: true)
+   * @param {Object} options - Spinner options
+   * @returns {ProgressManager} Progress manager instance
    */
-  async initialize() {
-    try {
-      await this.loadPersistedProgress();
-      this.startCleanupInterval();
-    } catch (error) {
-      logger.error('Failed to initialize ProgressManager:', error);
-    }
-  }
-
-  /**
-   * Generate timestamp-based upload ID
-   * @returns {string} Upload ID
-   */
-  generateUploadId() {
-    return `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * Create new progress entry
-   * @param {string} uploadId - Upload ID
-   * @returns {Object} Initial progress object
-   */
-  createProgress(uploadId) {
-    const progress = {
-      uploadId,
-      stage: 'initializing',
-      progress: 0,
-      message: 'Initializing upload...',
-      sessionId: null,
-      status: 'processing',
-      error: null,
-      startTime: Date.now(),
-      estimatedTimeRemaining: null,
-      lastUpdated: Date.now(),
+  constructor(onProgress = null, useSpinner = true, options = {}) {
+    this.onProgress = onProgress;
+    this.useSpinner = useSpinner;
+    this.spinner = null;
+    this.currentStage = null;
+    this.options = {
+      color: 'cyan',
+      spinner: 'dots',
+      progressStyle: 'auto', // 'auto', 'spinner', 'bar'
+      ...options,
     };
+    this.multibar = null;
+    this.activeBars = new Map();
+    this.barCounter = 0;
+    this.spinnerActive = false;
 
-    this.progress.set(uploadId, progress);
-    this.saveProgress();
-    logger.info(`Created progress for upload: ${uploadId}`);
-    return progress;
-  }
-
-  /**
-   * Update progress for an upload
-   * @param {string} uploadId - Upload ID
-   * @param {Object} updates - Progress updates
-   */
-  updateProgress(uploadId, updates) {
-    const current = this.progress.get(uploadId);
-    if (!current) {
-      logger.warn(`Attempted to update non-existent progress: ${uploadId}`);
-      return null;
-    }
-
-    const updated = {
-      ...current,
-      ...updates,
-      lastUpdated: Date.now(),
-    };
-
-    // Calculate estimated time remaining
-    if (updates.progress !== undefined && updates.progress > current.progress) {
-      const elapsed = Date.now() - current.startTime;
-      const rate = updates.progress / elapsed;
-      updated.estimatedTimeRemaining =
-        rate > 0 ? Math.round((100 - updates.progress) / rate) : null;
-    }
-
-    this.progress.set(uploadId, updated);
-    this.saveProgress();
-    logger.debug(
-      `Updated progress for ${uploadId}: ${updated.progress}% - ${updated.stage}`
-    );
-    return updated;
-  }
-
-  /**
-   * Get progress for an upload
-   * @param {string} uploadId - Upload ID
-   * @returns {Object|null} Progress object or null
-   */
-  getProgress(uploadId) {
-    return this.progress.get(uploadId) || null;
-  }
-
-  /**
-   * Get all active progress
-   * @returns {Array} Array of progress objects
-   */
-  getAllProgress() {
-    return Array.from(this.progress.values());
-  }
-
-  /**
-   * Complete an upload
-   * @param {string} uploadId - Upload ID
-   * @param {string} sessionId - Session ID (optional)
-   */
-  completeProgress(uploadId, sessionId = null) {
-    this.updateProgress(uploadId, {
-      status: 'completed',
-      progress: 100,
-      stage: 'completed',
-      message: 'Upload processing complete!',
-      sessionId,
-    });
-  }
-
-  /**
-   * Mark upload as failed
-   * @param {string} uploadId - Upload ID
-   * @param {string} error - Error message
-   */
-  failProgress(uploadId, error) {
-    this.updateProgress(uploadId, {
-      status: 'error',
-      stage: 'error',
-      error,
-      message: `Upload failed: ${error}`,
-    });
-  }
-
-  /**
-   * Cancel an upload
-   * @param {string} uploadId - Upload ID
-   */
-  cancelProgress(uploadId) {
-    this.updateProgress(uploadId, {
-      status: 'cancelled',
-      stage: 'cancelled',
-      message: 'Upload cancelled by user',
-    });
-  }
-
-  /**
-   * Remove progress entry
-   * @param {string} uploadId - Upload ID
-   */
-  removeProgress(uploadId) {
-    const removed = this.progress.delete(uploadId);
-    if (removed) {
-      this.saveProgress();
-      logger.info(`Removed progress for upload: ${uploadId}`);
-    }
-    return removed;
-  }
-
-  /**
-   * Save progress to file
-   */
-  async saveProgress() {
-    try {
-      const progressData = {};
-      this.progress.forEach((value, key) => {
-        progressData[key] = value;
+    // Create spinner if we should use it (regardless of onProgress callback)
+    if (this.useSpinner && this.shouldUseSpinner()) {
+      this.spinner = ora({
+        color: this.options.color,
+        spinner: this.options.spinner,
+        isSilent: !useSpinner,
       });
-
-      await fs.writeFile(this.progressFile, JSON.stringify(progressData, null, 2));
-    } catch (error) {
-      logger.error('Failed to save progress:', error);
     }
   }
 
   /**
-   * Load persisted progress from file
+   * Update progress for a specific stage
+   * @param {string} stage - Progress stage name
+   * @param {number} progress - Progress percentage (0-100)
+   * @param {string} message - Progress message
    */
-  async loadPersistedProgress() {
-    try {
-      const data = await fs.readFile(this.progressFile, 'utf8');
-      const progressData = JSON.parse(data);
+  update(stage, progress, message) {
+    this.currentStage = stage;
+    const progressData = {
+      stage,
+      progress: Math.min(100, Math.max(0, progress)),
+      message,
+      timestamp: Date.now(),
+    };
 
-      Object.entries(progressData).forEach(([key, value]) => {
-        // Only restore recent progress (less than 24 hours)
-        const age = Date.now() - value.startTime;
-        if (age < 24 * 60 * 60 * 1000) {
-          this.progress.set(key, value);
+    // Update spinner if active and spinning
+    if (this.spinner && this.spinnerActive) {
+      // Keep spinner text simple and clean
+      this.spinner.text = message;
+
+      if (progressData.progress >= 100) {
+        const stageName = this._formatStageName(stage);
+        this.spinner.succeed(`${stageName}: ${message} completed`);
+        this.spinnerActive = false;
+      }
+    }
+
+    // Call external callback if provided
+    if (this.onProgress) {
+      this.onProgress(progressData);
+    }
+
+    // Log progress if no spinner is active
+    if (!this.spinnerActive && this.useSpinner) {
+      const percentage = Math.round(progressData.progress);
+      const stageName = this._formatStageName(stage);
+      console.log(chalk.blue(`${stageName}: ${message} (${percentage}%)`));
+    }
+  }
+
+  /**
+   * Start a new progress stage with spinner
+   * @param {string} stage - Progress stage name
+   * @param {string} message - Initial message
+   * @param {number} initialProgress - Initial progress (default: 0)
+   */
+  start(stage, message, initialProgress = 0) {
+    if (this.spinner && !this.spinnerActive) {
+      // Keep spinner text simple - just the message
+      this.spinner.start(message);
+      this.spinnerActive = true;
+    }
+    this.update(stage, initialProgress, message);
+  }
+
+  /**
+   * Mark current stage as successful
+   * @param {string} message - Success message
+   */
+  succeed(message) {
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.succeed(message);
+      this.spinnerActive = false;
+    } else {
+      console.log(chalk.green(`✅ ${message}`));
+    }
+  }
+
+  /**
+   * Mark current stage as failed
+   * @param {string} message - Failure message
+   */
+  fail(message) {
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.fail(message);
+      this.spinnerActive = false;
+    } else {
+      console.error(chalk.red(`❌ ${message}`));
+    }
+  }
+
+  /**
+   * Show a warning message
+   * @param {string} message - Warning message
+   */
+  warn(message) {
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.warn(message);
+    } else {
+      console.warn(chalk.yellow(`⚠️ ${message}`));
+    }
+  }
+
+  /**
+   * Show an info message
+   * @param {string} message - Info message
+   */
+  info(message) {
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.info(message);
+    } else {
+      console.log(chalk.blue(`ℹ️ ${message}`));
+    }
+  }
+
+  /**
+   * Stop current spinner
+   */
+  stop() {
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.stop();
+      this.spinnerActive = false;
+    }
+    this.stopAllBars();
+  }
+
+  /**
+   * Create progress tracking functions for specific stages
+   * @param {Object} stageConfig - Configuration for stages
+   * @returns {Object} Object with stage-specific update functions
+   */
+  createStageTrackers(stageConfig = {}) {
+    const stages = {
+      initializing: message => this.update(PROGRESS_STAGES.INITIALIZING, 0, message),
+      extracting: (progress, message) =>
+        this.update(PROGRESS_STAGES.EXTRACTING, progress, message),
+      dumping: (progress, message) =>
+        this.update(PROGRESS_STAGES.DUMPING, progress, message),
+      extractingAssets: (progress, message) =>
+        this.update(PROGRESS_STAGES.EXTRACTING_ASSETS, progress, message),
+      organizing: (progress, message) =>
+        this.update(PROGRESS_STAGES.ORGANIZING, progress, message),
+      validating: (progress, message) =>
+        this.update(PROGRESS_STAGES.VALIDATING, progress, message),
+      completed: message => this.update(PROGRESS_STAGES.COMPLETED, 100, message),
+      ...stageConfig,
+    };
+
+    return stages;
+  }
+
+  /**
+   * Create a simple progress bar for file operations
+   * @param {number} total - Total items to process
+   * @param {string} message - Progress message
+   * @param {Function} onItem - Callback for each item (optional)
+   * @returns {Function} Function to call for each processed item
+   */
+  createProgressBar(total, message, onItem = null) {
+    let processed = 0;
+    const startTime = Date.now();
+
+    return (item = null) => {
+      processed++;
+      const progress = (processed / total) * 100;
+      const elapsed = Date.now() - startTime;
+      const rate = processed / (elapsed / 1000);
+      const remaining = total - processed;
+      const eta = remaining / rate;
+
+      if (onItem && item) {
+        onItem(item, processed, total);
+      }
+
+      this.update(
+        this.currentStage || PROGRESS_STAGES.DUMPING,
+        progress,
+        `${message} (${processed}/${total}) - ETA: ${Math.round(eta)}s`
+      );
+
+      if (processed === total) {
+        this.succeed(
+          `${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
+        );
+      }
+
+      return processed;
+    };
+  }
+
+  /**
+   * Create a true progress bar using cli-progress with fallback
+   * @param {number} total - Total items to process
+   * @param {string} message - Progress message
+   * @param {Object} options - Progress bar options
+   * @returns {Function} Function to call for each processed item
+   */
+  createFileProgressBar(total, message, options = {}) {
+    if (!this.shouldUseProgressBar()) {
+      // Fallback to original createProgressBar for verbose mode
+      return this.createProgressBar(total, message, options.onItem);
+    }
+
+    let processed = 0;
+    const startTime = Date.now();
+    let lastOutputLength = 0;
+
+    return (value = 1, payload = {}) => {
+      processed = value;
+      const progress = (processed / total) * 100;
+      const elapsed = Date.now() - startTime;
+      const rate = processed / (elapsed / 1000);
+      const remaining = total - processed;
+      const eta = remaining / rate;
+
+      // Get terminal width for proper truncation
+      const terminalWidth = process.stdout.columns || 80;
+      const reservedWidth = 10; // Reserve space for "100% | X/total"
+
+      // Create simple text progress bar that works in any environment
+      const barLength = Math.min(20, Math.floor((terminalWidth - reservedWidth) / 3));
+      const filledChars = Math.floor((progress / 100) * barLength);
+      const emptyChars = barLength - filledChars;
+      const bar = '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
+
+      // Truncate message if needed
+      const maxMessageLength = Math.max(10, terminalWidth - 60); // Minimum 10 chars for message
+      const truncatedMessage =
+        message.length > maxMessageLength
+          ? message.substring(0, maxMessageLength - 3) + '...'
+          : message;
+
+      // Format with additional payload info
+      let payloadStr = '';
+      if (payload && Object.keys(payload).length > 0) {
+        const payloadInfo = Object.entries(payload)
+          .map(([key, val]) => `${key}: ${val}`)
+          .join(', ');
+
+        // Reserve space for payload but truncate if too long
+        const maxPayloadLength = Math.max(
+          0,
+          terminalWidth - (truncatedMessage.length + bar.length + 40)
+        );
+        if (maxPayloadLength > 5) {
+          payloadStr =
+            ' | ' +
+            (payloadInfo.length > maxPayloadLength
+              ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
+              : payloadInfo);
         }
-      });
-
-      logger.info(`Loaded ${this.progress.size} persisted progress entries`);
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        logger.error('Failed to load persisted progress:', error);
       }
-    }
+
+      const output = `${truncatedMessage} ${bar} ${Math.round(progress)}% | ${processed}/${total} | ${rate.toFixed(1)}/s | ETA: ${Math.round(eta)}s${payloadStr}`;
+
+      // Clear previous output and write new progress
+      if (lastOutputLength > 0) {
+        process.stdout.write('\r' + ' '.repeat(lastOutputLength) + '\r');
+      }
+      process.stdout.write(output);
+      lastOutputLength = output.length;
+
+      if (processed >= total) {
+        process.stdout.write('\n');
+        console.log(
+          chalk.green(
+            `✅ ${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
+          )
+        );
+      }
+
+      return processed;
+    };
   }
 
   /**
-   * Start cleanup interval for old progress
+   * Create multiple progress bars for concurrent operations (simplified version)
+   * @param {Object} options - MultiBar options
+   * @returns {Object} MultiBar controller and createBar function
    */
-  startCleanupInterval() {
-    // Clean up every hour
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanupOldProgress();
+  createMultiProgressBar(_options = {}) {
+    const bars = new Map();
+    let barCounter = 0;
+    this.multiBarReservedLines = 0;
+
+    return {
+      createBar: (total, message, _barOptions = {}) => {
+        const barId = `multi_${++barCounter}`;
+        let processed = 0;
+
+        const bar = {
+          update: (value, payload = {}) => {
+            processed = value;
+            const progress = (processed / total) * 100;
+
+            // Get terminal width for proper truncation
+            const terminalWidth = process.stdout.columns || 80;
+            const reservedWidth = 15; // Reserve space for progress info
+
+            // Create simple text progress bar
+            const barLength = Math.min(
+              15,
+              Math.floor((terminalWidth - reservedWidth) / 4)
+            );
+            const filledChars = Math.floor((progress / 100) * barLength);
+            const emptyChars = barLength - filledChars;
+            const progressBar =
+              '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
+
+            // Truncate message if needed
+            const maxMessageLength = Math.max(5, terminalWidth - 40);
+            const truncatedMessage =
+              message.length > maxMessageLength
+                ? message.substring(0, maxMessageLength - 3) + '...'
+                : message;
+
+            let payloadStr = '';
+            if (payload && Object.keys(payload).length > 0) {
+              const payloadInfo = Object.entries(payload)
+                .map(([key, val]) => `${key}: ${val}`)
+                .join(', ');
+
+              const maxPayloadLength = Math.max(
+                0,
+                terminalWidth - (truncatedMessage.length + progressBar.length + 25)
+              );
+              if (maxPayloadLength > 5) {
+                payloadStr =
+                  ' | ' +
+                  (payloadInfo.length > maxPayloadLength
+                    ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
+                    : payloadInfo);
+              }
+            }
+
+            const output = `${truncatedMessage}: ${progressBar} ${Math.round(progress)}% | ${processed}/${total}${payloadStr}`;
+
+            // Store for batch display
+            bars.set(barId, {
+              message: truncatedMessage,
+              output,
+              priority: bars.size,
+            });
+
+            // Display all bars together
+            this.displayMultipleBars(bars);
+          },
+          stop: () => {
+            bars.delete(barId);
+
+            // If no more bars, clean up the reserved lines
+            if (bars.size === 0 && this.multiBarReservedLines > 0) {
+              // Move to the line after the last reserved line
+              process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
+              process.stdout.write('\n'); // Final newline
+              this.multiBarReservedLines = 0;
+            }
+          },
+        };
+
+        return bar;
       },
-      60 * 60 * 1000
+      stop: () => {
+        bars.clear();
+        if (this.multiBarReservedLines > 0) {
+          // Move to the line after the last reserved line
+          process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
+          process.stdout.write('\n'); // Final newline
+          this.multiBarReservedLines = 0;
+        }
+      },
+    };
+  }
+
+  /**
+   * Display multiple progress bars together
+   * @private
+   */
+  displayMultipleBars(bars) {
+    const barCount = bars.size;
+
+    // If this is the first display, we need to reserve space
+    if (!this.multiBarReservedLines) {
+      this.multiBarReservedLines = barCount;
+      process.stdout.write('\n'.repeat(barCount - 1)); // Reserve lines
+    }
+
+    // Move cursor up to the first bar line
+    if (barCount > 0) {
+      process.stdout.write(`\x1b[${barCount - 1}A`); // Move cursor up
+    }
+
+    // Sort by priority and display
+    const sortedBars = Array.from(bars.entries()).sort(
+      ([, a], [, b]) => a.priority - b.priority
     );
-  }
 
-  /**
-   * Clean up progress older than 24 hours
-   */
-  cleanupOldProgress() {
-    const now = Date.now();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    let cleanedCount = 0;
+    const terminalWidth = process.stdout.columns || 80;
 
-    for (const [uploadId, progress] of this.progress.entries()) {
-      if (now - progress.startTime > maxAge) {
-        this.progress.delete(uploadId);
-        cleanedCount++;
+    sortedBars.forEach(([, barData], index) => {
+      // Clear the entire line
+      process.stdout.write('\r' + ' '.repeat(terminalWidth) + '\r');
+
+      // Truncate output if needed
+      const truncatedOutput =
+        barData.output.length > terminalWidth
+          ? barData.output.substring(0, terminalWidth - 3) + '...'
+          : barData.output;
+
+      process.stdout.write(truncatedOutput);
+
+      // Move to next line except for the last one
+      if (index < sortedBars.length - 1) {
+        process.stdout.write('\n');
       }
+    });
+  }
+
+  /**
+   * Stop all active progress bars and multi-bar instances
+   */
+  stopAllBars() {
+    // Clear any remaining output
+    if (this.activeBars.size > 0) {
+      console.log();
     }
 
-    if (cleanedCount > 0) {
-      this.saveProgress();
-      logger.info(`Cleaned up ${cleanedCount} old progress entries`);
+    // Stop all single bars
+    this.activeBars.forEach((bar, _id) => {
+      if (typeof bar.stop === 'function') {
+        bar.stop();
+      }
+    });
+    this.activeBars.clear();
+
+    // Stop multi-bar
+    if (this.multibar) {
+      this.multibar = null;
+      this.activeBars.clear();
     }
   }
 
   /**
-   * Cleanup resources
+   * Determine if spinner should be used
+   * @private
    */
-  cleanup() {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
+  shouldUseSpinner() {
+    const progressStyle = this.options.progressStyle || 'auto';
+    if (progressStyle === 'spinner') return true;
+    if (progressStyle === 'bar') return false;
+    // 'auto' mode: use spinner for indeterminate progress, bars for determinate
+    return true;
+  }
+
+  /**
+   * Determine if progress bar should be used
+   * @private
+   */
+  shouldUseProgressBar() {
+    const progressStyle = this.options.progressStyle || 'auto';
+    if (progressStyle === 'bar') return true;
+    if (progressStyle === 'spinner') return false;
+    // 'auto' mode: use bars when not in verbose mode
+    return this.useSpinner;
+  }
+
+  /**
+   * Get current progress state
+   * @returns {Object|null} Current progress state
+   */
+  getCurrentState() {
+    return this.currentStage
+      ? {
+          stage: this.currentStage,
+          spinnerActive: !!this.spinner,
+          activeBars: this.activeBars.size,
+          hasMultiBar: !!this.multibar,
+        }
+      : null;
+  }
+
+  /**
+   * Create a nested progress manager for sub-operations
+   * @param {string} parentStage - Parent stage name
+   * @param {number} parentWeight - Weight of parent progress (0-100)
+   * @param {Function} onProgress - Optional callback for sub-progress
+   * @returns {ProgressManager} Nested progress manager
+   */
+  createNested(parentStage, parentWeight, onProgress = null) {
+    const nestedManager = new ProgressManager(
+      subProgress => {
+        // Convert sub-progress (0-100) to weighted contribution
+        const contribution = (subProgress.progress / 100) * parentWeight;
+        const totalProgress = Math.min(100, contribution);
+
+        this.update(parentStage, totalProgress, subProgress.message);
+
+        if (onProgress) {
+          onProgress({
+            stage: subProgress.stage,
+            progress: totalProgress,
+            message: subProgress.message,
+            parentStage,
+          });
+        }
+      },
+      false // Don't create nested spinner
+    );
+
+    return nestedManager;
+  }
+
+  /**
+   * Format stage name for display
+   * @private
+   */
+  _formatStageName(stage) {
+    const stageMap = {
+      [PROGRESS_STAGES.INITIALIZING]: 'Initializing',
+      [PROGRESS_STAGES.EXTRACTING]: 'Extracting',
+      [PROGRESS_STAGES.DUMPING]: 'Processing',
+      [PROGRESS_STAGES.EXTRACTING_ASSETS]: 'Extracting Assets',
+      [PROGRESS_STAGES.ORGANIZING]: 'Organizing',
+      [PROGRESS_STAGES.VALIDATING]: 'Validating',
+      [PROGRESS_STAGES.COMPLETED]: 'Completed',
+    };
+
+    return stageMap[stage] || stage;
   }
 }
 
-// Singleton instance
-let progressManager = null;
+/**
+ * Create a progress manager with consistent configuration
+ * @param {Function} onProgress - Optional progress callback
+ * @param {boolean} verbose - Whether to show verbose output
+ * @param {Object} options - Additional options
+ * @returns {ProgressManager} Configured progress manager
+ */
+function createProgressManager(onProgress = null, verbose = false, options = {}) {
+  const useSpinner = !verbose; // Use spinner unless verbose mode
+  return new ProgressManager(onProgress, useSpinner, options);
+}
 
 /**
- * Get progress manager instance
- * @returns {ProgressManager} Progress manager instance
+ * Create a progress manager with bar-style preference
+ * @param {Function} onProgress - Optional progress callback
+ * @param {boolean} verbose - Whether to show verbose output
+ * @param {Object} options - Additional options
+ * @returns {ProgressManager} Configured progress manager with bar preference
  */
-function getProgressManager() {
-  if (!progressManager) {
-    progressManager = new ProgressManager();
-  }
-  return progressManager;
+function createProgressBarManager(onProgress = null, verbose = false, options = {}) {
+  return new ProgressManager(onProgress, !verbose, {
+    progressStyle: 'bar',
+    ...options,
+  });
 }
 
 module.exports = {
   ProgressManager,
-  getProgressManager,
+  createProgressManager,
+  createProgressBarManager,
 };
