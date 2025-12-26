@@ -73,6 +73,8 @@ public/media/
 data/dumpsters.json
 data/sessions.json
 data/upload-progress.json
+data/selection-bin.json
+upcycle-bin/
 
 # Database files
 *.db
