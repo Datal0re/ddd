@@ -27,7 +27,7 @@ class TestUtils {
       // Check if file exists
       try {
         await fs.access(zipPath);
-      } catch (error) {
+      } catch {
         throw new Error(
           `Test ZIP file not found: ${zipPath}\nPlease update the zip variable to a valid path or place a test.zip file in the tests/ directory.`
         );
