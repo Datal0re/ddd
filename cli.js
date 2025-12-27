@@ -11,8 +11,23 @@ const program = new Command();
 
 program
   .name('ddd')
-  .description('CLI tool to process and explore exported ChatGPT conversation data')
-  .version('0.0.2');
+  .description(`╔══════════════════════════════════════╗
+║.-                                  -.║
+║         █████     █████     █████    ║
+║:       ░░███     ░░███     ░░███    :║
+║      ███████   ███████   ███████     ║
+║.    ███░░███  ███░░███  ███░░███    .║
+║    ░███ ░███ ░███ ░███ ░███ ░███     ║
+║:   ░███ ░███ ░███ ░███ ░███ ░███    :║
+║    ░░████████░░████████░░████████    ║
+║._   ░░░░░░░░  ░░░░░░░░  ░░░░░░░░   _.║
+╠══════════════════════════════════════╣
+╟───────{ Data Dumpster Diver }────────╢
+╚══════════════════════════════════════╝
+
+CLI tool to process and explore exported ChatGPT conversation data
+`)
+  .version('0.0.3');
 
 // Helper functions for common prompt patterns
 async function promptForFilePath() {
