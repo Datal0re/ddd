@@ -68,29 +68,30 @@ class MDFormatter extends BaseFormatter {
       return '';
     }
 
-    let header = `# ${metadata.title}\n\n`;
+    // let header = `# ${metadata.title}\n\n`;
+    let header = `---\n`;
 
     if (metadata.createTime) {
       const date = new Date(metadata.createTime * 1000).toLocaleDateString();
-      header += `**Created:** ${date}\n`;
+      header += `created: ${date}\n`;
     }
 
     if (metadata.updateTime && metadata.updateTime !== metadata.createTime) {
       const updatedDate = new Date(metadata.updateTime * 1000).toLocaleDateString();
-      header += `**Updated:** ${updatedDate}\n`;
+      header += `updated: ${updatedDate}\n`;
     }
 
     if (metadata.model && metadata.model !== 'Unknown') {
-      header += `**Model:** ${metadata.model}\n`;
+      header += `model: ${metadata.model}\n`;
     }
 
-    header += `**Messages:** ${metadata.messageCount}\n`;
+    header += `messages: ${metadata.messageCount}\n`;
 
     if (metadata.assetCount > 0) {
-      header += `**Attachments:** ${metadata.assetCount}\n`;
+      header += `attachments: ${metadata.assetCount}\n`;
     }
 
-    header += '\n---\n\n';
+    header += `---\n\n# ${metadata.title}\n\n`;
 
     return header;
   }
