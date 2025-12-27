@@ -292,6 +292,11 @@ npm run format:check
 
 # Run specific data processing
 npm run extract-assets
+
+# Run tests
+npm run test
+npm run test:help
+npm run test:validate
 ```
 
 ### Project Structure
@@ -318,11 +323,11 @@ data-dumpster-diver/
 │   ├── ProgressManager.js   # Progress tracking system
 │   ├── SchemaValidator.js   # Data validation schemas
 │   ├── UpcycleManager.js    # Export format management
-│   ├── AssetUtils.js         # Asset handling utilities
-│   ├── PathUtils.js          # Path operations & searching
+│   ├── assetUtils.js         # Asset handling utilities
+│   ├── pathUtils.js          # Path operations & searching
 │   ├── upcycleHelpers.js    # Export helper functions
-│   ├── Validators.js         # Input validation
-│   ├── ZipProcessor.js       # ZIP processing & security
+│   ├── validators.js         # Input validation
+│   ├── zipProcessor.js       # ZIP processing & security
 │   └── formatters/          # Export formatters
 │       ├── BaseFormatter.js  # Base formatter class
 │       ├── HTMLFormatter.js  # HTML export formatter
@@ -362,7 +367,7 @@ Configuration is handled through `config/constants.js`:
 }
 ```
 
-## 🔄 Recent Improvements (v0.0.1)
+## 🔄 Recent Improvements (v0.0.3)
 
 ### Codebase Refactoring
 
@@ -406,6 +411,7 @@ Configuration is handled through `config/constants.js`:
 
 - **@inquirer/prompts**: Interactive command-line prompts for better user experience
 - **chalk**: Terminal string styling for colorful output
+- **cli-progress**: Flexible progress bars for command-line applications
 - **commander**: Complete solution for Node.js command-line interfaces
 - **decompress**: Decompress ZIP files with security validation
 - **marked**: Markdown parser for HTML exports

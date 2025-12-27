@@ -1,8 +1,14 @@
 # CHANGELOG
 
-## v0.0.2 - Current
+## v0.0.3 - Current
 
-### Latest Updates (December 2024)
+### Documentation and Configuration Updates
+
+- **Updated**: CHANGELOG.md to reflect v0.0.3 as current version (synchronized with package.json)
+- **Enhanced**: README.md with comprehensive dependency documentation including missing "cli-progress"
+- **Added**: Complete test scripts documentation for all npm test commands
+- **Verified**: File structure documentation accuracy against actual codebase
+- **Synchronized**: Version numbers across all documentation files
 
 #### Progress Management System
 
