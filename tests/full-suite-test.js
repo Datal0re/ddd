@@ -40,7 +40,6 @@ async function runFullSuiteTests() {
     console.log('\n=== Step 2: Running help tests ===');
     try {
       console.log('Running help tests...');
-      const { runHelpTests } = require('./help-test');
 
       // Run help tests with custom output path to avoid conflicts
       const helpOutputPath = path.join(__dirname, 'logs', 'help_in_suite_output.txt');

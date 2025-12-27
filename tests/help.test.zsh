@@ -4,7 +4,7 @@
 output_file="./logs/help_test_output.txt"
 ddd_commands=("dump" "hoard" "rummage" "upcycle" "burn")
 
-echo "=========== TESTING HELP COMMANDS ===========\n" >> $output_file
+echo "=========== TESTING HELP COMMANDS ===========\n" > $output_file
 
 # Test help commands for each ddd command
 for command in "${ddd_commands[@]}"; do
