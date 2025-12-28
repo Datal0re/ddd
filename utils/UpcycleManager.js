@@ -4,7 +4,8 @@
  */
 
 const { validateRequiredParams } = require('./Validators');
-const { logError, AssetErrorTracker } = require('./upcycleHelpers');
+const { AssetErrorTracker } = require('./upcycleHelpers');
+const { ErrorHandler } = require('./ErrorHandler');
 const FileSystemHelper = require('./FileSystemHelper');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
@@ -209,7 +210,7 @@ class UpcycleManager {
         assetErrors: assetErrorSummary,
       };
     } catch (error) {
-      logError(`Upcycle failed for dumpster "${dumpsterName}"`, error);
+      ErrorHandler.logError(`Upcycle failed for dumpster "${dumpsterName}"`);
       throw error;
     }
   }

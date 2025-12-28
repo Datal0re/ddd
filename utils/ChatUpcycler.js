@@ -8,7 +8,7 @@ const { CONTENT_TYPES, ASSET_PREFIXES } = require('../config/constants');
 const FileSystemHelper = require('./FileSystemHelper');
 const PathUtils = require('./PathUtils');
 const { validateRequiredParams, validateNonEmptyString } = require('./Validators');
-const { logError, logWarning } = require('./upcycleHelpers');
+const { ErrorHandler } = require('./ErrorHandler');
 
 /**
  * Extract relative path from media directory for a file
@@ -114,13 +114,13 @@ async function loadAssetMapping(dumpsterName, baseDir) {
       return assetMapping;
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        logWarning('Error reading assets.json:', error);
+        ErrorHandler.logWarning('Error reading assets.json:', 'loadAssetMapping');
       }
     }
 
     return {};
-  } catch (error) {
-    logError('Error in loadAssetMapping', error);
+  } catch {
+    ErrorHandler.logError('Error in loadAssetMapping');
     return {};
   }
 }
@@ -724,7 +724,7 @@ async function processChatForExport(
       originalChat: chat,
     };
   } catch (error) {
-    logError('Error in processChatForExport', error);
+    ErrorHandler.logError('Error in processChatForExport');
     throw error;
   }
 }

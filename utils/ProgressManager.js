@@ -1,6 +1,6 @@
 /*
- * ProgressManager.js - Centralized progress tracking using ora and cli-progress
- * Provides consistent progress reporting, spinners, and progress bars across application
+ * ProgressManager.js - Simplified progress tracking using ora
+ * Provides basic spinners and progress reporting for CLI operations
  */
 
 const ora = require('ora').default;
@@ -8,34 +8,31 @@ const chalk = require('chalk');
 const { PROGRESS_STAGES } = require('../config/constants');
 
 /**
- * Centralized progress management class
+ * Simplified progress management class
  */
 class ProgressManager {
   /**
-   * Create a new progress manager with optional spinner
+   * Create a new progress manager
    * @param {Function} onProgress - Optional callback for progress updates
    * @param {boolean} useSpinner - Whether to use ora spinner (default: true)
    * @param {Object} options - Spinner options
-   * @returns {ProgressManager} Progress manager instance
    */
   constructor(onProgress = null, useSpinner = true, options = {}) {
     this.onProgress = onProgress;
     this.useSpinner = useSpinner;
     this.spinner = null;
     this.currentStage = null;
+    this.spinnerActive = false;
+
+    // Simple options
     this.options = {
       color: 'cyan',
       spinner: 'dots',
-      progressStyle: 'auto', // 'auto', 'spinner', 'bar'
       ...options,
     };
-    this.multibar = null;
-    this.activeBars = new Map();
-    this.barCounter = 0;
-    this.spinnerActive = false;
 
-    // Create spinner if we should use it (regardless of onProgress callback)
-    if (this.useSpinner && this.shouldUseSpinner()) {
+    // Create spinner if needed
+    if (this.useSpinner) {
       this.spinner = ora({
         color: this.options.color,
         spinner: this.options.spinner,
@@ -59,9 +56,8 @@ class ProgressManager {
       timestamp: Date.now(),
     };
 
-    // Update spinner if active and spinning
+    // Update spinner if active
     if (this.spinner && this.spinnerActive) {
-      // Keep spinner text simple and clean
       this.spinner.text = message;
 
       if (progressData.progress >= 100) {
@@ -92,7 +88,6 @@ class ProgressManager {
    */
   start(stage, message, initialProgress = 0) {
     if (this.spinner && !this.spinnerActive) {
-      // Keep spinner text simple - just the message
       this.spinner.start(message);
       this.spinnerActive = true;
     }
@@ -157,7 +152,6 @@ class ProgressManager {
       this.spinner.stop();
       this.spinnerActive = false;
     }
-    this.stopAllBars();
   }
 
   /**
@@ -186,7 +180,7 @@ class ProgressManager {
   }
 
   /**
-   * Create a simple progress bar for file operations
+   * Create a simple progress tracker for file operations
    * @param {number} total - Total items to process
    * @param {string} message - Progress message
    * @param {Function} onItem - Callback for each item (optional)
@@ -200,9 +194,6 @@ class ProgressManager {
       processed++;
       const progress = (processed / total) * 100;
       const elapsed = Date.now() - startTime;
-      const rate = processed / (elapsed / 1000);
-      const remaining = total - processed;
-      const eta = remaining / rate;
 
       if (onItem && item) {
         onItem(item, processed, total);
@@ -211,7 +202,7 @@ class ProgressManager {
       this.update(
         this.currentStage || PROGRESS_STAGES.DUMPING,
         progress,
-        `${message} (${processed}/${total}) - ETA: ${Math.round(eta)}s`
+        `${message} (${processed}/${total})`
       );
 
       if (processed === total) {
@@ -225,279 +216,35 @@ class ProgressManager {
   }
 
   /**
-   * Create a true progress bar using cli-progress with fallback
+   * Create a file progress bar for processing files
    * @param {number} total - Total items to process
    * @param {string} message - Progress message
-   * @param {Object} options - Progress bar options
-   * @returns {Function} Function to call for each processed item
+   * @param {Object} options - Additional options
+   * @returns {Function} Progress function to call for each item
    */
-  createFileProgressBar(total, message, options = {}) {
-    if (!this.shouldUseProgressBar()) {
-      // Fallback to original createProgressBar for verbose mode
-      return this.createProgressBar(total, message, options.onItem);
-    }
-
+  createFileProgressBar(total, message, _options = {}) {
     let processed = 0;
     const startTime = Date.now();
-    let lastOutputLength = 0;
 
-    return (value = 1, payload = {}) => {
+    return (value = 1) => {
       processed = value;
       const progress = (processed / total) * 100;
       const elapsed = Date.now() - startTime;
-      const rate = processed / (elapsed / 1000);
-      const remaining = total - processed;
-      const eta = remaining / rate;
 
-      // Get terminal width for proper truncation
-      const terminalWidth = process.stdout.columns || 80;
-      const reservedWidth = 10; // Reserve space for "100% | X/total"
-
-      // Create simple text progress bar that works in any environment
-      const barLength = Math.min(20, Math.floor((terminalWidth - reservedWidth) / 3));
-      const filledChars = Math.floor((progress / 100) * barLength);
-      const emptyChars = barLength - filledChars;
-      const bar = '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
-
-      // Truncate message if needed
-      const maxMessageLength = Math.max(10, terminalWidth - 60); // Minimum 10 chars for message
-      const truncatedMessage =
-        message.length > maxMessageLength
-          ? message.substring(0, maxMessageLength - 3) + '...'
-          : message;
-
-      // Format with additional payload info
-      let payloadStr = '';
-      if (payload && Object.keys(payload).length > 0) {
-        const payloadInfo = Object.entries(payload)
-          .map(([key, val]) => `${key}: ${val}`)
-          .join(', ');
-
-        // Reserve space for payload but truncate if too long
-        const maxPayloadLength = Math.max(
-          0,
-          terminalWidth - (truncatedMessage.length + bar.length + 40)
-        );
-        if (maxPayloadLength > 5) {
-          payloadStr =
-            ' | ' +
-            (payloadInfo.length > maxPayloadLength
-              ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
-              : payloadInfo);
-        }
-      }
-
-      const output = `${truncatedMessage} ${bar} ${Math.round(progress)}% | ${processed}/${total} | ${rate.toFixed(1)}/s | ETA: ${Math.round(eta)}s${payloadStr}`;
-
-      // Clear previous output and write new progress
-      if (lastOutputLength > 0) {
-        process.stdout.write('\r' + ' '.repeat(lastOutputLength) + '\r');
-      }
-      process.stdout.write(output);
-      lastOutputLength = output.length;
+      this.update(
+        this.currentStage || PROGRESS_STAGES.DUMPING,
+        progress,
+        `${message} (${processed}/${total})`
+      );
 
       if (processed >= total) {
-        process.stdout.write('\n');
-        console.log(
-          chalk.green(
-            `✅ ${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
-          )
+        this.succeed(
+          `${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
         );
       }
 
       return processed;
     };
-  }
-
-  /**
-   * Create multiple progress bars for concurrent operations (simplified version)
-   * @param {Object} options - MultiBar options
-   * @returns {Object} MultiBar controller and createBar function
-   */
-  createMultiProgressBar(_options = {}) {
-    const bars = new Map();
-    let barCounter = 0;
-    this.multiBarReservedLines = 0;
-
-    return {
-      createBar: (total, message, _barOptions = {}) => {
-        const barId = `multi_${++barCounter}`;
-        let processed = 0;
-
-        const bar = {
-          update: (value, payload = {}) => {
-            processed = value;
-            const progress = (processed / total) * 100;
-
-            // Get terminal width for proper truncation
-            const terminalWidth = process.stdout.columns || 80;
-            const reservedWidth = 15; // Reserve space for progress info
-
-            // Create simple text progress bar
-            const barLength = Math.min(
-              15,
-              Math.floor((terminalWidth - reservedWidth) / 4)
-            );
-            const filledChars = Math.floor((progress / 100) * barLength);
-            const emptyChars = barLength - filledChars;
-            const progressBar =
-              '[' + '='.repeat(filledChars) + '-'.repeat(emptyChars) + ']';
-
-            // Truncate message if needed
-            const maxMessageLength = Math.max(5, terminalWidth - 40);
-            const truncatedMessage =
-              message.length > maxMessageLength
-                ? message.substring(0, maxMessageLength - 3) + '...'
-                : message;
-
-            let payloadStr = '';
-            if (payload && Object.keys(payload).length > 0) {
-              const payloadInfo = Object.entries(payload)
-                .map(([key, val]) => `${key}: ${val}`)
-                .join(', ');
-
-              const maxPayloadLength = Math.max(
-                0,
-                terminalWidth - (truncatedMessage.length + progressBar.length + 25)
-              );
-              if (maxPayloadLength > 5) {
-                payloadStr =
-                  ' | ' +
-                  (payloadInfo.length > maxPayloadLength
-                    ? payloadInfo.substring(0, maxPayloadLength - 3) + '...'
-                    : payloadInfo);
-              }
-            }
-
-            const output = `${truncatedMessage}: ${progressBar} ${Math.round(progress)}% | ${processed}/${total}${payloadStr}`;
-
-            // Store for batch display
-            bars.set(barId, {
-              message: truncatedMessage,
-              output,
-              priority: bars.size,
-            });
-
-            // Display all bars together
-            this.displayMultipleBars(bars);
-          },
-          stop: () => {
-            bars.delete(barId);
-
-            // If no more bars, clean up the reserved lines
-            if (bars.size === 0 && this.multiBarReservedLines > 0) {
-              // Move to the line after the last reserved line
-              process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
-              process.stdout.write('\n'); // Final newline
-              this.multiBarReservedLines = 0;
-            }
-          },
-        };
-
-        return bar;
-      },
-      stop: () => {
-        bars.clear();
-        if (this.multiBarReservedLines > 0) {
-          // Move to the line after the last reserved line
-          process.stdout.write(`\x1b[${this.multiBarReservedLines}B`);
-          process.stdout.write('\n'); // Final newline
-          this.multiBarReservedLines = 0;
-        }
-      },
-    };
-  }
-
-  /**
-   * Display multiple progress bars together
-   * @private
-   */
-  displayMultipleBars(bars) {
-    const barCount = bars.size;
-
-    // If this is the first display, we need to reserve space
-    if (!this.multiBarReservedLines) {
-      this.multiBarReservedLines = barCount;
-      process.stdout.write('\n'.repeat(barCount - 1)); // Reserve lines
-    }
-
-    // Move cursor up to the first bar line
-    if (barCount > 0) {
-      process.stdout.write(`\x1b[${barCount - 1}A`); // Move cursor up
-    }
-
-    // Sort by priority and display
-    const sortedBars = Array.from(bars.entries()).sort(
-      ([, a], [, b]) => a.priority - b.priority
-    );
-
-    const terminalWidth = process.stdout.columns || 80;
-
-    sortedBars.forEach(([, barData], index) => {
-      // Clear the entire line
-      process.stdout.write('\r' + ' '.repeat(terminalWidth) + '\r');
-
-      // Truncate output if needed
-      const truncatedOutput =
-        barData.output.length > terminalWidth
-          ? barData.output.substring(0, terminalWidth - 3) + '...'
-          : barData.output;
-
-      process.stdout.write(truncatedOutput);
-
-      // Move to next line except for the last one
-      if (index < sortedBars.length - 1) {
-        process.stdout.write('\n');
-      }
-    });
-  }
-
-  /**
-   * Stop all active progress bars and multi-bar instances
-   */
-  stopAllBars() {
-    // Clear any remaining output
-    if (this.activeBars.size > 0) {
-      console.log();
-    }
-
-    // Stop all single bars
-    this.activeBars.forEach((bar, _id) => {
-      if (typeof bar.stop === 'function') {
-        bar.stop();
-      }
-    });
-    this.activeBars.clear();
-
-    // Stop multi-bar
-    if (this.multibar) {
-      this.multibar = null;
-      this.activeBars.clear();
-    }
-  }
-
-  /**
-   * Determine if spinner should be used
-   * @private
-   */
-  shouldUseSpinner() {
-    const progressStyle = this.options.progressStyle || 'auto';
-    if (progressStyle === 'spinner') return true;
-    if (progressStyle === 'bar') return false;
-    // 'auto' mode: use spinner for indeterminate progress, bars for determinate
-    return true;
-  }
-
-  /**
-   * Determine if progress bar should be used
-   * @private
-   */
-  shouldUseProgressBar() {
-    const progressStyle = this.options.progressStyle || 'auto';
-    if (progressStyle === 'bar') return true;
-    if (progressStyle === 'spinner') return false;
-    // 'auto' mode: use bars when not in verbose mode
-    return this.useSpinner;
   }
 
   /**
@@ -509,41 +256,8 @@ class ProgressManager {
       ? {
           stage: this.currentStage,
           spinnerActive: !!this.spinner,
-          activeBars: this.activeBars.size,
-          hasMultiBar: !!this.multibar,
         }
       : null;
-  }
-
-  /**
-   * Create a nested progress manager for sub-operations
-   * @param {string} parentStage - Parent stage name
-   * @param {number} parentWeight - Weight of parent progress (0-100)
-   * @param {Function} onProgress - Optional callback for sub-progress
-   * @returns {ProgressManager} Nested progress manager
-   */
-  createNested(parentStage, parentWeight, onProgress = null) {
-    const nestedManager = new ProgressManager(
-      subProgress => {
-        // Convert sub-progress (0-100) to weighted contribution
-        const contribution = (subProgress.progress / 100) * parentWeight;
-        const totalProgress = Math.min(100, contribution);
-
-        this.update(parentStage, totalProgress, subProgress.message);
-
-        if (onProgress) {
-          onProgress({
-            stage: subProgress.stage,
-            progress: totalProgress,
-            message: subProgress.message,
-            parentStage,
-          });
-        }
-      },
-      false // Don't create nested spinner
-    );
-
-    return nestedManager;
   }
 
   /**
@@ -577,22 +291,7 @@ function createProgressManager(onProgress = null, verbose = false, options = {})
   return new ProgressManager(onProgress, useSpinner, options);
 }
 
-/**
- * Create a progress manager with bar-style preference
- * @param {Function} onProgress - Optional progress callback
- * @param {boolean} verbose - Whether to show verbose output
- * @param {Object} options - Additional options
- * @returns {ProgressManager} Configured progress manager with bar preference
- */
-function createProgressBarManager(onProgress = null, verbose = false, options = {}) {
-  return new ProgressManager(onProgress, !verbose, {
-    progressStyle: 'bar',
-    ...options,
-  });
-}
-
 module.exports = {
   ProgressManager,
   createProgressManager,
-  createProgressBarManager,
 };

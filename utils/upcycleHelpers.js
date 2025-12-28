@@ -5,6 +5,7 @@
 
 const FileSystemHelper = require('./FileSystemHelper');
 const { validateNonEmptyString } = require('./Validators');
+const { ErrorHandler } = require('./ErrorHandler');
 
 /**
  * Asset error tracking class
@@ -64,24 +65,6 @@ class AssetErrorTracker {
     this.errors = [];
     this.warnings = [];
   }
-}
-
-/**
- * Log error with consistent formatting
- * @param {string} message - Error message
- * @param {Error|string} error - Optional error object or additional message
- */
-function logError(message, error = null) {
-  console.error(`❌ Error: ${message}${error ? ` - ${error.message || error}` : ''}`);
-}
-
-/**
- * Log warning with consistent formatting
- * @param {string} message - Warning message
- * @param {Error|string} error - Optional error object or additional message
- */
-function logWarning(message, error = null) {
-  console.warn(`⚠️  Warning: ${message}${error ? ` - ${error.message || error}` : ''}`);
 }
 
 /**
@@ -182,9 +165,12 @@ async function calculateUpcycleStats(results) {
       try {
         const fileStats = await FileSystemHelper.getStats(result.filepath);
         stats.totalSize += fileStats.size || 0;
-      } catch (error) {
+      } catch {
         // File might not exist yet or stats unavailable
-        logWarning(`Could not get stats for ${result.filepath}`, error);
+        ErrorHandler.logWarning(
+          `Could not get stats for ${result.filepath}`,
+          'export stats'
+        );
       }
     }
   }
@@ -408,7 +394,5 @@ module.exports = {
   createProgressMessage,
   formatChatSummary,
   generateExportReport,
-  logError,
-  logWarning,
   AssetErrorTracker,
 };

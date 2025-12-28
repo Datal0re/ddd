@@ -2,16 +2,18 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
-const { input, select, confirm } = require('@inquirer/prompts');
+
 const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
+const { CliPrompts } = require('./utils/CliPrompts');
 
 const program = new Command();
 
 program
   .name('ddd')
-  .description(`╔══════════════════════════════════════╗
+  .description(
+    `╔══════════════════════════════════════╗
 ║.-                                  -.║
 ║         █████     █████     █████    ║
 ║:       ░░███     ░░███     ░░███    :║
@@ -26,68 +28,9 @@ program
 ╚══════════════════════════════════════╝
 
 CLI tool to process and explore exported ChatGPT conversation data
-`)
+`
+  )
   .version('0.0.3');
-
-// Helper functions for common prompt patterns
-async function promptForFilePath() {
-  return await input({
-    message: 'Enter the path to your ChatGPT export ZIP file:',
-    validate: async input => {
-      if (!input.trim()) return 'Please enter a file path';
-      if (!input.endsWith('.zip')) return 'Please provide a ZIP file';
-      try {
-        const fs = require('fs').promises;
-        await fs.access(input);
-        return true;
-      } catch {
-        return 'File not found. Please check the path and try again.';
-      }
-    },
-  });
-}
-
-async function promptForDumpsterName(defaultName) {
-  return await input({
-    message: 'Enter a name for this dumpster:',
-    default: defaultName,
-    validate: input => {
-      if (!input.trim()) return 'Please enter a name';
-      SchemaValidator.validateDumpsterName(input, { context: 'dump command' });
-      return true;
-    },
-  });
-}
-
-async function selectFromDumpsters(dumpsters, message) {
-  return await select({
-    message,
-    choices: dumpsters.map(d => ({
-      name: `${d.name} (${d.chatCount || '?'} chats)`,
-      value: d.name,
-    })),
-  });
-}
-
-async function selectExportFormat() {
-  return await select({
-    message: 'Choose export format:',
-    choices: [
-      {
-        name: '📄 Plain Text (.txt) - Simple, universal format',
-        value: 'txt',
-      },
-      {
-        name: '📝 Markdown (.md) - Great for documentation and GitHub',
-        value: 'md',
-      },
-      {
-        name: '🌐 HTML (.html) - Rich formatting with styling',
-        value: 'html',
-      },
-    ],
-  });
-}
 
 program
   .command('dump')
@@ -104,7 +47,7 @@ program
     try {
       // Prompt for file path if not provided
       if (!file) {
-        file = await promptForFilePath();
+        file = await CliPrompts.promptForFilePath();
       } else {
         SchemaValidator.validateRequired(
           [{ name: 'file', value: file }],
@@ -118,7 +61,7 @@ program
 
       // Prompt for name if not provided
       if (!options.name || options.name === 'default') {
-        options.name = await promptForDumpsterName(suggestedName);
+        options.name = await CliPrompts.promptForDumpsterName(suggestedName);
       } else {
         SchemaValidator.validateDumpsterName(options.name, { context: 'dump command' });
       }
@@ -245,7 +188,7 @@ program
 
       // Prompt for dumpster selection if not provided
       if (!dumpsterName) {
-        dumpsterName = await selectFromDumpsters(
+        dumpsterName = await CliPrompts.selectFromDumpsters(
           dumpsters,
           'Select a dumpster to rummage through:'
         );
@@ -265,19 +208,7 @@ program
       // Prompt for limit if not provided
       let limit;
       if (!options.limit) {
-        limit = parseInt(
-          await input({
-            message: 'How many chats would you like to see?',
-            default: '10',
-            validate: input => {
-              const num = parseInt(input);
-              if (isNaN(num)) return 'Please enter a number';
-              if (num < 1) return 'Must show at least 1 chat';
-              if (num > 100) return 'Maximum 100 chats at once';
-              return true;
-            },
-          })
-        );
+        limit = await CliPrompts.promptForChatLimit();
       } else {
         limit = SchemaValidator.validateNumber(options.limit, 'limit', {
           min: 1,
@@ -353,7 +284,7 @@ program
 
       // Prompt for dumpster selection if not provided
       if (!dumpsterName) {
-        dumpsterName = await selectFromDumpsters(
+        dumpsterName = await CliPrompts.selectFromDumpsters(
           dumpsters,
           'Select a dumpster to burn:'
         );
@@ -410,10 +341,9 @@ program
 
       // Confirm deletion unless force flag is used
       if (!force) {
-        const shouldBurn = await confirm({
-          message: `Are you sure you want to permanently delete "${dumpsterName}"? \nThis will destroy ${chatCount} chats (${sizeInMB}MB) and cannot be undone.`,
-          default: false,
-        });
+        const shouldBurn = await CliPrompts.confirmAction(
+          `Are you sure you want to permanently delete "${dumpsterName}"? \nThis will destroy ${chatCount} chats (${sizeInMB}MB) and cannot be undone.`
+        );
 
         if (!shouldBurn) {
           console.log(
@@ -423,15 +353,15 @@ program
         }
 
         // Additional safety challenge for destructive action
-        await input({
-          message: `Type "${dumpsterName}" to confirm deletion:`,
-          validate: input => {
+        await CliPrompts.promptForText(
+          `Type "${dumpsterName}" to confirm deletion:`,
+          input => {
             if (input !== dumpsterName) {
               return `Please type "${dumpsterName}" exactly to confirm`;
             }
             return true;
-          },
-        });
+          }
+        );
       }
 
       // Perform the burning
@@ -493,7 +423,7 @@ program
 
       // Prompt for format selection if not provided
       if (!format) {
-        format = await selectExportFormat();
+        format = await CliPrompts.selectExportFormat();
       } else {
         // Validate provided format
         SchemaValidator.validateRequired(
@@ -509,7 +439,7 @@ program
 
       // Prompt for dumpster selection if not provided
       if (!dumpsterName) {
-        dumpsterName = await selectFromDumpsters(
+        dumpsterName = await CliPrompts.selectFromDumpsters(
           dumpsters,
           'Select a dumpster to upcycle:'
         );

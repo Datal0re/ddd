@@ -146,6 +146,16 @@ class ErrorHandler {
   }
 
   /**
+   * Log error messages with consistent formatting
+   * @param {string} message - Error message
+   * @param {string} context - Optional context
+   */
+  static logError(message, context = null) {
+    const fullMessage = context ? `${context}: ${message}` : message;
+    console.error(chalk.red(`❌ Error: ${fullMessage}`));
+  }
+
+  /**
    * Format file-specific error messages
    * @private
    */
