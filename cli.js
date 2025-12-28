@@ -411,7 +411,7 @@ program
       // Confirm deletion unless force flag is used
       if (!force) {
         const shouldBurn = await confirm({
-          message: `Are you sure you want to permanently delete "${dumpsterName}"? This will destroy ${chatCount} chats (${sizeInMB}MB) and cannot be undone.`,
+          message: `Are you sure you want to permanently delete "${dumpsterName}"? \nThis will destroy ${chatCount} chats (${sizeInMB}MB) and cannot be undone.`,
           default: false,
         });
 

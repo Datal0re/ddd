@@ -68,7 +68,7 @@ class MDFormatter extends BaseFormatter {
       return '';
     }
 
-    // let header = `# ${metadata.title}\n\n`;
+    // Create YAML front matter
     let header = `---\n`;
 
     if (metadata.createTime) {
