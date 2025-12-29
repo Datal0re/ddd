@@ -397,10 +397,8 @@ program
     '[dumpster-name]',
     'Name of dumpster to upcycle (optional - will prompt for selection)'
   )
-  .option('-o, --output <path>', 'Output directory', './upcycles')
-  .option('-s, --single-file', 'Combine all chats into single file')
-  .option('--per-chat', 'Create separate file per chat (default)')
-  .option('--include-media', 'Copy media assets to export directory')
+  .option('-o, --output <path>', 'Output directory', './data/upcycle-bin')
+  .option('--include-media', 'Copy media assets to export directory', true)
   .option('--self-contained', 'Embed assets in output (HTML only)')
   .option('-v, --verbose', 'Verbose output')
   .action(async (format, dumpsterName, options) => {
@@ -457,8 +455,6 @@ program
         options,
         {
           output: { type: 'string', required: false },
-          singleFile: { type: 'boolean', required: false },
-          perChat: { type: 'boolean', required: false },
           includeMedia: { type: 'boolean', required: false },
           selfContained: { type: 'boolean', required: false },
           verbose: { type: 'boolean', required: false },

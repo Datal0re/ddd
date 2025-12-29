@@ -52,10 +52,8 @@ class UpcycleManager {
     }
 
     const defaultOptions = {
-      outputDir: './upcycle-bin',
-      singleFile: false,
-      perChat: true,
-      includeMedia: false,
+      outputDir: './data/upcycle-bin',
+      includeMedia: true,
       selfContained: false,
       verbose: false,
     };
@@ -135,32 +133,17 @@ class UpcycleManager {
         });
 
         try {
-          // For single file mode, we only need to process the content, not create files
-          if (validatedOptions.singleFile) {
-            const processedChat = await chatUpcycler.processChatForExport(
-              chat,
-              format,
-              { ...validatedOptions, dumpsterName, assetErrorTracker }
-            );
-            results.push({
-              filename: `chat-${i + 1}.${format}`,
-              chatTitle: chat.title || 'Untitled',
-              content: processedChat.content,
-              filepath: null, // We don't create individual files in single file mode
-            });
-          } else {
-            const result = await this.upcycleChat(
-              dumpsterName,
-              chat,
-              format,
-              formatter,
-              chatUpcycler,
-              outputDir,
-              validatedOptions,
-              assetErrorTracker
-            );
-            results.push(result);
-          }
+          const result = await this.upcycleChat(
+            dumpsterName,
+            chat,
+            format,
+            formatter,
+            chatUpcycler,
+            outputDir,
+            validatedOptions,
+            assetErrorTracker
+          );
+          results.push(result);
           processedCount++;
         } catch (error) {
           assetErrorTracker.addError('chat_processing', error.message, {
@@ -172,11 +155,6 @@ class UpcycleManager {
       }
 
       pm.update('finalizing', 90, 'Finalizing upcycle...');
-
-      // Handle single file option if requested
-      if (validatedOptions.singleFile) {
-        await this.createCombinedFile(results, outputDir, format, formatter);
-      }
 
       chatProgressBar(chats.length, {
         total_files: results.length,
@@ -202,9 +180,7 @@ class UpcycleManager {
         total: chats.length,
         processed: processedCount,
         skipped: skippedCount,
-        files: validatedOptions.singleFile
-          ? [`combined.${format}`]
-          : results.map(r => r.filename).filter(f => f), // Filter out null filenames from single-file mode
+        files: results.map(r => r.filename).filter(f => f),
         options: validatedOptions,
         assetErrors: assetErrorSummary,
       };
@@ -436,24 +412,6 @@ class UpcycleManager {
         );
       }
     }
-  }
-
-  /**
-   * Create combined file from multiple results
-   * @param {Array} results - Array of export results
-   * @param {string} outputDir - Output directory
-   * @param {string} format - Export format
-   * @param {Object} formatter - Formatter instance
-   * @returns {Promise<void>}
-   */
-  async createCombinedFile(results, outputDir, format, formatter) {
-    if (results.length === 0) return;
-
-    const combinedContent = await formatter.combineChats(results);
-    const filename = `combined.${format}`;
-    const filepath = FileUtils.joinPath(outputDir, filename);
-
-    await FileUtils.writeFile(filepath, combinedContent);
   }
 }
 

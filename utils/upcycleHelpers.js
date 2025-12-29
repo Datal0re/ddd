@@ -369,11 +369,7 @@ function generateExportReport(upcycleResult, verbose = false) {
         report += `\n🎨 Media: ${options.includeMedia ? 'Included' : 'Referenced'}\n`;
       }
 
-      if (options.singleFile) {
-        report += `\n📄 Format: Single combined file\n`;
-      } else {
-        report += `\n📄 Format: Separate files per chat\n`;
-      }
+      report += `\n📄 Format: Separate files per chat\n`;
     }
   } else {
     report += `❌ Failed to upcycle dumpster "${dumpsterName}"\n`;

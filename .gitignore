@@ -72,6 +72,7 @@ sessions/
 dumpsters/
 backups/
 public/media/
+data/*
 data/dumpsters.json
 data/sessions.json
 data/upload-progress.json
