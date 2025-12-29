@@ -11,12 +11,53 @@ This is a focused CLI tool for processing ChatGPT conversation data with an inte
 │  CLI User   │ ◄───────► │  Processing  │ ◄──► │  Dumpsters  │
 │  Interface  │           │  Engine      │      │   Storage   │
 └─────────────┘           └──────────────┘      └─────────────┘
-       │                           │
-       ▼                           ▼
+       │                          │
+       ▼                          ▼
 ┌─────────────┐           ┌──────────────┐
 │ Interactive │           │  Export      │
 │   Prompts   │           │  Formats     │
 └─────────────┘           └──────────────┘
+```
+
+### Detailed Architecture
+
+The codebase follows a clean, modular architecture with clear separation of concerns:
+
+```text
+CLI Layer (cli.js)
+├── Commands: dump, hoard, rummage, burn, upcycle
+├── Interactive Prompts (@inquirer/prompts)
+├── Progress Display (ProgressManager.js)
+└── Error Handling & Validation (ErrorHandler.js, SchemaValidator.js)
+
+Business Logic Layer
+├── DumpsterManager.js - Core dumpster lifecycle management
+├── DumpsterProcessor.js - Main processing orchestration
+├── AssetExtractor.js - Asset extraction and organization
+└── FileUtils.js - File operations and validation
+
+Export Layer
+├── UpcycleManager.js - Export format management and coordination
+├── ChatUpcycler.js - Chat message processing for export
+└── Formatter System (utils/formatters/)
+    ├── BaseFormatter.js - Abstract base class
+    ├── HTMLFormatter.js - HTML export with media support
+    ├── MDFormatter.js - Markdown export formatting
+    └── TXTFormatter.js - Plain text export
+
+Utility Layer (utils/)
+├── ProgressManager.js - Progress tracking and user feedback
+├── ErrorHandler.js - Centralized error handling and logging
+├── SchemaValidator.js - Input validation and data integrity
+├── CliPrompts.js - Interactive command-line prompts
+├── CommonUtils.js - Shared utility functions
+├── assetUtils.js - Asset handling utilities
+├── upcycleHelpers.js - Export helper functions
+├── zipProcessor.js - ZIP processing and security
+└── ChatDumper.js - Chat data processing and dumping
+
+Configuration Layer
+└── config/constants.js - Configuration constants and limits
 ```
 
 ## Core Components
@@ -36,6 +77,8 @@ This is a focused CLI tool for processing ChatGPT conversation data with an inte
 
 ## Development Commands
 
+### Development Workflow
+
 ```bash
 # Development
 npm run lint             # Run ESLint
@@ -47,8 +90,11 @@ npm run format:check     # Check code formatting
 npm test                 # Run full test suite
 npm run test:help        # Test CLI help functionality
 npm run test:validate    # Test validation utilities
+```
 
-# CLI Commands (using ddd binary)
+### CLI Commands (using ddd binary)
+
+```bash
 ddd dump                 # Process ChatGPT export ZIP (interactive)
 ddd hoard                # List all dumpsters
 ddd rummage              # Explore chats in a dumpster (interactive)
@@ -62,6 +108,8 @@ ddd upcycle              # Export dumpsters to various formats (interactive)
 - **ES6+ features** (async/await, destructuring, arrow functions)
 - **Consistent naming**: camelCase for functions, PascalCase for classes
 - **Error handling**: Try-catch with meaningful error messages
+- **JSDoc**: Comprehensive documentation for all functions
+- **Interactive Design**: All commands use @inquirer/prompts for better UX
 
 ## Adding New Commands
 
@@ -79,19 +127,21 @@ ddd upcycle              # Export dumpsters to various formats (interactive)
    ```
 
 2. Add corresponding method to `utils/DumpsterManager.js` if needed
-3. Test CLI functionality manually
+3. Add tests for the new command in the `tests/` directory
+4. Update documentation (README.md and this file)
+5. Test CLI functionality manually
 
 ## File Structure
 
 ```text
 data-dumpster-diver/
-├── cli.js                  # Main CLI entry point
-├── package.json            # Dependencies and scripts
-├── eslint.config.js        # ESLint configuration
-├── .prettierrc.json        # Prettier configuration
-├── .prettierignore         # Prettier ignore rules
+├── cli.js                    # Main CLI entry point (binary: ddd)
+├── package.json              # Dependencies and scripts (v0.0.4)
+├── eslint.config.js         # ESLint configuration
+├── .prettierrc.json         # Prettier configuration
+├── .prettierignore          # Prettier ignore rules
 ├── config/
-│   └── constants.js          # Configuration constants
+│   └── constants.js          # Configuration constants and limits
 ├── utils/
 │   ├── AssetExtractor.js     # Asset extraction and organization
 │   ├── ChatDumper.js         # Chat data processing and dumping
@@ -100,11 +150,11 @@ data-dumpster-diver/
 │   ├── CommonUtils.js        # Common utility functions
 │   ├── DumpsterManager.js    # Core dumpster management
 │   ├── DumpsterProcessor.js  # Main processing orchestration
-│   ├── ErrorHandler.js       # Centralized error handling
+│   ├── ErrorHandler.js       # Centralized error handling and logging
 │   ├── FileUtils.js          # File operations and validation
 │   ├── ProgressManager.js    # Progress tracking and user feedback
 │   ├── SchemaValidator.js    # Input validation and data integrity
-│   ├── UpcycleManager.js     # Export format management
+│   ├── UpcycleManager.js     # Export format management and coordination
 │   ├── assetUtils.js         # Asset handling utilities
 │   ├── upcycleHelpers.js     # Export helper functions
 │   ├── zipProcessor.js       # ZIP processing and security
@@ -113,7 +163,7 @@ data-dumpster-diver/
 │       ├── HTMLFormatter.js  # HTML export formatter
 │       ├── MDFormatter.js    # Markdown export formatter
 │       └── TXTFormatter.js   # Plain text export formatter
-├── tests/                  # Test files
+├── tests/                  # Comprehensive test suite
 │   ├── full-suite-test.js   # Full test suite
 │   ├── help-test.js         # Help functionality tests
 │   ├── test-progress.js     # Progress manager tests
@@ -122,13 +172,13 @@ data-dumpster-diver/
 │   ├── progress-demo.js     # Progress demonstration
 │   ├── full_suite.test.zsh  # Shell test suite
 │   └── help.test.zsh        # Shell help tests
-├── AGENTS.md               # Development guidelines
+├── AGENTS.md               # Development guidelines (this file)
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License
-└── README.md               # README
+└── README.md               # User-facing documentation
 ```
 
-## CLI Commands Overview
+## CLI Commands Overview (Developer Reference)
 
 All commands use interactive prompts when arguments are omitted, making the CLI user-friendly:
 
@@ -137,33 +187,95 @@ All commands use interactive prompts when arguments are omitted, making the CLI 
 - **Purpose**: Process ChatGPT export ZIP files
 - **Options**: `-n/--name <name>`, `-v/--verbose`
 - **Interactive**: Prompts for file path and dumpster name if not provided
+- **Backend**: Uses `DumpsterProcessor.js` for main processing
 
 ### `hoard`
 
 - **Purpose**: List all processed dumpsters
 - **Options**: `-v/--verbose` for detailed information
+- **Backend**: Uses `DumpsterManager.js.listDumpsters()`
 
 ### `rummage [dumpster-name]`
 
 - **Purpose**: Explore chats within a dumpster
 - **Options**: `-l/--limit <number>` for chat count
 - **Interactive**: Prompts for dumpster selection and limit
+- **Backend**: Uses `DumpsterManager.js.listChats()`
 
 ### `burn [dumpster-name]`
 
 - **Purpose**: Safely delete dumpsters
 - **Options**: `-f/--force`, `--dry-run`
 - **Safety**: Requires confirmation and text verification unless forced
+- **Backend**: Uses `DumpsterManager.js.deleteDumpster()`
 
 ### `upcycle [format] [dumpster-name]`
 
 - **Purpose**: Export dumpsters to various formats
 - **Options**: `-o/--output <path>`, `--include-media`, `--self-contained`, `-v/--verbose`
 - **Interactive**: Prompts for format selection and dumpster choice
+- **Backend**: Uses `UpcycleManager.js` and formatter system
+
+## Export Formatters
+
+The project uses a modular formatter system with a base class and format-specific implementations:
+
+### BaseFormatter
+
+Abstract base class that defines the interface for all formatters:
+
+- `formatChat(processedChat, options)` - Format individual chat
+- `combineChats(results)` - Combine multiple chats for single-file export
+- `getFileExtension()` - Get file extension for the format
+- `getMimeType()` - Get MIME type for the format
+
+### HTMLFormatter
+
+- **Features**: Full HTML export with CSS styling
+- **Media Support**: Embedded or linked assets
+- **Self-contained**: Option to include all assets inline
+- **Rich Content**: Preserves formatting, links, and structure
+
+### MDFormatter
+
+- **Format**: Clean Markdown with proper headers
+- **Code Blocks**: Preserves code formatting with syntax highlighting hints
+- **Links**: Maintains clickable links and references
+- **Compatibility**: Works with all Markdown viewers
+
+### TXTFormatter
+
+- **Simplicity**: Plain text with minimal formatting
+- **Readability**: Clean, accessible format
+- **Compatibility**: Works with any text editor
+- **Size**: Most compact export option
+
+## Configuration
+
+Configuration is handled through `config/constants.js`:
+
+```javascript
+{
+  LIMITS: {
+    MAX_UPLOAD_SIZE: 500 * 1024 * 1024,      // 500MB
+    MAX_EXTRACTED_SIZE: 2 * 1024 * 1024 * 1024, // 2GB
+    MAX_FILES_IN_ZIP: 10000,
+    MAX_COMPRESSION_RATIO: 100
+  },
+  FILE_EXTENSIONS: {
+    // Supported file extensions for various asset types
+  },
+  ASSET_PREFIXES: {
+    // Asset path prefixes for different types
+  }
+}
+```
 
 ## Testing
 
 The project includes comprehensive test coverage:
+
+### Automated Testing
 
 ```bash
 # Run all tests
@@ -172,10 +284,13 @@ npm test
 # Run specific test suites
 npm run test:help        # Test CLI help functionality
 npm run test:validate    # Test validation utilities
+```
 
-# Manual testing commands
+### Manual Testing
+
+```bash
 ddd --help                # Test CLI help
-ddd dump --help           # Test dump command help
+ddd dump --help           # Test command help
 ddd hoard                 # Test dumpster listing
 ddd upcycle --help        # Test export functionality
 
@@ -185,10 +300,66 @@ ddd rummage test
 ddd upcycle txt test --output ./tests/upcycle-bin
 ```
 
+### Test Structure
+
+- **Unit Tests**: Individual utility function testing
+- **Integration Tests**: CLI command testing with real scenarios
+- **Shell Script Tests**: End-to-end testing using `full_suite.test.zsh`
+- **Progress System Tests**: Dedicated tests for progress tracking
+
 ## Dependency Management
+
+### Core Dependencies
+
+- **@inquirer/prompts**: Interactive command-line prompts for better user experience
+- **chalk**: Terminal string styling for colorful output
+- **cli-progress**: Flexible progress bars for command-line applications
+- **commander**: Complete solution for Node.js command-line interfaces
+- **decompress**: Decompress ZIP files with security validation
+- **marked**: Markdown parser for HTML exports
+- **ora**: Elegant terminal spinners for progress indication
+- **sanitize-html**: HTML sanitizer for secure content processing
+- **uuid**: Generate RFC-compliant UUIDs for unique identifiers
+
+### Development Dependencies
+
+- **eslint**: JavaScript linting for code quality with modern support
+- **eslint-config-prettier**: ESLint configuration for Prettier compatibility
+- **nodemon**: CLI auto-restart utility (for development convenience)
+- **prettier**: Opinionated code formatter for consistent style
+
+### Dependency Guidelines
 
 - Keep dependencies minimal and focused
 - Only add packages that solve specific problems
 - Prefer built-in Node.js modules when possible
-- Use npm audit regularly for security
+- Use `npm audit` regularly for security
 - Core dependencies include @inquirer/prompts for interactive UX
+
+## Code Quality
+
+- **ESLint**: Configured for consistent code style with modern JavaScript support
+- **Prettier**: Automatic code formatting for consistent style
+- **CommonJS**: Module system for maximum compatibility
+- **JSDoc**: Comprehensive documentation for all functions
+- **Interactive Design**: All commands use @inquirer/prompts for better UX
+
+## Future Enhancements
+
+Planned improvements include:
+
+- **Additional CLI Commands**: `inspect` for detailed analysis, `stats` for statistics, `search` for full-text search
+- **Enhanced Search Functionality**: Full-text search across all dumpsters
+- **Service Layer**: Better abstraction for business logic
+- **User Configuration**: Configurable settings and preferences
+- **Additional Export Formats**: PDF, JSON, CSV export options
+- **Enhanced Burn Command**: Batch deletion and recycling bin functionality
+- **Performance Improvements**: Optimized processing for large chat histories
+- **Integration Features**: Import from other chat export formats
+
+## Security Considerations
+
+- **Path Traversal Protection**: Comprehensive validation against directory traversal attacks
+- **ZIP Bomb Protection**: Robust validation against malicious ZIP files
+- **Input Validation**: Schema-based validation for all user inputs
+- **Safety Features**: Text verification required for destructive operations

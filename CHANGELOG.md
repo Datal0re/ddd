@@ -1,6 +1,49 @@
 # CHANGELOG
 
-## v0.0.3 - Current
+## v0.0.4 - 2024-12-29
+
+### Enhanced Interactive CLI Experience
+
+- **@inquirer/prompts**: Modern interactive prompts throughout all commands
+- **Smart Argument Handling**: All commands work with or without arguments
+- **Better Error Messages**: Clear, actionable error messages with context
+- **Progress Tracking**: Consistent progress bars and spinners for long operations
+
+### Security and Validation Improvements
+
+- **Enhanced Path Validation**: Comprehensive protection against path traversal attacks
+- **ZIP Bomb Protection**: Robust validation against malicious ZIP files
+- **Input Validation**: Schema-based validation for all user inputs
+- **Safety Features**: Text verification required for destructive operations
+
+### Export System Enhancements
+
+- **Modular Formatters**: Clean separation of export formats (HTML, MD, TXT)
+- **Media Handling**: Flexible media inclusion options (embedded, linked, or excluded)
+- **Self-contained HTML**: Complete HTML exports with embedded assets
+- **Verbose Output**: Detailed progress reporting during export operations
+
+### Testing and Quality Assurance
+
+- **Comprehensive Test Suite**: Full test coverage for core functionality
+- **Shell Script Tests**: Integration tests using real CLI commands
+- **Progress System Tests**: Dedicated tests for progress tracking
+- **Validation Tests**: Input validation and error handling tests
+
+### Code Quality Improvements
+
+- **Centralized Error Handling**: Consistent error patterns across all modules
+- **Enhanced Documentation**: Comprehensive JSDoc and inline documentation
+- **Code Formatting**: Prettier + ESLint for consistent code style
+- **Modular Architecture**: Clear separation of concerns with focused utilities
+
+### Performance Optimizations
+
+- **Efficient File Operations**: Optimized file handling and processing
+- **Better Resource Management**: Proper cleanup of temporary files
+- **Streamlined Processing**: Reduced redundant operations and improved data flow
+
+## v0.0.3
 
 ### Documentation and Configuration Updates
 
