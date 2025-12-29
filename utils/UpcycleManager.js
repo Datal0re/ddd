@@ -97,10 +97,7 @@ class UpcycleManager {
       pm.update('processing', 20, `Processing ${chats.length} chats...`);
 
       // Create a progress bar for chat processing
-      const chatProgressBar = pm.createFileProgressBar(
-        chats.length,
-        'Processing chats'
-      );
+      const chatProgressBar = pm.createProgressBar(chats.length, 'Processing chats');
 
       // Create output directory
       const outputDir = FileUtils.joinPath(
@@ -113,8 +110,14 @@ class UpcycleManager {
       let skippedCount = 0;
       const results = [];
 
-      // Process each chat
+      // Process each chat with cancellation support
       for (let i = 0; i < chats.length; i++) {
+        // Check for cancellation before processing each chat
+        if (pm && pm.isCancelled()) {
+          console.log('\n⚠️ Upcycle cancelled during chat processing');
+          break;
+        }
+
         const chat = chats[i];
         const progress = 20 + (i / chats.length) * 60; // 20-80% for chat processing
 
@@ -127,7 +130,7 @@ class UpcycleManager {
           );
         }
 
-        chatProgressBar(i + 1, {
+        chatProgressBar.update(i + 1, {
           chat: chat.title || 'Untitled',
           files: processedCount + skippedCount,
         });
@@ -156,19 +159,17 @@ class UpcycleManager {
 
       pm.update('finalizing', 90, 'Finalizing upcycle...');
 
-      chatProgressBar(chats.length, {
+      chatProgressBar.update(chats.length, {
         total_files: results.length,
         skipped: skippedCount,
       });
 
-      // Only add final progress update if in verbose mode (since progress bar already shows completion)
-      if (validatedOptions.verbose) {
-        pm.update(
-          'completed',
-          100,
-          `Upcycle complete! Processed ${processedCount} chats.`
-        );
-      }
+      // Final progress completion (progress bar handles its own display)
+      pm.update(
+        'completed',
+        100,
+        `Upcycle complete! Processed ${processedCount} chats.`
+      );
 
       const assetErrorSummary = assetErrorTracker.getErrorSummary();
 

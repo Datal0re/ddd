@@ -1,21 +1,23 @@
 /*
- * ProgressManager.js - Simplified progress tracking using ora
- * Provides basic spinners and progress reporting for CLI operations
+ * ProgressManager.js - Enhanced progress tracking with cli-progress and cancellation support
+ * Provides spinners, progress bars, and ESC key handling for CLI operations
  */
 
 const ora = require('ora').default;
+const cliProgress = require('cli-progress');
 const chalk = require('chalk');
+const readline = require('readline');
 const { PROGRESS_STAGES } = require('../config/constants');
 
 /**
- * Simplified progress management class
+ * Enhanced progress management class with cancellation support
  */
 class ProgressManager {
   /**
    * Create a new progress manager
    * @param {Function} onProgress - Optional callback for progress updates
    * @param {boolean} useSpinner - Whether to use ora spinner (default: true)
-   * @param {Object} options - Spinner options
+   * @param {Object} options - Progress options
    */
   constructor(onProgress = null, useSpinner = true, options = {}) {
     this.onProgress = onProgress;
@@ -23,11 +25,17 @@ class ProgressManager {
     this.spinner = null;
     this.currentStage = null;
     this.spinnerActive = false;
+    this.cancelled = false;
+    this.cancellationCallbacks = [];
+    this.keypressListener = null;
+    this.readlineInterface = null;
+    this.activeProgressBar = null;
 
     // Simple options
     this.options = {
       color: 'cyan',
       spinner: 'dots',
+      enableCancellation: true,
       ...options,
     };
 
@@ -48,6 +56,11 @@ class ProgressManager {
    * @param {string} message - Progress message
    */
   update(stage, progress, message) {
+    // Check if operation was cancelled
+    if (this.cancelled) {
+      return;
+    }
+
     this.currentStage = stage;
     const progressData = {
       stage,
@@ -64,6 +77,20 @@ class ProgressManager {
         const stageName = this._formatStageName(stage);
         this.spinner.succeed(`${stageName}: ${message} completed`);
         this.spinnerActive = false;
+        this._disableCancellation(); // Clean up when complete
+      }
+    }
+
+    // Update active progress bar if exists
+    if (this.activeProgressBar) {
+      const percentage = Math.round(progressData.progress);
+      this.activeProgressBar.update(percentage, {
+        message: message,
+      });
+
+      if (percentage >= 100) {
+        this.activeProgressBar.stop();
+        this.activeProgressBar = null;
       }
     }
 
@@ -72,8 +99,8 @@ class ProgressManager {
       this.onProgress(progressData);
     }
 
-    // Log progress if no spinner is active
-    if (!this.spinnerActive && this.useSpinner) {
+    // Log progress if no spinner or progress bar is active
+    if (!this.spinnerActive && !this.activeProgressBar && this.useSpinner) {
       const percentage = Math.round(progressData.progress);
       const stageName = this._formatStageName(stage);
       console.log(chalk.blue(`${stageName}: ${message} (${percentage}%)`));
@@ -91,6 +118,12 @@ class ProgressManager {
       this.spinner.start(message);
       this.spinnerActive = true;
     }
+
+    // Enable ESC key cancellation if supported
+    if (this.options.enableCancellation && this.useSpinner) {
+      this._enableCancellation();
+    }
+
     this.update(stage, initialProgress, message);
   }
 
@@ -102,6 +135,9 @@ class ProgressManager {
     if (this.spinner && this.spinnerActive) {
       this.spinner.succeed(message);
       this.spinnerActive = false;
+    } else if (this.activeProgressBar) {
+      this.activeProgressBar.stop();
+      this.activeProgressBar = null;
     } else {
       console.log(chalk.green(`✅ ${message}`));
     }
@@ -115,6 +151,9 @@ class ProgressManager {
     if (this.spinner && this.spinnerActive) {
       this.spinner.fail(message);
       this.spinnerActive = false;
+    } else if (this.activeProgressBar) {
+      this.activeProgressBar.stop();
+      this.activeProgressBar = null;
     } else {
       console.error(chalk.red(`❌ ${message}`));
     }
@@ -152,66 +191,119 @@ class ProgressManager {
       this.spinner.stop();
       this.spinnerActive = false;
     }
+
+    if (this.activeProgressBar) {
+      this.activeProgressBar.stop();
+      this.activeProgressBar = null;
+    }
+
+    // Clean up cancellation listeners
+    this._disableCancellation();
   }
 
   /**
-   * Create progress tracking functions for specific stages
-   * @param {Object} stageConfig - Configuration for stages
-   * @returns {Object} Object with stage-specific update functions
+   * Check if operation was cancelled
+   * @returns {boolean} Whether operation was cancelled
    */
-  createStageTrackers(stageConfig = {}) {
-    const stages = {
-      initializing: message => this.update(PROGRESS_STAGES.INITIALIZING, 0, message),
-      extracting: (progress, message) =>
-        this.update(PROGRESS_STAGES.EXTRACTING, progress, message),
-      dumping: (progress, message) =>
-        this.update(PROGRESS_STAGES.DUMPING, progress, message),
-      extractingAssets: (progress, message) =>
-        this.update(PROGRESS_STAGES.EXTRACTING_ASSETS, progress, message),
-      organizing: (progress, message) =>
-        this.update(PROGRESS_STAGES.ORGANIZING, progress, message),
-      validating: (progress, message) =>
-        this.update(PROGRESS_STAGES.VALIDATING, progress, message),
-      completed: message => this.update(PROGRESS_STAGES.COMPLETED, 100, message),
-      ...stageConfig,
-    };
-
-    return stages;
+  isCancelled() {
+    return this.cancelled;
   }
 
   /**
-   * Create a simple progress tracker for file operations
+   * Add a callback to be executed when operation is cancelled
+   * @param {Function} callback - Cancellation callback
+   */
+  onCancellation(callback) {
+    if (typeof callback === 'function') {
+      this.cancellationCallbacks.push(callback);
+    }
+  }
+
+  /**
+   * Cancel the current operation
+   * @param {string} message - Cancellation message
+   */
+  cancel(message = 'Operation cancelled by user') {
+    if (this.cancelled) return; // Already cancelled
+
+    this.cancelled = true;
+
+    // Stop spinner/progress bar with warning message
+    if (this.spinner && this.spinnerActive) {
+      this.spinner.warn(message);
+      this.spinnerActive = false;
+    } else if (this.activeProgressBar) {
+      this.activeProgressBar.stop();
+      this.activeProgressBar = null;
+      console.warn(chalk.yellow(`⚠️ ${message}`));
+    } else {
+      console.warn(chalk.yellow(`⚠️ ${message}`));
+    }
+
+    // Execute cancellation callbacks
+    this.cancellationCallbacks.forEach(callback => {
+      try {
+        callback(message);
+      } catch (error) {
+        console.error(`Error in cancellation callback: ${error.message}`);
+      }
+    });
+
+    // Clean up
+    this._disableCancellation();
+  }
+
+  /**
+   * Create a real progress bar using cli-progress
    * @param {number} total - Total items to process
    * @param {string} message - Progress message
-   * @param {Function} onItem - Callback for each item (optional)
-   * @returns {Function} Function to call for each processed item
+   * @param {Object} options - Additional options
+   * @returns {Object} Progress bar instance with update method
    */
-  createProgressBar(total, message, onItem = null) {
-    let processed = 0;
-    const startTime = Date.now();
+  createProgressBar(total, message, options = {}) {
+    const defaultOptions = {
+      format: `${message} |{bar}| {percentage}% | {value}/{total}`,
+      barCompleteChar: '=',
+      barIncompleteChar: '-',
+      hideCursor: true,
+      clearOnComplete: false,
+      stopOnComplete: false,
+    };
 
-    return (item = null) => {
-      processed++;
-      const progress = (processed / total) * 100;
-      const elapsed = Date.now() - startTime;
+    const mergedOptions = { ...defaultOptions, ...options };
 
-      if (onItem && item) {
-        onItem(item, processed, total);
-      }
+    // Enable ESC key cancellation
+    if (this.options.enableCancellation) {
+      this._enableCancellation();
+    }
 
-      this.update(
-        this.currentStage || PROGRESS_STAGES.DUMPING,
-        progress,
-        `${message} (${processed}/${total})`
-      );
+    const progressBar = new cliProgress.SingleBar(mergedOptions);
 
-      if (processed === total) {
-        this.succeed(
-          `${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
-        );
-      }
+    // Start the progress bar
+    progressBar.start(total, 0);
+    this.activeProgressBar = progressBar;
 
-      return processed;
+    return {
+      update: (current, payload = {}) => {
+        if (this.cancelled) {
+          progressBar.stop();
+          this.activeProgressBar = null;
+          return;
+        }
+
+        const percentage = Math.round((current / total) * 100);
+        progressBar.update(current, { ...payload });
+
+        if (current >= total) {
+          progressBar.stop();
+          this.activeProgressBar = null;
+        }
+      },
+      stop: () => {
+        progressBar.stop();
+        this.activeProgressBar = null;
+        this._disableCancellation();
+      },
     };
   }
 
@@ -223,28 +315,15 @@ class ProgressManager {
    * @returns {Function} Progress function to call for each item
    */
   createFileProgressBar(total, message, _options = {}) {
-    let processed = 0;
-    const startTime = Date.now();
-
-    return (value = 1) => {
-      processed = value;
-      const progress = (processed / total) * 100;
-      const elapsed = Date.now() - startTime;
-
-      this.update(
-        this.currentStage || PROGRESS_STAGES.DUMPING,
-        progress,
-        `${message} (${processed}/${total})`
-      );
-
-      if (processed >= total) {
-        this.succeed(
-          `${message} completed (${total} items in ${Math.round(elapsed / 1000)}s)`
-        );
-      }
-
-      return processed;
+    const options = {
+      format: `${message} |{bar}| {percentage}% | {value}/{total} | ETA: {eta}s`,
+      barCompleteChar: '\u2588',
+      barIncompleteChar: '\u2591',
+      hideCursor: true,
+      clearOnComplete: false,
     };
+
+    return this.createProgressBar(total, message, options);
   }
 
   /**
@@ -256,8 +335,68 @@ class ProgressManager {
       ? {
           stage: this.currentStage,
           spinnerActive: !!this.spinner,
+          progressBarActive: !!this.activeProgressBar,
         }
       : null;
+  }
+
+  /**
+   * Enable ESC key cancellation
+   * @private
+   */
+  _enableCancellation() {
+    if (this.keypressListener) return; // Already enabled
+
+    try {
+      // Create readline interface for keypress detection
+      this.readlineInterface = readline.createInterface({
+        input: process.stdin,
+        escapeCodeTimeout: 50,
+      });
+
+      readline.emitKeypressEvents(process.stdin, this.readlineInterface);
+
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+      }
+
+      // Add keypress listener
+      this.keypressListener = (str, key) => {
+        // Check for ESC key or Ctrl+C
+        if ((key && key.name === 'escape') || (key && key.ctrl && key.name === 'c')) {
+          this.cancel('Operation cancelled by user (ESC/Ctrl+C pressed)');
+        }
+      };
+
+      process.stdin.on('keypress', this.keypressListener);
+    } catch (error) {
+      // If readline setup fails, continue without cancellation
+      console.warn('Warning: Could not enable ESC key cancellation');
+    }
+  }
+
+  /**
+   * Disable ESC key cancellation and clean up
+   * @private
+   */
+  _disableCancellation() {
+    if (this.keypressListener) {
+      process.stdin.removeListener('keypress', this.keypressListener);
+      this.keypressListener = null;
+    }
+
+    if (this.readlineInterface) {
+      this.readlineInterface.close();
+      this.readlineInterface = null;
+    }
+
+    if (process.stdin.isTTY) {
+      try {
+        process.stdin.setRawMode(false);
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
   }
 
   /**
@@ -288,7 +427,10 @@ class ProgressManager {
  */
 function createProgressManager(onProgress = null, verbose = false, options = {}) {
   const useSpinner = !verbose; // Use spinner unless verbose mode
-  return new ProgressManager(onProgress, useSpinner, options);
+  return new ProgressManager(onProgress, useSpinner, {
+    enableCancellation: !verbose, // Enable cancellation unless verbose mode
+    ...options,
+  });
 }
 
 module.exports = {

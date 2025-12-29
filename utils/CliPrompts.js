@@ -1,6 +1,7 @@
 const { input, select, confirm } = require('@inquirer/prompts');
 const { SchemaValidator } = require('./SchemaValidator');
 const fs = require('fs').promises;
+const chalk = require('chalk');
 
 /**
  * Common CLI prompt utilities for Data Dumpster Diver
@@ -136,6 +137,38 @@ class CliPrompts {
           return true;
         }),
     });
+  }
+
+  /**
+   * Prompt with ESC key cancellation support
+   * @param {Function} promptFunction - Inquirer prompt function
+   * @param {Object} options - Prompt options
+   * @param {Function} onCancel - Optional cancellation callback
+   * @returns {Promise<any>} Prompt result or null if cancelled
+   */
+  static async promptWithCancellation(promptFunction, options = {}, onCancel = null) {
+    try {
+      return await promptFunction(options);
+    } catch (error) {
+      // Handle ExitPromptError from ESC key or Ctrl+C
+      if (error.name === 'ExitPromptError') {
+        if (onCancel) {
+          await onCancel('User cancelled prompt');
+        }
+        console.warn(chalk.yellow('\n⚠️ Prompt cancelled by user'));
+        return null;
+      }
+      throw error; // Re-throw other errors
+    }
+  }
+
+  /**
+   * Check if prompt was cancelled
+   * @param {any} result - Prompt result
+   * @returns {boolean} Whether prompt was cancelled
+   */
+  static isCancelled(result) {
+    return result === null;
   }
 }
 

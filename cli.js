@@ -71,14 +71,24 @@ program
         context: 'dump command',
       });
 
-      // Create progress spinner
+      // Create progress spinner with cancellation support
       pm.start('initializing', 'Initializing dumpster creation...');
+
+      // Add cancellation callback to cleanup
+      pm.onCancellation(() => {
+        console.log('\n🛑 Dumpster creation cancelled');
+        process.exit(0);
+      });
 
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
 
       const onProgress = progress => {
+        // Check if cancelled before updating
+        if (pm.isCancelled()) {
+          return;
+        }
         pm.update(progress.stage, progress.progress, progress.message);
       };
 
@@ -467,9 +477,16 @@ program
         `Preparing to upcycle "${dumpsterName}" to ${format.toUpperCase()}...`
       );
 
+      // Add cancellation callback
+      pm.onCancellation(() => {
+        console.log('\n🛑 Upcycle cancelled by user');
+        process.exit(0);
+      });
+
       if (validatedOptions.verbose) {
         console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
         console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
+        console.log(chalk.dim('💡 Press ESC to cancel this operation'));
         ErrorHandler.logInfo(
           `Options: ${JSON.stringify(validatedOptions, null, 2)}`,
           'upcycle'
@@ -493,8 +510,11 @@ program
         process.exit(1);
       }
 
-      // Perform upcycle with progress tracking
+      // Perform upcycle with progress tracking and cancellation
       const onProgress = progress => {
+        if (pm.isCancelled()) {
+          return;
+        }
         pm.update(progress.stage, progress.progress, progress.message);
       };
 
