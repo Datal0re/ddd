@@ -3,21 +3,16 @@
  * Formats chats into clean, readable plain text
  */
 
-const BaseFormatter = require('./BaseFormatter');
 const FileUtils = require('../FileUtils');
 
-class TXTFormatter extends BaseFormatter {
-  constructor() {
-    super();
-  }
-
+const TXTFormatter = {
   /**
    * Get file extension for text format
    * @returns {string} File extension
    */
   getFileExtension() {
     return 'txt';
-  }
+  },
 
   /**
    * Get mime type for text format
@@ -25,7 +20,7 @@ class TXTFormatter extends BaseFormatter {
    */
   getMimeType() {
     return 'text/plain';
-  }
+  },
 
   /**
    * Format a chat for export
@@ -53,7 +48,7 @@ class TXTFormatter extends BaseFormatter {
     content += this.formatFooter(metadata, validatedOptions);
 
     return content;
-  }
+  },
 
   /**
    * Format header for chat content
@@ -102,7 +97,7 @@ class TXTFormatter extends BaseFormatter {
     header += '\n';
 
     return header;
-  }
+  },
 
   /**
    * Format footer for chat content
@@ -122,7 +117,7 @@ class TXTFormatter extends BaseFormatter {
     footer += `Chat: ${metadata.title}\n`;
 
     return footer;
-  }
+  },
 
   /**
    * Format message content
@@ -150,11 +145,11 @@ class TXTFormatter extends BaseFormatter {
       formatted += `${author}:\n`;
     }
 
-    // Process each part of the message
+    // Process each part of message
     formatted += this.processMessageParts(parts);
 
     return formatted + '\n';
-  }
+  },
 
   /**
    * Process message parts into text format
@@ -219,7 +214,7 @@ class TXTFormatter extends BaseFormatter {
     }
 
     return content;
-  }
+  },
 
   /**
    * Wrap text to specified width
@@ -250,7 +245,7 @@ class TXTFormatter extends BaseFormatter {
     }
 
     return lines.join('\n');
-  }
+  },
 
   /**
    * Combine multiple chats into single text file
@@ -270,7 +265,7 @@ class TXTFormatter extends BaseFormatter {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
 
-      // Read the actual file content if filepath exists, otherwise use content directly
+      // Read actual file content if filepath exists, otherwise use content directly
       let fileContent;
       if (result.filepath) {
         fileContent = await FileUtils.readFile(result.filepath);
@@ -291,7 +286,7 @@ class TXTFormatter extends BaseFormatter {
     }
 
     return content;
-  }
+  },
 
   /**
    * Validate text-specific options
@@ -308,7 +303,7 @@ class TXTFormatter extends BaseFormatter {
     };
 
     return { ...defaultOptions, ...options };
-  }
-}
+  },
+};
 
 module.exports = TXTFormatter;

@@ -3,21 +3,16 @@
  * Formats chats into clean, readable Markdown
  */
 
-const BaseFormatter = require('./BaseFormatter');
 const FileUtils = require('../FileUtils');
 
-class MDFormatter extends BaseFormatter {
-  constructor() {
-    super();
-  }
-
+const MDFormatter = {
   /**
    * Get file extension for markdown format
    * @returns {string} File extension
    */
   getFileExtension() {
     return 'md';
-  }
+  },
 
   /**
    * Get mime type for markdown format
@@ -25,7 +20,7 @@ class MDFormatter extends BaseFormatter {
    */
   getMimeType() {
     return 'text/markdown';
-  }
+  },
 
   /**
    * Format a chat for export
@@ -53,7 +48,7 @@ class MDFormatter extends BaseFormatter {
     content += this.formatFooter(metadata, validatedOptions);
 
     return content;
-  }
+  },
 
   /**
    * Format header for chat content
@@ -94,7 +89,7 @@ class MDFormatter extends BaseFormatter {
     header += `---\n\n# ${metadata.title}\n\n`;
 
     return header;
-  }
+  },
 
   /**
    * Format footer for chat content
@@ -113,7 +108,7 @@ class MDFormatter extends BaseFormatter {
     footer += `*Exported from Data Dumpster Diver on ${new Date().toLocaleDateString()}*\n`;
 
     return footer;
-  }
+  },
 
   /**
    * Format message content
@@ -136,7 +131,7 @@ class MDFormatter extends BaseFormatter {
       formatted += `**${author}**\n\n`;
     }
 
-    // Process each part of the message
+    // Process each part of message
     for (const part of parts) {
       switch (part.type) {
         case 'text':
@@ -165,7 +160,7 @@ class MDFormatter extends BaseFormatter {
     }
 
     return formatted;
-  }
+  },
 
   /**
    * Combine multiple chats into single markdown file
@@ -184,7 +179,7 @@ class MDFormatter extends BaseFormatter {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
 
-      // Read the file content if filepath exists, otherwise use content directly
+      // Read file content if filepath exists, otherwise use content directly
       let fileContent;
       if (result.filepath) {
         fileContent = await FileUtils.readFile(result.filepath);
@@ -203,7 +198,7 @@ class MDFormatter extends BaseFormatter {
     }
 
     return content;
-  }
+  },
 
   /**
    * Validate markdown-specific options
@@ -218,7 +213,7 @@ class MDFormatter extends BaseFormatter {
     };
 
     return { ...defaultOptions, ...options };
-  }
-}
+  },
+};
 
 module.exports = MDFormatter;

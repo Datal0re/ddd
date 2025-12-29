@@ -3,23 +3,18 @@
  * Formats chats into static, self-contained HTML
  */
 
-const BaseFormatter = require('./BaseFormatter');
 const { marked } = require('marked');
 const sanitizeHtml = require('sanitize-html');
 const FileUtils = require('../FileUtils');
 
-class HTMLFormatter extends BaseFormatter {
-  constructor() {
-    super();
-  }
-
+const HTMLFormatter = {
   /**
    * Get file extension for HTML format
    * @returns {string} File extension
    */
   getFileExtension() {
     return 'html';
-  }
+  },
 
   /**
    * Get mime type for HTML format
@@ -27,7 +22,7 @@ class HTMLFormatter extends BaseFormatter {
    */
   getMimeType() {
     return 'text/html';
-  }
+  },
 
   /**
    * Format a chat for export
@@ -52,7 +47,7 @@ class HTMLFormatter extends BaseFormatter {
     content += this.generateHTMLEnd();
 
     return content;
-  }
+  },
 
   /**
    * Generate HTML document start with CSS
@@ -84,7 +79,7 @@ class HTMLFormatter extends BaseFormatter {
     html += '  <div class="chat-container">\n';
 
     return html;
-  }
+  },
 
   /**
    * Generate HTML document end
@@ -92,7 +87,7 @@ class HTMLFormatter extends BaseFormatter {
    */
   generateHTMLEnd() {
     return '  </div>\n</body>\n</html>';
-  }
+  },
 
   /**
    * Get CSS for styling
@@ -231,7 +226,7 @@ class HTMLFormatter extends BaseFormatter {
     );
 
     return theme === 'dark' ? darkTheme : lightTheme;
-  }
+  },
 
   /**
    * Format header for chat content
@@ -267,7 +262,7 @@ class HTMLFormatter extends BaseFormatter {
     header += '    </div>\n';
 
     return header;
-  }
+  },
 
   /**
    * Format footer for chat content
@@ -296,7 +291,7 @@ class HTMLFormatter extends BaseFormatter {
     footer += '    </div>\n';
 
     return footer;
-  }
+  },
 
   /**
    * Format message content
@@ -323,7 +318,7 @@ class HTMLFormatter extends BaseFormatter {
     formatted += '      </div>\n';
     formatted += '      <div class="message-content">\n';
 
-    // Process each part of the message
+    // Process each part of message
     for (const part of parts) {
       formatted += this.processMessagePart(part);
     }
@@ -337,7 +332,7 @@ class HTMLFormatter extends BaseFormatter {
     }
 
     return formatted;
-  }
+  },
 
   /**
    * Process individual message part
@@ -383,7 +378,7 @@ class HTMLFormatter extends BaseFormatter {
         }
         return '';
     }
-  }
+  },
 
   /**
    * Combine multiple chats into single HTML file
@@ -417,7 +412,7 @@ class HTMLFormatter extends BaseFormatter {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
 
-      // Read the actual file content if filepath exists, otherwise use content directly
+      // Read actual file content if filepath exists, otherwise use content directly
       let fileContent;
       if (result.filepath) {
         fileContent = await FileUtils.readFile(result.filepath);
@@ -431,7 +426,7 @@ class HTMLFormatter extends BaseFormatter {
       content += `      <h2>${this.escapeHTML(result.chatTitle)}</h2>\n`;
       content += '      <div class="message-separator"></div>\n';
 
-      // Extract just the message content (skip the full HTML structure)
+      // Extract just the message content (skip full HTML structure)
       const messageContent = fileContent.match(/<div class="message">(.*?)<\/div>/gs);
       if (messageContent) {
         content += messageContent.join('\n');
@@ -447,7 +442,7 @@ class HTMLFormatter extends BaseFormatter {
     content += '  </div>\n</body>\n</html>';
 
     return content;
-  }
+  },
 
   /**
    * Escape HTML characters
@@ -464,7 +459,7 @@ class HTMLFormatter extends BaseFormatter {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
-  }
+  },
 
   /**
    * Validate HTML-specific options
@@ -487,7 +482,7 @@ class HTMLFormatter extends BaseFormatter {
     }
 
     return validated;
-  }
-}
+  },
+};
 
 module.exports = HTMLFormatter;

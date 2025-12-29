@@ -19,9 +19,9 @@ class UpcycleManager {
     this.dumpsterManager = dumpsterManager;
     this.progressManager = progressManager;
     this.formatters = {
-      md: new MDFormatter(),
-      txt: new TXTFormatter(),
-      html: new HTMLFormatter(),
+      md: MDFormatter,
+      txt: TXTFormatter,
+      html: HTMLFormatter,
     };
   }
 

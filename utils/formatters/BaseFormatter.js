@@ -1,80 +1,71 @@
 /**
- * Base Formatter Class
- * Abstract base class for all upcycle formatters
- * Defines the interface that all formatters must implement
+ * Formatter Interface Definition
+ * Simple object interface for all upcycle formatters
+ * Defines the structure that formatters must implement
  */
 
-class BaseFormatter {
-  /**
-   * Format a chat for export
-   * @param {Object} processedChat - Processed chat object from ChatUpcycler
-   * @param {Object} _options - Formatting options
-   * @returns {Promise<string>} Formatted content
-   */
-  async formatChat(processedChat, _options = {}) {
-    throw new Error('formatChat must be implemented by subclass');
-  }
+/**
+ * Formatter interface - formatters should be objects with these methods
+ * @interface Formatter
+ */
 
-  /**
-   * Combine multiple chats into single file
-   * @param {Array} _results - Array of chat export results
-   * @returns {Promise<string>} Combined content
-   */
-  async combineChats(_results) {
-    throw new Error('combineChats must be implemented by subclass');
-  }
+/**
+ * Format a chat for export
+ * @function formatChat
+ * @param {Object} processedChat - Processed chat object from ChatUpcycler
+ * @param {Object} options - Formatting options
+ * @returns {Promise<string>} Formatted content
+ */
 
-  /**
-   * Get file extension for this format
-   * @returns {string} File extension (without dot)
-   */
-  getFileExtension() {
-    throw new Error('getFileExtension must be implemented by subclass');
-  }
+/**
+ * Combine multiple chats into single file
+ * @function combineChats
+ * @param {Array} results - Array of chat export results
+ * @returns {Promise<string>} Combined content
+ */
 
-  /**
-   * Get mime type for this format
-   * @returns {string} MIME type
-   */
-  getMimeType() {
-    throw new Error('getMimeType must be implemented by subclass');
-  }
+/**
+ * Get file extension for this format
+ * @function getFileExtension
+ * @returns {string} File extension (without dot)
+ */
 
-  /**
-   * Format header for chat content
-   * @param {Object} _metadata - Chat metadata
-   * @returns {string} Formatted header
-   */
-  formatHeader(_metadata) {
-    return '';
-  }
+/**
+ * Get mime type for this format
+ * @function getMimeType
+ * @returns {string} MIME type
+ */
 
-  /**
-   * Format footer for chat content
-   * @param {Object} _metadata - Chat metadata
-   * @returns {string} Formatted footer
-   */
-  formatFooter(_metadata) {
-    return '';
-  }
+/**
+ * Format message content
+ * @function formatMessage
+ * @param {Object} message - Message object
+ * @param {number} index - Message index
+ * @param {Object} options - Formatting options
+ * @returns {string} Formatted message
+ */
 
-  /**
-   * Format message content
-   * @param {Object} _message - Message object
-   * @returns {string} Formatted message
-   */
-  formatMessage(_message) {
-    throw new Error('formatMessage must be implemented by subclass');
-  }
+/**
+ * Format header for chat content (optional)
+ * @function formatHeader
+ * @param {Object} metadata - Chat metadata
+ * @param {Object} options - Formatting options
+ * @returns {string} Formatted header
+ */
 
-  /**
-   * Validate format-specific options
-   * @param {Object} _options - Options to validate
-   * @returns {Object} Validated options
-   */
-  validateOptions(_options = {}) {
-    return _options;
-  }
-}
+/**
+ * Format footer for chat content (optional)
+ * @function formatFooter
+ * @param {Object} metadata - Chat metadata
+ * @param {Object} options - Formatting options
+ * @returns {string} Formatted footer
+ */
 
-module.exports = BaseFormatter;
+/**
+ * Validate format-specific options (optional)
+ * @function validateOptions
+ * @param {Object} options - Options to validate
+ * @returns {Object} Validated options
+ */
+
+module.exports = {}; // Export empty object - this file serves as documentation
