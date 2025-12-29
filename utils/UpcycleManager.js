@@ -110,14 +110,8 @@ class UpcycleManager {
       let skippedCount = 0;
       const results = [];
 
-      // Process each chat with cancellation support
+      // Process each chat
       for (let i = 0; i < chats.length; i++) {
-        // Check for cancellation before processing each chat
-        if (pm && pm.isCancelled()) {
-          console.log('\n⚠️ Upcycle cancelled during chat processing');
-          break;
-        }
-
         const chat = chats[i];
         const progress = 20 + (i / chats.length) * 60; // 20-80% for chat processing
 
