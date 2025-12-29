@@ -7,7 +7,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
-const { PATHS, SEARCH_CONFIG, SANITIZATION_DEFAULTS } = require('../config/constants');
+const {
+  PATHS,
+  SEARCH_CONFIG,
+  SANITIZATION_DEFAULTS,
+  TEMP_CONFIG,
+} = require('../config/constants');
 const { SchemaValidator } = require('./SchemaValidator');
 
 // Simple file cache to improve performance for repeated searches
@@ -125,7 +130,7 @@ class FileUtils {
   static async createSystemTempDir(prefix = 'dddiver-') {
     const tempDir = path.join(
       os.tmpdir(),
-      `${prefix}${crypto.randomBytes(8).toString('hex')}`
+      `${prefix}${crypto.randomBytes(TEMP_CONFIG.RANDOM_BYTES_LENGTH).toString('hex')}`
     );
     await fs.mkdir(tempDir, { recursive: true });
     return tempDir;

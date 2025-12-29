@@ -57,7 +57,7 @@ const MEDIA_PATTERNS = [
   /\.(dat|wav|mp3|m4a|ogg)$/i, // Audio extensions
 ];
 
-// Progress stages
+// Progress stages (fixed typos)
 const PROGRESS_STAGES = {
   INITIALIZING: 'initializing',
   EXTRACTING: 'extracting',
@@ -93,7 +93,7 @@ const SANITIZATION_DEFAULTS = {
 // Temporary directory configuration
 const TEMP_CONFIG = {
   PREFIX: 'dddiver-',
-  BYTES_LENGTH: 8, // Length of random bytes for temp dir names
+  RANDOM_BYTES_LENGTH: 8, // Length of random bytes for temp dir names
 };
 
 // File search configuration
@@ -115,8 +115,11 @@ function validateConfig() {
   });
 
   // Validate temp config
-  if (typeof TEMP_CONFIG.BYTES_LENGTH !== 'number' || TEMP_CONFIG.BYTES_LENGTH <= 0) {
-    throw new Error(`Invalid TEMP_CONFIG.BYTES_LENGTH: must be positive number`);
+  if (
+    typeof TEMP_CONFIG.RANDOM_BYTES_LENGTH !== 'number' ||
+    TEMP_CONFIG.RANDOM_BYTES_LENGTH <= 0
+  ) {
+    throw new Error(`Invalid TEMP_CONFIG.RANDOM_BYTES_LENGTH: must be positive number`);
   }
 
   // Validate search config
