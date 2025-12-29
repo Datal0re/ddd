@@ -43,11 +43,11 @@ async function processDumpster(
   // Validate inputs
   SchemaValidator.validateRequiredParams(
     [
-      { name: 'zipPath', value: zipPath },
+      { name: 'zipData', value: zipData },
       { name: 'dumpsterName', value: dumpsterName },
       { name: 'baseDir', value: baseDir },
     ],
-    'createDumpster'
+    'processDumpster'
   );
 
   SchemaValidator.validateNonEmptyString(dumpsterName, 'dumpsterName');
@@ -185,7 +185,7 @@ async function processDumpster(
       throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
     }
 
-    pm.succeed('Dumpster processing complete!');
+    baseTracker.succeed('Dumpster processing complete!');
 
     // Verify actual file count matches processing count
     const actualChatCount = await FileUtils.listDirectory(paths.chatsPath).then(

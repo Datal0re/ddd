@@ -36,7 +36,7 @@ class ZipProcessor {
 
     const tempDir = path.join(
       os.tmpdir(),
-      `${TEMP_CONFIG.PREFIX}${crypto.randomBytes(TEMP_CONFIG.BYTES_LENGTH).toString('hex')}`
+      `${TEMP_CONFIG.PREFIX}${crypto.randomBytes(TEMP_CONFIG.RANDOM_BYTES_LENGTH).toString('hex')}`
     );
     await FileUtils.ensureDirectory(tempDir);
     return tempDir;
