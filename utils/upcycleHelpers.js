@@ -3,7 +3,7 @@
  * Shared utilities for upcycle functionality
  */
 
-const FileSystemHelper = require('./FileSystemHelper');
+const FileUtils = require('./FileUtils');
 const { SchemaValidator } = require('./SchemaValidator');
 const { ErrorHandler } = require('./ErrorHandler');
 
@@ -163,7 +163,7 @@ async function calculateUpcycleStats(results) {
     // Calculate file size (estimated)
     if (result.filepath) {
       try {
-        const fileStats = await FileSystemHelper.getStats(result.filepath);
+        const fileStats = await FileUtils.getStats(result.filepath);
         stats.totalSize += fileStats.size || 0;
       } catch {
         // File might not exist yet or stats unavailable
@@ -213,28 +213,28 @@ async function validateOutputDirectory(outputDir, createIfMissing = true) {
   SchemaValidator.validateNonEmptyString(outputDir, 'outputDir');
 
   try {
-    const exists = await FileSystemHelper.fileExists(outputDir);
+    const exists = await FileUtils.fileExists(outputDir);
 
     if (!exists) {
       if (createIfMissing) {
-        await FileSystemHelper.ensureDirectory(outputDir);
+        await FileUtils.ensureDirectory(outputDir);
       } else {
         throw new Error(`Output directory does not exist: ${outputDir}`);
       }
     }
 
     // Check if it's actually a directory
-    const stats = await FileSystemHelper.getStats(outputDir);
+    const stats = await FileUtils.getStats(outputDir);
     if (!stats.isDirectory()) {
       throw new Error(`Output path is not a directory: ${outputDir}`);
     }
 
     // Check write permissions
-    const testFile = FileSystemHelper.joinPath(outputDir, '.write-test');
-    await FileSystemHelper.writeFile(testFile, 'test');
-    await FileSystemHelper.deleteFile(testFile);
+    const testFile = FileUtils.joinPath(outputDir, '.write-test');
+    await FileUtils.writeFile(testFile, 'test');
+    await FileUtils.deleteFile(testFile);
 
-    return FileSystemHelper.resolvePath(outputDir);
+    return FileUtils.resolvePath(outputDir);
   } catch (error) {
     throw new Error(`Invalid output directory "${outputDir}": ${error.message}`);
   }

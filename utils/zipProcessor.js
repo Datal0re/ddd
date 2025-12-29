@@ -6,8 +6,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { LIMITS, ZIP_SIGNATURES, TEMP_CONFIG } = require('../config/constants');
-const FileSystemHelper = require('./FileSystemHelper');
-const PathUtils = require('./PathUtils');
+const FileUtils = require('./FileUtils');
 
 // Dynamic import for decompress (ES module)
 let decompress;
@@ -39,7 +38,7 @@ class ZipProcessor {
       os.tmpdir(),
       `${TEMP_CONFIG.PREFIX}${crypto.randomBytes(TEMP_CONFIG.BYTES_LENGTH).toString('hex')}`
     );
-    await FileSystemHelper.ensureDirectory(tempDir);
+    await FileUtils.ensureDirectory(tempDir);
     return tempDir;
   }
 
@@ -142,7 +141,7 @@ class ZipProcessor {
 
       // Check for suspicious file paths
       for (const file of files) {
-        if (!PathUtils.validatePath(file.path)) {
+        if (!FileUtils.validatePath(file.path)) {
           throw new Error(`Suspicious file path detected: ${file.path}`);
         }
       }

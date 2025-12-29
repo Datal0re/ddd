@@ -8,7 +8,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
-const FileSystemHelper = require('../utils/FileSystemHelper');
+const FileUtils = require('../utils/FileUtils');
 const { SchemaValidator } = require('../utils/SchemaValidator');
 
 /**
@@ -136,7 +136,7 @@ class TestUtils {
   static createTestLogger(outputPath) {
     // Ensure logs directory exists
     const logsDir = path.dirname(outputPath);
-    FileSystemHelper.ensureDirectory(logsDir);
+    FileUtils.ensureDirectory(logsDir);
 
     return {
       /**

@@ -3,17 +3,16 @@
  * Direct file-based dumpster management system
  * Replaces session-based architecture with user-accessible dumpsters
  */
-const FileSystemHelper = require('./FileSystemHelper');
-const PathUtils = require('./PathUtils');
+const FileUtils = require('./FileUtils');
 
 class DumpsterManager {
   constructor(baseDir) {
     this.baseDir = baseDir;
     this.dumpsters = new Map();
-    this.dumpstersFile = FileSystemHelper.joinPath(baseDir, 'data', 'dumpsters.json');
-    this.dumpstersDir = FileSystemHelper.joinPath(baseDir, 'data', 'dumpsters');
-    this.tempDir = FileSystemHelper.joinPath(baseDir, 'data', 'temp');
-    this.mediaDir = FileSystemHelper.joinPath(baseDir, 'data'); // Media is stored with dumpsters
+    this.dumpstersFile = FileUtils.joinPath(baseDir, 'data', 'dumpsters.json');
+    this.dumpstersDir = FileUtils.joinPath(baseDir, 'data', 'dumpsters');
+    this.tempDir = FileUtils.joinPath(baseDir, 'data', 'temp');
+    this.mediaDir = FileUtils.joinPath(baseDir, 'data'); // Media is stored with dumpsters
   }
 
   /**
@@ -74,11 +73,11 @@ class DumpsterManager {
       throw new Error(`Dumpster "${sanitizedName}" not found`);
     }
 
-    const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, sanitizedName);
+    const dumpsterDir = FileUtils.joinPath(this.dumpstersDir, sanitizedName);
 
     try {
       // Remove dumpster directory and all contents
-      await FileSystemHelper.removeDirectory(dumpsterDir);
+      await FileUtils.removeDirectory(dumpsterDir);
 
       // Remove from metadata
       this.dumpsters.delete(dumpsterName);
@@ -104,11 +103,11 @@ class DumpsterManager {
       throw new Error(`Dumpster "${dumpsterName}" not found`);
     }
 
-    const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, dumpsterName);
-    const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
+    const dumpsterDir = FileUtils.joinPath(this.dumpstersDir, dumpsterName);
+    const chatsDir = FileUtils.joinPath(dumpsterDir, 'chats');
 
     try {
-      const files = await FileSystemHelper.listDirectory(chatsDir);
+      const files = await FileUtils.listDirectory(chatsDir);
 
       // Filter for JSON files and sort by filename (which includes date)
       const jsonFiles = files
@@ -118,8 +117,8 @@ class DumpsterManager {
       const chats = [];
       for (const file of limit ? jsonFiles.slice(0, limit) : jsonFiles) {
         try {
-          const filePath = FileSystemHelper.joinPath(chatsDir, file);
-          const chat = await FileSystemHelper.readJsonFile(filePath);
+          const filePath = FileUtils.joinPath(chatsDir, file);
+          const chat = await FileUtils.readJsonFile(filePath);
           chats.push({
             filename: file,
             ...chat,
@@ -149,12 +148,12 @@ class DumpsterManager {
       throw new Error(`Dumpster "${dumpsterName}" not found`);
     }
 
-    const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, dumpsterName);
-    const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
-    const chatFile = FileSystemHelper.joinPath(chatsDir, chatId);
+    const dumpsterDir = FileUtils.joinPath(this.dumpstersDir, dumpsterName);
+    const chatsDir = FileUtils.joinPath(dumpsterDir, 'chats');
+    const chatFile = FileUtils.joinPath(chatsDir, chatId);
 
     try {
-      const conversation = await FileSystemHelper.readJsonFile(chatFile);
+      const conversation = await FileUtils.readJsonFile(chatFile);
       return {
         dumpsterName,
         filename: chatId,
@@ -173,12 +172,7 @@ class DumpsterManager {
    * @returns {string} Full path to media file
    */
   getMediaPath(dumpsterName, mediaPath) {
-    return FileSystemHelper.joinPath(
-      this.dumpstersDir,
-      dumpsterName,
-      'media',
-      mediaPath
-    );
+    return FileUtils.joinPath(this.dumpstersDir, dumpsterName, 'media', mediaPath);
   }
 
   /**
@@ -189,7 +183,7 @@ class DumpsterManager {
    */
   async mediaExists(dumpsterName, mediaPath) {
     const filePath = this.getMediaPath(dumpsterName, mediaPath);
-    return await FileSystemHelper.fileExists(filePath);
+    return await FileUtils.fileExists(filePath);
   }
 
   /**
@@ -198,33 +192,33 @@ class DumpsterManager {
    * @returns {Promise<Object>} Dumpster statistics
    */
   async getDumpsterStats(dumpsterName) {
-    const dumpsterDir = FileSystemHelper.joinPath(this.dumpstersDir, dumpsterName);
+    const dumpsterDir = FileUtils.joinPath(this.dumpstersDir, dumpsterName);
 
     try {
       let totalSize = 0;
       let chatCount = 0;
 
-      const chatsDir = FileSystemHelper.joinPath(dumpsterDir, 'chats');
-      const files = await FileSystemHelper.listDirectory(chatsDir);
+      const chatsDir = FileUtils.joinPath(dumpsterDir, 'chats');
+      const files = await FileUtils.listDirectory(chatsDir);
 
       for (const file of files) {
         if (file.endsWith('.json')) {
-          const filePath = FileSystemHelper.joinPath(chatsDir, file);
-          const stats = await FileSystemHelper.getStats(filePath);
+          const filePath = FileUtils.joinPath(chatsDir, file);
+          const stats = await FileUtils.getStats(filePath);
           totalSize += stats.size;
           chatCount++;
         }
       }
 
       // Check if media directory exists and count files
-      const mediaDir = FileSystemHelper.joinPath(dumpsterDir, 'media');
-      if (await FileSystemHelper.fileExists(mediaDir)) {
+      const mediaDir = FileUtils.joinPath(dumpsterDir, 'media');
+      if (await FileUtils.fileExists(mediaDir)) {
         try {
-          const mediaFiles = await FileSystemHelper.listDirectory(mediaDir);
+          const mediaFiles = await FileUtils.listDirectory(mediaDir);
           for (const file of mediaFiles) {
-            const mediaFilePath = FileSystemHelper.joinPath(mediaDir, file);
+            const mediaFilePath = FileUtils.joinPath(mediaDir, file);
             try {
-              const mediaStats = await FileSystemHelper.getStats(mediaFilePath);
+              const mediaStats = await FileUtils.getStats(mediaFilePath);
               if (mediaStats.isFile()) {
                 totalSize += mediaStats.size;
               }
@@ -254,7 +248,7 @@ class DumpsterManager {
    * @returns {string} Sanitized export name
    */
   sanitizeExportName(name) {
-    return PathUtils.sanitizeName(name, { type: 'export' });
+    return FileUtils.sanitizeName(name, { type: 'export' });
   }
 
   /**
@@ -264,12 +258,8 @@ class DumpsterManager {
    */
   async getChatCount(dumpsterName) {
     try {
-      const chatsDir = FileSystemHelper.joinPath(
-        this.dumpstersDir,
-        dumpsterName,
-        'chats'
-      );
-      const files = await FileSystemHelper.listDirectory(chatsDir);
+      const chatsDir = FileUtils.joinPath(this.dumpstersDir, dumpsterName, 'chats');
+      const files = await FileUtils.listDirectory(chatsDir);
       return files.filter(f => f.endsWith('.json')).length;
     } catch {
       return 0;
@@ -285,11 +275,11 @@ class DumpsterManager {
     const files = [];
 
     async function traverse(currentPath) {
-      const items = await FileSystemHelper.listDirectory(currentPath);
+      const items = await FileUtils.listDirectory(currentPath);
 
       for (const item of items) {
-        const itemPath = FileSystemHelper.joinPath(currentPath, item);
-        const stats = await FileSystemHelper.getStats(itemPath);
+        const itemPath = FileUtils.joinPath(currentPath, item);
+        const stats = await FileUtils.getStats(itemPath);
 
         if (stats.isDirectory()) {
           await traverse(itemPath);
@@ -308,8 +298,8 @@ class DumpsterManager {
    */
   async cleanupTempDirectory() {
     try {
-      await PathUtils.removeDirectories(this.tempDir);
-      await FileSystemHelper.ensureDirectory(this.tempDir);
+      await FileUtils.removeDirectories(this.tempDir);
+      await FileUtils.ensureDirectory(this.tempDir);
     } catch (error) {
       console.warn('Failed to cleanup temp directory:', error.message);
     }
@@ -319,8 +309,8 @@ class DumpsterManager {
    * Ensure required data directories exist
    */
   async ensureDataDirectories() {
-    await FileSystemHelper.ensureDirectory(this.dumpstersDir);
-    await FileSystemHelper.ensureDirectory(this.tempDir);
+    await FileUtils.ensureDirectory(this.dumpstersDir);
+    await FileUtils.ensureDirectory(this.tempDir);
   }
 
   /**
@@ -329,7 +319,7 @@ class DumpsterManager {
    * @returns {string} Sanitized name
    */
   sanitizeDumpsterName(name) {
-    return PathUtils.sanitizeName(name, { type: 'dumpster' });
+    return FileUtils.sanitizeName(name, { type: 'dumpster' });
   }
 
   /**
@@ -394,7 +384,7 @@ class DumpsterManager {
    */
   async loadDumpsters() {
     try {
-      const parsed = await FileSystemHelper.readJsonFile(this.dumpstersFile);
+      const parsed = await FileUtils.readJsonFile(this.dumpstersFile);
       this.dumpsters = new Map(
         parsed.map(([name, info]) => [
           name,
@@ -419,9 +409,7 @@ class DumpsterManager {
    */
   async saveDumpsters() {
     try {
-      await FileSystemHelper.writeJsonFile(this.dumpstersFile, [
-        ...this.dumpsters.entries(),
-      ]);
+      await FileUtils.writeJsonFile(this.dumpstersFile, [...this.dumpsters.entries()]);
     } catch (error) {
       console.error('Failed to save dumpsters:', error.message);
       throw error;

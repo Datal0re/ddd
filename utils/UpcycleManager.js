@@ -6,10 +6,9 @@
 const { SchemaValidator } = require('./SchemaValidator');
 const { AssetErrorTracker } = require('./upcycleHelpers');
 const { ErrorHandler } = require('./ErrorHandler');
-const FileSystemHelper = require('./FileSystemHelper');
+const FileUtils = require('./FileUtils');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
-const PathUtils = require('./PathUtils');
 const fs = require('fs').promises;
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
@@ -106,11 +105,11 @@ class UpcycleManager {
       );
 
       // Create output directory
-      const outputDir = FileSystemHelper.joinPath(
+      const outputDir = FileUtils.joinPath(
         validatedOptions.outputDir,
         `${dumpsterName}-${format}`
       );
-      await FileSystemHelper.ensureDirectory(outputDir);
+      await FileUtils.ensureDirectory(outputDir);
 
       let processedCount = 0;
       let skippedCount = 0;
@@ -281,10 +280,10 @@ class UpcycleManager {
 
     // Generate filename
     const filename = this.generateFilename(chat, format);
-    const filepath = FileSystemHelper.joinPath(outputDir, filename);
+    const filepath = FileUtils.joinPath(outputDir, filename);
 
     // Write file
-    await FileSystemHelper.writeFile(filepath, formattedContent);
+    await FileUtils.writeFile(filepath, formattedContent);
 
     // Handle media assets if requested
     if (options.includeMedia && processedChat.assets.length > 0) {
@@ -334,8 +333,8 @@ class UpcycleManager {
   async copyChatAssets(assets, outputDir, dumpsterName, assetErrorTracker = null) {
     if (assets.length === 0) return;
 
-    const mediaDir = FileSystemHelper.joinPath(outputDir, 'media');
-    await FileSystemHelper.ensureDirectory(mediaDir);
+    const mediaDir = FileUtils.joinPath(outputDir, 'media');
+    await FileUtils.ensureDirectory(mediaDir);
 
     // Load asset mapping to get correct filenames
     const ChatUpcycler = require('./ChatUpcycler');
@@ -372,19 +371,19 @@ class UpcycleManager {
         }
 
         // Get original asset path from dumpster
-        const dumpsterMediaDir = FileSystemHelper.joinPath(
+        const dumpsterMediaDir = FileUtils.joinPath(
           this.dumpsterManager.baseDir,
           'data/dumpsters',
           dumpsterName,
           'media'
         );
 
-        const sourcePath = FileSystemHelper.joinPath(dumpsterMediaDir, actualFilename);
+        const sourcePath = FileUtils.joinPath(dumpsterMediaDir, actualFilename);
 
-        if (await FileSystemHelper.fileExists(sourcePath)) {
-          const destPath = FileSystemHelper.joinPath(mediaDir, actualFilename);
+        if (await FileUtils.fileExists(sourcePath)) {
+          const destPath = FileUtils.joinPath(mediaDir, actualFilename);
           // Ensure destination subdirectory exists
-          await FileSystemHelper.ensureDirectory(FileSystemHelper.getDirName(destPath));
+          await FileUtils.ensureDirectory(FileUtils.getDirName(destPath));
           await fs.copyFile(sourcePath, destPath);
         } else {
           if (assetErrorTracker) {
@@ -415,15 +414,15 @@ class UpcycleManager {
 
     // Additionally, copy the entire media directory recursively to catch any files not in mapping
     try {
-      const dumpsterMediaDir = FileSystemHelper.joinPath(
+      const dumpsterMediaDir = FileUtils.joinPath(
         this.dumpsterManager.baseDir,
         'data/dumpsters',
         dumpsterName,
         'media'
       );
 
-      if (await FileSystemHelper.fileExists(dumpsterMediaDir)) {
-        await PathUtils.copyDirectory(dumpsterMediaDir, mediaDir);
+      if (await FileUtils.fileExists(dumpsterMediaDir)) {
+        await FileUtils.copyDirectory(dumpsterMediaDir, mediaDir);
       }
     } catch (error) {
       if (assetErrorTracker) {
@@ -452,9 +451,9 @@ class UpcycleManager {
 
     const combinedContent = await formatter.combineChats(results);
     const filename = `combined.${format}`;
-    const filepath = FileSystemHelper.joinPath(outputDir, filename);
+    const filepath = FileUtils.joinPath(outputDir, filename);
 
-    await FileSystemHelper.writeFile(filepath, combinedContent);
+    await FileUtils.writeFile(filepath, combinedContent);
   }
 }
 

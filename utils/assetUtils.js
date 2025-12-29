@@ -6,8 +6,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { MEDIA_PATTERNS } = require('../config/constants');
-const FileSystemHelper = require('./FileSystemHelper');
-const PathUtils = require('./PathUtils');
+const FileUtils = require('./FileUtils');
 
 /**
  * Asset utilities class for handling media files and asset organization
@@ -53,7 +52,7 @@ class AssetUtils {
     // Process each file
     for (const file of files) {
       // Validate file path to prevent path traversal
-      if (!PathUtils.validatePath(file.path)) {
+      if (!FileUtils.validatePath(file.path)) {
         console.warn(`Skipping file with dangerous path: ${file.path}`);
         continue;
       }
@@ -83,7 +82,7 @@ class AssetUtils {
             : file.path;
 
         // Validate relative path as well
-        if (!PathUtils.validatePath(relativePath)) {
+        if (!FileUtils.validatePath(relativePath)) {
           console.warn(
             `Skipping media file with dangerous relative path: ${relativePath}`
           );
@@ -91,7 +90,7 @@ class AssetUtils {
         }
 
         const destPath = path.join(mediaDir, relativePath);
-        await FileSystemHelper.ensureDirectory(path.dirname(destPath));
+        await FileUtils.ensureDirectory(path.dirname(destPath));
         await fs.copyFile(src, destPath);
         console.debug(`Copied media file: ${file.path} -> ${relativePath}`);
       }
@@ -105,13 +104,13 @@ class AssetUtils {
             : file.path;
 
         // Validate relative path as well
-        if (!PathUtils.validatePath(relativePath)) {
+        if (!FileUtils.validatePath(relativePath)) {
           console.warn(`Skipping file with dangerous relative path: ${relativePath}`);
           continue;
         }
 
         const destPath = path.join(exportDir, relativePath);
-        await FileSystemHelper.ensureDirectory(path.dirname(destPath));
+        await FileUtils.ensureDirectory(path.dirname(destPath));
         await fs.rename(src, destPath);
       }
     }
@@ -146,13 +145,13 @@ class AssetUtils {
     const { verbose = false, tempMediaDir: providedMediaDir } = options;
 
     try {
-      await FileSystemHelper.ensureDirectory(dumpsterMediaDir);
+      await FileUtils.ensureDirectory(dumpsterMediaDir);
 
       // Use provided media directory or fallback to default detection
       const tempMediaDir = providedMediaDir;
 
       // Check if temp media directory exists
-      if (!(await FileSystemHelper.fileExists(tempMediaDir))) {
+      if (!(await FileUtils.fileExists(tempMediaDir))) {
         if (verbose) {
           console.debug('No media directory found in temp files');
         }
@@ -163,7 +162,7 @@ class AssetUtils {
       let errors = 0;
 
       // Get all files and directories in temp media
-      const items = await FileSystemHelper.listDirectory(tempMediaDir);
+      const items = await FileUtils.listDirectory(tempMediaDir);
 
       for (const item of items) {
         // Skip chat.html and conversations.json (these are handled separately)
@@ -182,11 +181,11 @@ class AssetUtils {
         const destPath = path.join(dumpsterMediaDir, item);
 
         try {
-          const stats = await FileSystemHelper.getStats(srcPath);
+          const stats = await FileUtils.getStats(srcPath);
 
           if (stats.isDirectory()) {
             // Copy directory recursively
-            await PathUtils.copyDirectory(srcPath, destPath);
+            await FileUtils.copyDirectory(srcPath, destPath);
           } else {
             // Copy file
             await fs.copyFile(srcPath, destPath);
@@ -267,7 +266,7 @@ class AssetUtils {
 
       // Check for media files
       if (this.isMediaFile(key)) {
-        if (!(await FileSystemHelper.fileExists(asset.asset_pointer))) {
+        if (!(await FileUtils.fileExists(asset.asset_pointer))) {
           result.warnings.push(
             `Media file for asset ${key} not found: ${asset.asset_pointer}`
           );

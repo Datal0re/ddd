@@ -5,8 +5,7 @@
  */
 
 const { CONTENT_TYPES, ASSET_PREFIXES } = require('../config/constants');
-const FileSystemHelper = require('./FileSystemHelper');
-const PathUtils = require('./PathUtils');
+const FileUtils = require('./FileUtils');
 const { SchemaValidator } = require('./SchemaValidator');
 const { ErrorHandler } = require('./ErrorHandler');
 
@@ -20,8 +19,8 @@ function extractRelativePathFromMedia(fullPath, mediaDir) {
   if (!fullPath || !mediaDir) return null;
 
   // Normalize both paths and extract relative path
-  const normalizedMedia = FileSystemHelper.resolvePath(mediaDir);
-  const normalizedFile = FileSystemHelper.resolvePath(fullPath);
+  const normalizedMedia = FileUtils.resolvePath(mediaDir);
+  const normalizedFile = FileUtils.resolvePath(fullPath);
 
   if (normalizedFile.startsWith(normalizedMedia)) {
     const relativePath = normalizedFile.slice(normalizedMedia.length);
@@ -49,7 +48,7 @@ function getMediaDir(baseDir, dumpsterName) {
   SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
   SchemaValidator.validateNonEmptyString(dumpsterName, 'dumpsterName');
 
-  return FileSystemHelper.joinPath(baseDir, 'data', 'dumpsters', dumpsterName, 'media');
+  return FileUtils.joinPath(baseDir, 'data', 'dumpsters', dumpsterName, 'media');
 }
 
 /**
@@ -100,7 +99,7 @@ async function loadAssetMapping(dumpsterName, baseDir) {
     SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
 
     // Try to load from assets.json first (preferred method)
-    const assetsJsonPath = FileSystemHelper.joinPath(
+    const assetsJsonPath = FileUtils.joinPath(
       baseDir,
       'data',
       'dumpsters',
@@ -109,7 +108,7 @@ async function loadAssetMapping(dumpsterName, baseDir) {
     );
 
     try {
-      const assetsContent = await FileSystemHelper.readFile(assetsJsonPath);
+      const assetsContent = await FileUtils.readFile(assetsJsonPath);
       const assetMapping = JSON.parse(assetsContent);
       return assetMapping;
     } catch (error) {
@@ -214,15 +213,15 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
  */
 async function searchForFileInMedia(mediaDir, filename, _dumpsterName) {
   try {
-    const files = await PathUtils.cachedRecursivelyFindFiles(mediaDir, filename);
+    const files = await FileUtils.cachedRecursivelyFindFiles(mediaDir, filename);
     if (files.length > 0) {
       // Extract relative path from the found file
       const relativePath = extractRelativePathFromMedia(files[0], mediaDir);
       if (relativePath) {
-        return FileSystemHelper.joinPath('media', relativePath);
+        return FileUtils.joinPath('media', relativePath);
       }
       // Fallback to original behavior
-      return FileSystemHelper.joinPath('media', filename);
+      return FileUtils.joinPath('media', filename);
     }
   } catch {
     // Continue if partial search fails

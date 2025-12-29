@@ -3,14 +3,13 @@
  * Processes ChatGPT conversation JSON files into individual chat files
  */
 
-const FileSystemHelper = require('../utils/FileSystemHelper');
-const PathUtils = require('../utils/PathUtils');
+const FileUtils = require('../utils/FileUtils');
 
 /**
  * Utility functions
  */
 function sanitizeFilename(rawTitle) {
-  return PathUtils.sanitizeName(rawTitle, { type: 'filename' });
+  return FileUtils.sanitizeName(rawTitle, { type: 'filename' });
 }
 
 function toNumber(v) {
@@ -44,13 +43,13 @@ async function dumpChats(inputPath, outputDir, options = {}) {
   } = options;
 
   // Resolve input path
-  const resolvedInputPath = FileSystemHelper.isAbsolute(inputPath)
+  const resolvedInputPath = FileUtils.isAbsolute(inputPath)
     ? inputPath
-    : FileSystemHelper.resolvePath(inputPath);
+    : FileUtils.resolvePath(inputPath);
 
   // Determine final output directory
   const finalOutputDir = createSubdirs
-    ? FileSystemHelper.joinPath(outputDir, 'chats')
+    ? FileUtils.joinPath(outputDir, 'chats')
     : outputDir;
 
   if (verbose) {
@@ -59,7 +58,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
 
   try {
     // Read and validate input file
-    const chats = await FileSystemHelper.readJsonFile(resolvedInputPath);
+    const chats = await FileUtils.readJsonFile(resolvedInputPath);
 
     if (!Array.isArray(chats)) {
       throw new Error('Expected an array of chats in input file');
@@ -73,7 +72,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     chats.sort((a, b) => extractTimestamp(b) - extractTimestamp(a));
 
     // Create output directory if it doesn't exist
-    await FileSystemHelper.ensureDirectory(finalOutputDir);
+    await FileUtils.ensureDirectory(finalOutputDir);
 
     let processed = 0;
     let skipped = 0;
@@ -85,11 +84,11 @@ async function dumpChats(inputPath, outputDir, options = {}) {
         const rawTitle = chat.title || 'untitled';
         const cleanTitle = sanitizeFilename(rawTitle);
         const filename = `${dateStr}_${cleanTitle}.json`;
-        const filepath = FileSystemHelper.joinPath(finalOutputDir, filename);
+        const filepath = FileUtils.joinPath(finalOutputDir, filename);
 
         // Check if file exists
         if (!overwrite) {
-          if (await FileSystemHelper.fileExists(filepath)) {
+          if (await FileUtils.fileExists(filepath)) {
             if (verbose) {
               console.log(`Skipping existing file: ${filename}`);
             }
@@ -99,7 +98,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
         }
 
         // Write chat file
-        await FileSystemHelper.writeJsonFile(filepath, chat);
+        await FileUtils.writeJsonFile(filepath, chat);
         processed++;
 
         if (verbose) {
@@ -114,7 +113,7 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     // Remove original file if requested
     if (!preserveOriginal && processed > 0) {
       try {
-        const fs = require('fs').promises; // Use original fs for unlink since FileSystemHelper doesn't have it
+        const fs = require('fs').promises; // Use original fs for unlink since FileUtils doesn't have it
         await fs.unlink(resolvedInputPath);
         if (verbose) {
           console.log('Removed original conversations.json file');

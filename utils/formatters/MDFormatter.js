@@ -4,7 +4,7 @@
  */
 
 const BaseFormatter = require('./BaseFormatter');
-const FileSystemHelper = require('../FileSystemHelper');
+const FileUtils = require('../FileUtils');
 
 class MDFormatter extends BaseFormatter {
   constructor() {
@@ -187,7 +187,7 @@ class MDFormatter extends BaseFormatter {
       // Read the file content if filepath exists, otherwise use content directly
       let fileContent;
       if (result.filepath) {
-        fileContent = await FileSystemHelper.readFile(result.filepath);
+        fileContent = await FileUtils.readFile(result.filepath);
       } else if (result.content) {
         fileContent = result.content;
       } else {

@@ -3,8 +3,7 @@
  * Combines ZIP extraction, conversation dumping, and asset extraction
  */
 
-const FileSystemHelper = require('../utils/FileSystemHelper.js');
-const PathUtils = require('../utils/PathUtils.js');
+const FileUtils = require('../utils/FileUtils.js');
 const ZipProcessor = require('../utils/ZipProcessor.js');
 const AssetUtils = require('../utils/AssetUtils.js');
 const { createProgressManager } = require('../utils/ProgressManager.js');
@@ -25,12 +24,7 @@ const { extractAssetsFromHtml } = require('./extract-assets.js');
 function createProjectTempDir(baseDir) {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
-  return FileSystemHelper.joinPath(
-    baseDir,
-    'data',
-    'temp',
-    `dumpster_${timestamp}_${random}`
-  );
+  return FileUtils.joinPath(baseDir, 'data', 'temp', `dumpster_${timestamp}_${random}`);
 }
 
 /**
@@ -77,18 +71,18 @@ async function processDumpster(
   progress.initializing('Initializing dumpster processing...');
 
   // Sanitize dumpster name
-  const sanitizedDumpsterName = PathUtils.sanitizeName(dumpsterName, {
+  const sanitizedDumpsterName = FileUtils.sanitizeName(dumpsterName, {
     type: 'dumpster',
   });
 
   // Create base directories
-  await FileSystemHelper.ensureDirectory(baseDir);
-  const paths = FileSystemHelper.getDumpsterPaths(baseDir, sanitizedDumpsterName);
+  await FileUtils.ensureDirectory(baseDir);
+  const paths = FileUtils.getDumpsterPaths(baseDir, sanitizedDumpsterName);
   const tempDir = createProjectTempDir(baseDir);
 
   // Check if dumpster already exists
   if (!overwrite) {
-    const exists = await FileSystemHelper.fileExists(paths.dumpsterPath);
+    const exists = await FileUtils.fileExists(paths.dumpsterPath);
     if (exists) {
       throw new Error(
         `Dumpster "${sanitizedDumpsterName}" already exists. Use --overwrite to replace it.`
@@ -101,7 +95,7 @@ async function processDumpster(
 
     // Clean up existing dumpster directory if overwriting
     if (overwrite) {
-      await FileSystemHelper.removeDirectory(paths.dumpsterPath);
+      await FileUtils.removeDirectory(paths.dumpsterPath);
       if (verbose) {
         console.log(`Removed existing dumpster directory: ${sanitizedDumpsterName}`);
       }
@@ -110,8 +104,8 @@ async function processDumpster(
     progress.extracting(5, 'Setting up directories...');
 
     // Ensure directories exist
-    await FileSystemHelper.ensureDirectory(tempDir);
-    await FileSystemHelper.ensureDumpsterStructure(paths.dumpsterPath);
+    await FileUtils.ensureDirectory(tempDir);
+    await FileUtils.ensureDumpsterStructure(paths.dumpsterPath);
 
     progress.extracting(10, 'Extracting ZIP file...');
 
@@ -208,7 +202,7 @@ async function processDumpster(
     throw error;
   } finally {
     // Always clean up temporary directory
-    await FileSystemHelper.removeDirectory(tempDir);
+    await FileUtils.removeDirectory(tempDir);
     if (verbose) {
       console.debug('Cleaned up temporary directory');
     }
@@ -223,9 +217,8 @@ async function validateDumpster(dumpsterPath) {
   const warnings = [];
 
   try {
-    // Use FileSystemHelper for basic structure validation
-    const structureValidation =
-      await FileSystemHelper.validateDumpsterStructure(dumpsterPath);
+    // Use FileUtils for basic structure validation
+    const structureValidation = await FileUtils.validateDumpsterStructure(dumpsterPath);
 
     if (!structureValidation.isValid) {
       errors.push(
@@ -236,14 +229,14 @@ async function validateDumpster(dumpsterPath) {
     }
 
     // Get standard paths for this dumpster
-    const paths = FileSystemHelper.getDumpsterPaths(
-      FileSystemHelper.getDirName(dumpsterPath),
-      FileSystemHelper.getBaseName(dumpsterPath)
+    const paths = FileUtils.getDumpsterPaths(
+      FileUtils.getDirName(dumpsterPath),
+      FileUtils.getBaseName(dumpsterPath)
     );
 
     // Check chat files
     try {
-      const files = await FileSystemHelper.listDirectory(paths.chatsPath);
+      const files = await FileUtils.listDirectory(paths.chatsPath);
       const jsonFiles = files.filter(f => f.endsWith('.json'));
 
       if (jsonFiles.length === 0) {
@@ -255,7 +248,7 @@ async function validateDumpster(dumpsterPath) {
 
     // Check assets.json
     try {
-      await FileSystemHelper.readJsonFile(paths.assetsJsonPath);
+      await FileUtils.readJsonFile(paths.assetsJsonPath);
     } catch {
       warnings.push('assets.json missing or invalid');
     }

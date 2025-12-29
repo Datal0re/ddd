@@ -3,19 +3,19 @@
  * Extracts assetsJson variables from chat.html files and saves them as assets.json
  */
 
-const FileSystemHelper = require('../utils/FileSystemHelper');
-const fs = require('fs').promises; // Keep for operations not in FileSystemHelper
+const FileUtils = require('../utils/FileUtils');
+const fs = require('fs').promises; // Keep for operations not in FileUtils
 const path = require('path');
 
 /**
  * Find all HTML files in a directory
  */
 async function findHtmlFiles(dirPath, recursive = false) {
-  const PathUtils = require('../utils/PathUtils');
+  const FileUtils = require('../utils/FileUtils');
 
   try {
     const htmlPattern = '\\.(html?|htm)$';
-    return await PathUtils.findFilesByPattern(dirPath, htmlPattern, recursive);
+    return await FileUtils.findFilesByPattern(dirPath, htmlPattern, recursive);
   } catch (error) {
     console.warn(`Error accessing directory ${dirPath}: ${error.message}`);
     return [];
@@ -71,10 +71,10 @@ async function extractAssetsFromHtml(htmlPath, outputPath, options = {}) {
       }
 
       // Ensure output directory exists
-      await FileSystemHelper.ensureDirectory(path.dirname(outputPath));
+      await FileUtils.ensureDirectory(path.dirname(outputPath));
 
       // Write assets.json file
-      await FileSystemHelper.writeJsonFile(outputPath, assetJsonData);
+      await FileUtils.writeJsonFile(outputPath, assetJsonData);
 
       const assetCount = Array.isArray(assetJsonData)
         ? assetJsonData.length

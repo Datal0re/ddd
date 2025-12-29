@@ -106,8 +106,8 @@ class SchemaValidator {
 
     // Check existence if required
     if (mustExist) {
-      const FileSystemHelper = require('./FileSystemHelper');
-      if (!(await FileSystemHelper.fileExists(filePath))) {
+      const FileUtils = require('./FileUtils');
+      if (!(await FileUtils.fileExists(filePath))) {
         throw new Error(`${context}: Path does not exist: ${filePath}`);
       }
     }
@@ -213,8 +213,8 @@ class SchemaValidator {
   ) {
     this.validateNonEmptyString(filename, 'filename', context);
 
-    const FileSystemHelper = require('./FileSystemHelper');
-    const ext = FileSystemHelper.getExtension(filename).toLowerCase();
+    const FileUtils = require('./FileUtils');
+    const ext = FileUtils.getExtension(filename).toLowerCase();
 
     if (!allowedExtensions) {
       // Use all known extensions from config
