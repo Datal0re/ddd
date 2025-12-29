@@ -208,7 +208,6 @@ class ProgressManager {
 
     return {
       update: (current, payload = {}) => {
-        const percentage = Math.round((current / total) * 100);
         progressBar.update(current, { ...payload });
 
         if (current >= total) {

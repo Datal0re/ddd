@@ -21,19 +21,6 @@ module.exports = [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
-        // Electron globals
-        app: 'readonly',
-        BrowserWindow: 'readonly',
-        ipcMain: 'readonly',
-        dialog: 'readonly',
-        contextBridge: 'readonly',
-        ipcRenderer: 'readonly',
-        // Browser globals for renderer
-        window: 'readonly',
-        document: 'readonly',
-        fetch: 'readonly',
-        localStorage: 'readonly',
-        sessionStorage: 'readonly',
       },
     },
     rules: {
