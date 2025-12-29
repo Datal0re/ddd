@@ -107,10 +107,12 @@ async function dumpChats(inputPath, outputDir, options = {}) {
       } catch (err) {
         console.error(`Error processing conversation: ${err.message}`);
         errors++;
+        // Note: failed files are not counted in the final processed count
+        processed--;
       }
     }
 
-    // Remove original file if requested
+    // Remove original file if requested (only if files were successfully processed)
     if (!preserveOriginal && processed > 0) {
       try {
         const fs = require('fs').promises; // Use original fs for unlink since FileUtils doesn't have it

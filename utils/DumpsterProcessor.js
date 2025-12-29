@@ -185,16 +185,42 @@ async function processDumpster(
       throw new Error(`Dumpster validation failed: ${validation.errors.join(', ')}`);
     }
 
-    progress.completed('Dumpster processing complete!');
+    pm.succeed('Dumpster processing complete!');
+
+    // Verify actual file count matches processing count
+    const actualChatCount = await FileUtils.listDirectory(paths.chatsPath).then(
+      files => files.filter(f => f.endsWith('.json')).length
+    );
+
+    const discrepancyMessage =
+      actualChatCount !== dumpResult.processed
+        ? `⚠️ Chat count discrepancy detected: ${dumpResult.processed} processed, ${actualChatCount} files written`
+        : null;
+
+    if (discrepancyMessage && !verbose) {
+      console.warn(discrepancyMessage);
+    }
+
+    if (verbose) {
+      console.log(`Final verification: ${actualChatCount} chat files written to disk`);
+      if (discrepancyMessage) {
+        console.log(discrepancyMessage);
+      }
+    }
 
     return {
       success: true,
       dumpsterName: sanitizedDumpsterName,
       dumpsterDir: paths.dumpsterPath,
       stats: {
-        chats: dumpResult.processed,
+        chats: actualChatCount, // Use actual file count for accuracy
         assets: assetResult.assetCount || 0,
         mediaFiles: mediaResult.moved,
+        processingStats: {
+          attempted: dumpResult.total,
+          processed: dumpResult.processed,
+          errors: dumpResult.errors,
+        },
       },
     };
   } catch (error) {
