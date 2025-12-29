@@ -30,7 +30,7 @@ program
 CLI tool to process and explore exported ChatGPT conversation data
 `
   )
-  .version('0.0.3');
+  .version('0.0.4');
 
 program
   .command('dump')
