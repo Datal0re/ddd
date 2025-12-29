@@ -1,9 +1,9 @@
 /*
- * chat-dumper.js - Chat conversation processing utility
+ * ChatDumper.js - Chat conversation processing utility
  * Processes ChatGPT conversation JSON files into individual chat files
  */
 
-const FileUtils = require('../utils/FileUtils');
+const FileUtils = require('./FileUtils');
 
 /**
  * Utility functions

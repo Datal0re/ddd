@@ -1,9 +1,9 @@
 /*
- * extract-assets.js - Asset extraction utility
+ * AssetExtractor.js - Asset extraction utility
  * Extracts assetsJson variables from chat.html files and saves them as assets.json
  */
 
-const FileUtils = require('../utils/FileUtils');
+const FileUtils = require('./FileUtils');
 const fs = require('fs').promises; // Keep for operations not in FileUtils
 const path = require('path');
 
@@ -11,7 +11,7 @@ const path = require('path');
  * Find all HTML files in a directory
  */
 async function findHtmlFiles(dirPath, recursive = false) {
-  const FileUtils = require('../utils/FileUtils');
+  const FileUtils = require('./FileUtils');
 
   try {
     const htmlPattern = '\\.(html?|htm)$';

@@ -1,15 +1,15 @@
 /*
- * dumpster-processor.js - Unified Dumpster Processing utility
+ * DumpsterProcessor.js - Unified Dumpster Processing utility
  * Combines ZIP extraction, conversation dumping, and asset extraction
  */
 
-const FileUtils = require('../utils/FileUtils.js');
-const ZipProcessor = require('../utils/ZipProcessor.js');
-const AssetUtils = require('../utils/AssetUtils.js');
-const { createProgressManager } = require('../utils/ProgressManager.js');
-const { SchemaValidator } = require('../utils/SchemaValidator');
-const { dumpChats } = require('./chat-dumper.js');
-const { extractAssetsFromHtml } = require('./extract-assets.js');
+const FileUtils = require('./FileUtils.js');
+const ZipProcessor = require('./ZipProcessor.js');
+const AssetUtils = require('./AssetUtils.js');
+const { createProgressManager } = require('./ProgressManager.js');
+const { SchemaValidator } = require('./SchemaValidator');
+const { dumpChats } = require('./ChatDumper.js');
+const { extractAssetsFromHtml } = require('./AssetExtractor.js');
 
 /**
  * Creates a temporary directory within the project's data/temp directory

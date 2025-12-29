@@ -339,7 +339,7 @@ class DumpsterManager {
     onProgress = null,
     options = {}
   ) {
-    const { processDumpster } = require('../data/dumpster-processor.js');
+    const { processDumpster } = require('./DumpsterProcessor.js');
 
     try {
       // Ensure data directories exist

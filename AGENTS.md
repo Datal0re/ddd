@@ -32,7 +32,7 @@ npm run format        # Format code with Prettier
 
 # Core functionality
 npm run dump           # Dump old conversation format
-npm run extract-assets # Extract assets using data/extract-assets.js
+# extract-assets functionality now integrated into utils/AssetExtractor.js
 
 # CLI Commands
 node cli.js dump       # Process ChatGPT export ZIP
