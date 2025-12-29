@@ -139,7 +139,7 @@ async function processDumpster(
     const dumpResult = await dumpChats(chatsInput, chatsOutput, {
       createSubdirs: false,
       preserveOriginal: true,
-      overwrite: true,
+      overwrite: false, // Enable collision detection for diagnostics
       verbose,
     });
 
@@ -192,10 +192,13 @@ async function processDumpster(
       files => files.filter(f => f.endsWith('.json')).length
     );
 
-    const discrepancyMessage =
-      actualChatCount !== dumpResult.processed
-        ? `⚠️ Chat count discrepancy detected: ${dumpResult.processed} processed, ${actualChatCount} files written`
-        : null;
+    let discrepancyMessage = null;
+    if (actualChatCount !== dumpResult.processed) {
+      discrepancyMessage = `⚠️ Chat count discrepancy detected: ${dumpResult.processed} processed, ${actualChatCount} files written`;
+      if (dumpResult.trueDuplicates > 0 || dumpResult.collisionsResolved > 0) {
+        discrepancyMessage += ` (${dumpResult.trueDuplicates} duplicates skipped, ${dumpResult.collisionsResolved} collisions resolved)`;
+      }
+    }
 
     if (discrepancyMessage && !verbose) {
       console.warn(discrepancyMessage);

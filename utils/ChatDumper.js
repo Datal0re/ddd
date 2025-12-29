@@ -32,6 +32,111 @@ function formatDateFromTimestamp(ts) {
 }
 
 /**
+ * Extract unique identifier from chat using first message ID (Option A)
+ * @param {Object} chat - Chat object
+ * @returns {string|null} First message ID or null if not found
+ */
+function extractChatIdentifier(chat) {
+  if (!chat || !chat.mapping) {
+    return null;
+  }
+
+  // Get all message IDs from mapping
+  const messageIds = Object.keys(chat.mapping);
+
+  if (messageIds.length === 0) {
+    return null;
+  }
+
+  // Return the first message ID (these are typically sorted by creation order)
+  return messageIds[0];
+}
+
+/**
+ * Check if two chats are identical by comparing key attributes
+ * @param {Object} chat1 - First chat object
+ * @param {Object} chat2 - Second chat object
+ * @returns {boolean} True if chats are identical
+ */
+async function areChatsIdentical(chat1, chat2) {
+  // Compare titles
+  if (chat1.title !== chat2.title) {
+    return false;
+  }
+
+  // Compare timestamps
+  if (
+    chat1.create_time !== chat2.create_time ||
+    chat1.update_time !== chat2.update_time
+  ) {
+    return false;
+  }
+
+  // Compare unique identifiers (first message ID)
+  const id1 = extractChatIdentifier(chat1);
+  const id2 = extractChatIdentifier(chat2);
+
+  if (id1 !== id2) {
+    return false;
+  }
+
+  // Additional check: compare mapping keys (more robust)
+  const keys1 = Object.keys(chat1.mapping || {}).sort();
+  const keys2 = Object.keys(chat2.mapping || {}).sort();
+
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+
+  for (let i = 0; i < keys1.length; i++) {
+    if (keys1[i] !== keys2[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Escape special regex characters in a string
+ * @param {string} string - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Get the next available counter for a base filename
+ * @param {string} outputDir - Directory to search
+ * @param {string} baseFilename - Base filename without extension
+ * @returns {Promise<number>} Next available counter number
+ */
+async function getNextCounter(outputDir, baseFilename) {
+  try {
+    const files = await FileUtils.listDirectory(outputDir);
+    const counterRegex = new RegExp(`^${escapeRegExp(baseFilename)}_(\\d+)\\.json$`);
+
+    let maxCounter = 0;
+
+    for (const file of files) {
+      const match = file.match(counterRegex);
+      if (match) {
+        const counter = parseInt(match[1], 10);
+        if (counter > maxCounter) {
+          maxCounter = counter;
+        }
+      }
+    }
+
+    return maxCounter + 1;
+  } catch {
+    // If directory listing fails, start with 1
+    return 1;
+  }
+}
+
+/**
  * Enhanced dump function for direct file processing
  */
 async function dumpChats(inputPath, outputDir, options = {}) {
@@ -77,23 +182,57 @@ async function dumpChats(inputPath, outputDir, options = {}) {
     let processed = 0;
     let skipped = 0;
     let errors = 0;
+    let trueDuplicates = 0;
+    let collisionsResolved = 0;
     for (const chat of chats) {
       try {
         const ts = extractTimestamp(chat);
         const dateStr = formatDateFromTimestamp(ts);
         const rawTitle = chat.title || 'untitled';
         const cleanTitle = sanitizeFilename(rawTitle);
-        const filename = `${dateStr}_${cleanTitle}.json`;
-        const filepath = FileUtils.joinPath(finalOutputDir, filename);
+        let filename = `${dateStr}_${cleanTitle}.json`;
+        let filepath = FileUtils.joinPath(finalOutputDir, filename);
 
-        // Check if file exists
+        // Check if file exists and handle collision detection
         if (!overwrite) {
           if (await FileUtils.fileExists(filepath)) {
-            if (verbose) {
-              console.log(`Skipping existing file: ${filename}`);
+            // Load existing chat for comparison
+            try {
+              const existingChat = await FileUtils.readJsonFile(filepath);
+              const isDuplicate = await areChatsIdentical(chat, existingChat);
+
+              if (isDuplicate) {
+                if (verbose) {
+                  console.log(`Skipping duplicate chat: ${filename}`);
+                }
+                trueDuplicates++;
+                skipped++;
+                continue;
+              } else {
+                // Same filename, different content - add counter suffix
+                const baseFilename = `${dateStr}_${cleanTitle}`;
+                const counter = await getNextCounter(finalOutputDir, baseFilename);
+                filename = `${baseFilename}_${counter}.json`;
+                filepath = FileUtils.joinPath(finalOutputDir, filename);
+                collisionsResolved++;
+
+                if (verbose) {
+                  console.log(
+                    `Collision resolved: ${filename} (different chat with same name)`
+                  );
+                }
+              }
+            } catch (error) {
+              // If we can't read the existing file, treat as collision
+              console.warn(
+                `Warning: Could not read existing file ${filepath} for comparison: ${error.message}`
+              );
+              const baseFilename = `${dateStr}_${cleanTitle}`;
+              const counter = await getNextCounter(finalOutputDir, baseFilename);
+              filename = `${baseFilename}_${counter}.json`;
+              filepath = FileUtils.joinPath(finalOutputDir, filename);
+              collisionsResolved++;
             }
-            skipped++;
-            continue;
           }
         }
 
@@ -129,6 +268,12 @@ async function dumpChats(inputPath, outputDir, options = {}) {
       console.log(
         `dump completed: ${processed} processed, ${skipped} skipped, ${errors} errors`
       );
+      if (trueDuplicates > 0) {
+        console.log(`  - ${trueDuplicates} true duplicates skipped`);
+      }
+      if (collisionsResolved > 0) {
+        console.log(`  - ${collisionsResolved} filename collisions resolved`);
+      }
     }
 
     return {
@@ -136,6 +281,8 @@ async function dumpChats(inputPath, outputDir, options = {}) {
       skipped,
       errors,
       total: chats.length,
+      trueDuplicates,
+      collisionsResolved,
     };
   } catch (err) {
     console.error(`dump failed: ${err.message}`);
@@ -151,4 +298,7 @@ module.exports = {
   sanitizeFilename,
   extractTimestamp,
   formatDateFromTimestamp,
+  extractChatIdentifier,
+  areChatsIdentical,
+  getNextCounter,
 };
