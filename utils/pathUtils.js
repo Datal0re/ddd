@@ -7,7 +7,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { SEARCH_CONFIG, SANITIZATION_DEFAULTS } = require('../config/constants');
 const FileSystemHelper = require('./FileSystemHelper');
-const { validateNonEmptyString } = require('./Validators');
+const { SchemaValidator } = require('./SchemaValidator');
 
 // Simple file cache to improve performance for repeated searches
 const fileCache = new Map();
@@ -43,7 +43,7 @@ class PathUtils {
       maxDepth = SEARCH_CONFIG.DEFAULT_MAX_DEPTH,
     } = options;
 
-    validateNonEmptyString(dir, 'dir');
+    SchemaValidator.validateNonEmptyString(dir, 'dir');
 
     const results = [];
 
@@ -278,17 +278,17 @@ class PathUtils {
    * @returns {string} Media directory path
    */
   static getMediaDir(baseDir, exportName) {
-    const { validateRequiredParams, validateNonEmptyString } = require('./Validators');
+    const { SchemaValidator } = require('./SchemaValidator');
 
-    validateRequiredParams(
+    SchemaValidator.validateRequiredParams(
       [
         { name: 'baseDir', value: baseDir },
         { name: 'exportName', value: exportName },
       ],
       'getMediaDir'
     );
-    validateNonEmptyString(baseDir, 'baseDir');
-    validateNonEmptyString(exportName, 'exportName');
+    SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
+    SchemaValidator.validateNonEmptyString(exportName, 'exportName');
 
     return FileSystemHelper.joinPath(baseDir, 'media', exportName);
   }

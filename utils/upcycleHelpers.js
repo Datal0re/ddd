@@ -4,7 +4,7 @@
  */
 
 const FileSystemHelper = require('./FileSystemHelper');
-const { validateNonEmptyString } = require('./Validators');
+const { SchemaValidator } = require('./SchemaValidator');
 const { ErrorHandler } = require('./ErrorHandler');
 
 /**
@@ -210,7 +210,7 @@ function formatFileSize(bytes) {
  * @returns {Promise<string>} Validated output directory
  */
 async function validateOutputDirectory(outputDir, createIfMissing = true) {
-  validateNonEmptyString(outputDir, 'outputDir');
+  SchemaValidator.validateNonEmptyString(outputDir, 'outputDir');
 
   try {
     const exists = await FileSystemHelper.fileExists(outputDir);

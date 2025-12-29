@@ -43,6 +43,21 @@ class SchemaValidator {
   }
 
   /**
+   * Validate required parameters (alias for validateRequired for compatibility)
+   * @param {Array<{name: string, value: any}>} params - Array of parameter objects
+   * @param {string} functionName - Name of function for error reporting
+   * @throws {Error} If any required parameters are missing or invalid
+   */
+  static validateRequiredParams(params, functionName) {
+    const missing = params.filter(p => !p.value);
+    if (missing.length > 0) {
+      throw new Error(
+        `${functionName}: Missing required parameters: ${missing.map(p => p.name).join(', ')}`
+      );
+    }
+  }
+
+  /**
    * Validate non-empty string with specific error messaging
    * @param {string} value - String to validate
    * @param {string} name - Parameter name for error messages

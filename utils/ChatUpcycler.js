@@ -7,7 +7,7 @@
 const { CONTENT_TYPES, ASSET_PREFIXES } = require('../config/constants');
 const FileSystemHelper = require('./FileSystemHelper');
 const PathUtils = require('./PathUtils');
-const { validateRequiredParams, validateNonEmptyString } = require('./Validators');
+const { SchemaValidator } = require('./SchemaValidator');
 const { ErrorHandler } = require('./ErrorHandler');
 
 /**
@@ -39,15 +39,15 @@ function extractRelativePathFromMedia(fullPath, mediaDir) {
  * @returns {string} Media directory path
  */
 function getMediaDir(baseDir, dumpsterName) {
-  validateRequiredParams(
+  SchemaValidator.validateRequiredParams(
     [
       { name: 'baseDir', value: baseDir },
       { name: 'dumpsterName', value: dumpsterName },
     ],
     'getMediaDir'
   );
-  validateNonEmptyString(baseDir, 'baseDir');
-  validateNonEmptyString(dumpsterName, 'dumpsterName');
+  SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
+  SchemaValidator.validateNonEmptyString(dumpsterName, 'dumpsterName');
 
   return FileSystemHelper.joinPath(baseDir, 'data', 'dumpsters', dumpsterName, 'media');
 }
@@ -89,15 +89,15 @@ function extractFilenameFromPointer(assetPointer) {
  */
 async function loadAssetMapping(dumpsterName, baseDir) {
   try {
-    validateRequiredParams(
+    SchemaValidator.validateRequiredParams(
       [
         { name: 'dumpsterName', value: dumpsterName },
         { name: 'baseDir', value: baseDir },
       ],
       'loadAssetMapping'
     );
-    validateNonEmptyString(dumpsterName, 'dumpsterName');
-    validateNonEmptyString(baseDir, 'baseDir');
+    SchemaValidator.validateNonEmptyString(dumpsterName, 'dumpsterName');
+    SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
 
     // Try to load from assets.json first (preferred method)
     const assetsJsonPath = FileSystemHelper.joinPath(
@@ -146,26 +146,15 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
 
   const mediaDir = getMediaDir(baseDir, dumpsterName);
 
-  // Enhanced asset mapping search with multiple strategies
+  // Simplified asset mapping search with 2 main strategies
   const mappingStrategies = [
-    // Direct pointer mapping
+    // Direct pointer mapping (most common case)
     () => assetMapping[assetPointer],
-    // Try without prefix
+    // Try filename without prefix
     () => assetMapping[assetKey],
-    // Try with common prefixes removed
-    () => assetMapping[`file-${assetKey.replace(/^file-/, '')}`],
-    // Try matching any key that contains the asset key
-    () => {
-      const matchingKeys = Object.keys(assetMapping).filter(
-        key =>
-          key.includes(assetKey) ||
-          assetKey.includes(key.replace(/^(file-service:\/\/|sediment:\/\/)/, ''))
-      );
-      return matchingKeys.length > 0 ? assetMapping[matchingKeys[0]] : null;
-    },
   ];
 
-  // Try all mapping strategies
+  // Try mapping strategies
   for (const strategy of mappingStrategies) {
     try {
       const mappedFile = strategy();
@@ -207,24 +196,14 @@ async function findAssetFile(assetPointer, dumpsterName, baseDir, assetMapping =
     baseAssetId + '.dat',
   ];
 
-  // Search with all possible names
-  const foundPath = await searchWithMultipleNames(
+  // Search with simple filename
+  const foundPath = await searchForFileInMedia(
     mediaDir,
-    possibleNames,
+    possibleNames[0], // Use first name as primary
     dumpsterName
   );
   if (foundPath) {
     return foundPath;
-  }
-
-  // Last resort: partial match search
-  const partialMatchPath = await searchWithPartialMatch(
-    mediaDir,
-    assetKey,
-    dumpsterName
-  );
-  if (partialMatchPath) {
-    return partialMatchPath;
   }
 
   return null;
@@ -254,45 +233,6 @@ async function searchForFileInMedia(mediaDir, filename, _dumpsterName) {
 /**
  * Helper function to search with multiple possible names
  */
-async function searchWithMultipleNames(mediaDir, possibleNames, _dumpsterName) {
-  for (const name of possibleNames) {
-    if (!name) continue;
-
-    const foundPath = await searchForFileInMedia(mediaDir, name, _dumpsterName);
-    if (foundPath) {
-      return foundPath;
-    }
-  }
-  return null;
-}
-
-/**
- * Helper function to search for partial matches
- */
-async function searchWithPartialMatch(mediaDir, assetKey, _dumpsterName) {
-  try {
-    // Get all files in media directory and look for partial matches
-    const allFiles = await PathUtils.cachedRecursivelyFindFiles(mediaDir, '*');
-    const partialMatches = allFiles.filter(file => {
-      const fileName = file.split('/').pop();
-      return (
-        fileName.includes(assetKey) ||
-        assetKey.includes(fileName.replace(/\.[^/.]+$/, ''))
-      );
-    });
-
-    if (partialMatches.length > 0) {
-      const relativePath = extractRelativePathFromMedia(partialMatches[0], mediaDir);
-      if (relativePath) {
-        return FileSystemHelper.joinPath('media', relativePath);
-      }
-      return FileSystemHelper.joinPath('media', partialMatches[0].split('/').pop());
-    }
-  } catch {
-    // Continue to next strategy
-  }
-  return null;
-}
 
 /**
  * Generate content for different asset types for export
@@ -522,13 +462,16 @@ async function processChatForExport(
   const assetErrorTracker = _options.assetErrorTracker;
 
   try {
-    validateRequiredParams([{ name: 'chat', value: chat }], 'processChatForExport');
+    SchemaValidator.validateRequiredParams(
+      [{ name: 'chat', value: chat }],
+      'processChatForExport'
+    );
 
     if (exportName) {
-      validateNonEmptyString(exportName, 'exportName');
+      SchemaValidator.validateNonEmptyString(exportName, 'exportName');
     }
     if (baseDir) {
-      validateNonEmptyString(baseDir, 'baseDir');
+      SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
     }
 
     const nodes =

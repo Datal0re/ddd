@@ -9,7 +9,7 @@ const { spawn } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
 const FileSystemHelper = require('../utils/FileSystemHelper');
-const Validators = require('../utils/Validators');
+const { SchemaValidator } = require('../utils/SchemaValidator');
 
 /**
  * Test utilities class
@@ -22,7 +22,7 @@ class TestUtils {
    */
   static async validateTestZip(zipPath) {
     try {
-      Validators.validateNonEmptyString(zipPath, 'zipPath');
+      SchemaValidator.validateNonEmptyString(zipPath, 'zipPath');
 
       // Check if file exists
       try {

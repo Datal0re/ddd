@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Demo script showing the new progress bar functionality
+ * Demo script testing progress bar functionality
  */
 
 const {
   createProgressManager,
   createProgressBarManager,
-} = require('./utils/ProgressManager');
+} = require('../utils/ProgressManager');
 
 async function demoProgressBars() {
   console.log('\n🚀 Progress Bar Demo\n');
@@ -43,33 +43,7 @@ async function demoProgressBars() {
 
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Demo 3: Multi-progress bars
-  console.log('\n3. Multi-Progress Bars:');
-  const multiPm = createProgressBarManager();
-  const multi = multiPm.createMultiProgressBar();
-
-  const bar1 = multi.createBar(10, 'Downloading files');
-  const bar2 = multi.createBar(8, 'Processing images');
-  const bar3 = multi.createBar(6, 'Generating reports');
-
-  // Simulate concurrent operations
-  for (let i = 0; i < 10; i++) {
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    bar1.update(i + 1, { speed: '2.3 MB/s' });
-    if (i < 8) {
-      bar2.update(i + 1, { current: `img_${i + 1}.jpg` });
-    }
-    if (i < 6) {
-      bar3.update(i + 1, { report: `Report_${i + 1}.pdf` });
-    }
-  }
-
-  multi.stop();
-
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Demo 4: Hybrid approach (spinner for indeterminate, bar for determinate)
+  // Demo 3: Hybrid approach (spinner for indeterminate, bar for determinate)
   console.log('\n4. Hybrid Approach:');
   const hybridPm = createProgressManager();
 

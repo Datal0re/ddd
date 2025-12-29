@@ -8,7 +8,7 @@ const PathUtils = require('../utils/PathUtils.js');
 const ZipProcessor = require('../utils/ZipProcessor.js');
 const AssetUtils = require('../utils/AssetUtils.js');
 const { createProgressManager } = require('../utils/ProgressManager.js');
-const Validators = require('../utils/Validators.js');
+const { SchemaValidator } = require('../utils/SchemaValidator');
 const { dumpChats } = require('./chat-dumper.js');
 const { extractAssetsFromHtml } = require('./extract-assets.js');
 
@@ -47,17 +47,17 @@ async function processDumpster(
   const { overwrite = false, verbose = false, zipPath = null } = options;
 
   // Validate inputs
-  Validators.validateRequiredParams(
+  SchemaValidator.validateRequiredParams(
     [
-      { name: 'zipData', value: zipData },
+      { name: 'zipPath', value: zipPath },
       { name: 'dumpsterName', value: dumpsterName },
       { name: 'baseDir', value: baseDir },
     ],
-    'processDumpster'
+    'createDumpster'
   );
 
-  Validators.validateNonEmptyString(dumpsterName, 'dumpsterName');
-  Validators.validateNonEmptyString(baseDir, 'baseDir');
+  SchemaValidator.validateNonEmptyString(dumpsterName, 'dumpsterName');
+  SchemaValidator.validateNonEmptyString(baseDir, 'baseDir');
 
   // Create unified progress tracker
   const baseTracker = createProgressManager(onProgress, verbose);

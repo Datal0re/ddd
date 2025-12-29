@@ -3,7 +3,7 @@
  * Main orchestration class for exporting dumpsters to various formats
  */
 
-const { validateRequiredParams } = require('./Validators');
+const { SchemaValidator } = require('./SchemaValidator');
 const { AssetErrorTracker } = require('./upcycleHelpers');
 const { ErrorHandler } = require('./ErrorHandler');
 const FileSystemHelper = require('./FileSystemHelper');
@@ -41,7 +41,7 @@ class UpcycleManager {
    * @returns {Object} Validated and normalized options
    */
   validateUpcycleOptions(format, options = {}) {
-    validateRequiredParams(
+    SchemaValidator.validateRequiredParams(
       [{ name: 'format', value: format }],
       'validateUpcycleOptions'
     );
@@ -237,7 +237,7 @@ class UpcycleManager {
     options,
     assetErrorTracker = null
   ) {
-    validateRequiredParams(
+    SchemaValidator.validateRequiredParams(
       [
         { name: 'dumpsterName', value: dumpsterName },
         { name: 'chat', value: chat },
