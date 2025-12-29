@@ -2,6 +2,7 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
+const logo = require('./logo')
 
 const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
@@ -13,19 +14,7 @@ const program = new Command();
 program
   .name('ddd')
   .description(
-    `╔══════════════════════════════════════╗
-║.-                                  -.║
-║         █████     █████     █████    ║
-║:       ░░███     ░░███     ░░███    :║
-║      ███████   ███████   ███████     ║
-║.    ███░░███  ███░░███  ███░░███    .║
-║    ░███ ░███ ░███ ░███ ░███ ░███     ║
-║:   ░███ ░███ ░███ ░███ ░███ ░███    :║
-║    ░░████████░░████████░░████████    ║
-║._   ░░░░░░░░  ░░░░░░░░  ░░░░░░░░   _.║
-╠══════════════════════════════════════╣
-╟───────{ Data Dumpster Diver }────────╢
-╚══════════════════════════════════════╝
+    `${logo}
 
 CLI tool to process and explore exported ChatGPT conversation data
 `
