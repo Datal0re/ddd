@@ -8,6 +8,7 @@ const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
 const { CliPrompts } = require('./utils/CliPrompts');
+const { SelectionManager } = require('./utils/SelectionManager');
 
 const program = new Command();
 
@@ -408,6 +409,44 @@ program
         return;
       }
 
+      // Check selection bin status first to provide context
+      const selectionManager = new SelectionManager(__dirname);
+      const selectionStats = await selectionManager.getSelectionStats();
+
+      // Display selection bin status if it has content
+      if (selectionStats.totalCount > 0 && !dumpsterName) {
+        const totalMessages = Object.values(
+          selectionStats.chatsByDumpster || {}
+        ).reduce(
+          (sum, chats) =>
+            sum +
+            chats.reduce(
+              (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
+              0
+            ),
+          0
+        );
+        const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+
+        console.log(chalk.blue(`\n📋 Selection Bin Status:`));
+        console.log(`   ${selectionStats.totalCount} chats selected`);
+        if (totalMessages > 0) {
+          console.log(`   ${totalMessages} total messages`);
+        }
+        if (dumpsterCount > 0) {
+          console.log(
+            `   From ${dumpsterCount} dumpster${dumpsterCount !== 1 ? 's' : ''}`
+          );
+          // Show dumpsters with chat counts
+          Object.entries(selectionStats.chatsByDumpster).forEach(([name, chats]) => {
+            console.log(
+              `   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`
+            );
+          });
+        }
+        console.log();
+      }
+
       // Prompt for format selection if not provided
       if (!format) {
         format = await CliPrompts.selectExportFormat();
@@ -424,12 +463,18 @@ program
         );
       }
 
-      // Prompt for dumpster selection if not provided
+      // If no dumpster name provided, determine if we should use selection bin
+      let exportSource = 'dumpster'; // Default
       if (!dumpsterName) {
-        dumpsterName = await CliPrompts.selectFromDumpsters(
-          dumpsters,
-          'Select a dumpster to upcycle:'
-        );
+        exportSource = await CliPrompts.promptUpcycleSource(selectionStats);
+
+        if (exportSource === 'dumpster') {
+          // Only prompt for dumpster if user chose dumpster export
+          dumpsterName = await CliPrompts.selectFromDumpsters(
+            dumpsters,
+            'Select a dumpster to upcycle:'
+          );
+        }
       } else {
         // Validate provided dumpster name
         SchemaValidator.validateNonEmptyString(
@@ -437,6 +482,7 @@ program
           'dumpsterName',
           'upcycle command'
         );
+        exportSource = 'dumpster'; // Explicit dumpster name means dumpster export
       }
 
       // Validate options
@@ -456,8 +502,17 @@ program
         `Preparing to upcycle "${dumpsterName}" to ${format.toUpperCase()}...`
       );
 
+      // Log export source
       if (validatedOptions.verbose) {
-        console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
+        if (exportSource === 'selection') {
+          console.log(
+            chalk.blue(
+              `🔄 Upcycling selection bin (${selectionStats.totalCount} chats)`
+            )
+          );
+        } else {
+          console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
+        }
         console.log(chalk.dim(`Format: ${format.toUpperCase()}`));
         ErrorHandler.logInfo(
           `Options: ${JSON.stringify(validatedOptions, null, 2)}`,
@@ -470,28 +525,39 @@ program
 
       const upcycleManager = new UpcycleManager(dm, pm);
 
-      // Check if dumpster exists
-      const dumpster = dumpsters.find(d => d.name === dumpsterName);
-
-      if (!dumpster) {
-        pm.fail(`Dumpster "${dumpsterName}" not found`);
-        ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
-        dumpsters.forEach(d => {
-          console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
-        });
-        process.exit(1);
-      }
-
       // Perform upcycle with progress tracking
       const onProgress = progress => {
         pm.update(progress.stage, progress.progress, progress.message);
       };
 
-      const result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
-        ...validatedOptions,
-        outputDir: validatedOptions.output,
-        onProgress,
-      });
+      let result;
+      if (exportSource === 'selection') {
+        // Selection bin export - disable entire media directory copy
+        result = await upcycleManager.upcycleSelection(format, {
+          ...validatedOptions,
+          outputDir: validatedOptions.output,
+          onProgress,
+          copyEntireMediaDir: false, // Only copy referenced assets for selection
+        });
+      } else {
+        // Dumpster export - validate dumpster exists
+        const dumpster = dumpsters.find(d => d.name === dumpsterName);
+
+        if (!dumpster) {
+          pm.fail(`Dumpster "${dumpsterName}" not found`);
+          ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
+          dumpsters.forEach(d => {
+            console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
+          });
+          process.exit(1);
+        }
+
+        result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
+          ...validatedOptions,
+          outputDir: validatedOptions.output,
+          onProgress,
+        });
+      }
 
       // Display results
       const { generateExportReport } = require('./utils/upcycleHelpers');
@@ -513,7 +579,14 @@ program
         console.log(reportLines.join('\n'));
       }
 
-      pm.succeed(`Upcycle of "${dumpsterName}" to ${format.toUpperCase()} complete!`);
+      const sourceDescription =
+        exportSource === 'selection'
+          ? `selection bin (${result.processed} chats)`
+          : `"${dumpsterName}"`;
+
+      pm.succeed(
+        `Upcycle of ${sourceDescription} to ${format.toUpperCase()} complete!`
+      );
     } catch (error) {
       pm.fail(`Upcycle failed: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);

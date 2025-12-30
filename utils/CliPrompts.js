@@ -2,6 +2,7 @@ const { input, select, confirm, checkbox } = require('@inquirer/prompts');
 const { SchemaValidator } = require('./SchemaValidator');
 const fs = require('fs').promises;
 const { UI_CONFIG } = require('../config/constants');
+const chalk = require('chalk');
 
 /**
  * Common CLI prompt utilities for Data Dumpster Diver
@@ -282,14 +283,38 @@ class CliPrompts {
     ];
 
     if (selectionStats && selectionStats.totalCount > 0) {
+      // Calculate additional stats for better UX
+      const totalMessages = Object.values(selectionStats.chatsByDumpster || {}).reduce(
+        (sum, chats) =>
+          sum +
+          chats.reduce(
+            (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
+            0
+          ),
+        0
+      );
+      const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+
+      let selectionDescription = `📋 Export from selection bin (${selectionStats.totalCount} chats`;
+      if (totalMessages > 0) {
+        selectionDescription += `, ${totalMessages} messages`;
+      }
+      if (dumpsterCount > 1) {
+        selectionDescription += `, from ${dumpsterCount} dumpsters`;
+      }
+      selectionDescription += ')';
+
       choices.unshift({
-        name: `📋 Export from selection bin (${selectionStats.totalCount} chats)`,
+        name: selectionDescription,
         value: 'selection',
       });
     }
 
     if (choices.length === 1) {
       console.log('📋 Selection bin is empty, will export from dumpster.');
+      console.log(
+        chalk.dim('   💡 Tip: Use "ddd rummage" to select chats for export.')
+      );
       return 'dumpster';
     }
 

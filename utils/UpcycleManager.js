@@ -11,6 +11,7 @@ const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
 const { SelectionManager } = require('./SelectionManager');
 const fs = require('fs').promises;
+const chalk = require('chalk');
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
 const HTMLFormatter = require('./formatters/HTMLFormatter');
@@ -90,6 +91,16 @@ class UpcycleManager {
         throw new Error('Selection bin is empty');
       }
 
+      if (validatedOptions.verbose) {
+        const dumpsterDetails = Object.entries(chatsByDumpster)
+          .map(
+            ([name, chats]) =>
+              `${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`
+          )
+          .join(', ');
+        console.log(chalk.dim(`📊 Selection bin distribution: ${dumpsterDetails}`));
+      }
+
       pm.succeed(
         `Found chats in ${Object.keys(chatsByDumpster).length} dumpster${Object.keys(chatsByDumpster).length !== 1 ? 's' : ''}`
       );
@@ -122,15 +133,24 @@ class UpcycleManager {
         'Processing selected chats'
       );
 
-      // Process each dumpster's selected chats
+      // Collect all assets from all selected chats for deduplication
+      const globalAssetMap = new Map(); // Map<dumpsterName, Set<assetPointer>>
+      const processedChats = [];
+
+      // First pass: Load all chats and collect asset references
       for (const [dumpsterName, selectedChats] of Object.entries(chatsByDumpster)) {
         pm.update(
           'processing',
-          20 + (totalProcessed / totalChats) * 60,
-          `Processing chats from ${dumpsterName}...`
+          20 + (totalProcessed / totalChats) * 30,
+          `Loading chats from ${dumpsterName}...`
         );
 
-        // Load full chat data for each selected chat
+        // Initialize asset tracking for this dumpster
+        if (!globalAssetMap.has(dumpsterName)) {
+          globalAssetMap.set(dumpsterName, new Set());
+        }
+
+        // Load and process chats to collect asset references
         for (let i = 0; i < selectedChats.length; i++) {
           const selectedItem = selectedChats[i];
 
@@ -141,18 +161,34 @@ class UpcycleManager {
               selectedItem.filename
             );
 
-            const result = await this.upcycleChat(
+            // Process chat content to identify assets (without copying yet)
+            const processOptions = {
+              ...validatedOptions,
               dumpsterName,
+              assetErrorTracker,
+            };
+            const processedChat = await chatUpcycler.processChatForExport(
               chat,
               format,
-              formatter,
-              chatUpcycler,
-              outputDir,
-              validatedOptions,
-              assetErrorTracker
+              processOptions
             );
 
-            allResults.push(result);
+            // Collect asset references for this chat
+            if (processedChat.assets && processedChat.assets.length > 0) {
+              processedChat.assets.forEach(asset => {
+                if (asset.pointer && !asset.error) {
+                  globalAssetMap.get(dumpsterName).add(asset.pointer);
+                }
+              });
+            }
+
+            processedChats.push({
+              dumpsterName,
+              chat,
+              processedChat,
+              selectedItem,
+            });
+
             totalProcessed++;
           } catch (error) {
             assetErrorTracker.addError('chat_processing', error.message, {
@@ -170,6 +206,74 @@ class UpcycleManager {
             skipped: totalSkipped,
           });
         }
+      }
+
+      // Second pass: Copy all unique assets once
+      if (validatedOptions.includeMedia && globalAssetMap.size > 0) {
+        const totalUniqueAssets = Array.from(globalAssetMap.values()).reduce(
+          (sum, assets) => sum + assets.size,
+          0
+        );
+        pm.update(
+          'copying_assets',
+          60,
+          `Copying ${totalUniqueAssets} unique media assets...`
+        );
+
+        if (validatedOptions.verbose) {
+          const assetDetails = Array.from(globalAssetMap.entries())
+            .map(
+              ([name, assets]) =>
+                `${name}: ${assets.size} unique asset${assets.size !== 1 ? 's' : ''}`
+            )
+            .join(', ');
+          console.log(chalk.dim(`🎨 Asset deduplication: ${assetDetails}`));
+        }
+
+        for (const [dumpsterName, assetPointers] of globalAssetMap.entries()) {
+          if (assetPointers.size > 0) {
+            // Convert Set to array of asset objects
+            const uniqueAssets = Array.from(assetPointers).map(pointer => ({
+              pointer,
+            }));
+
+            await this.copyChatAssets(
+              uniqueAssets,
+              outputDir,
+              dumpsterName,
+              assetErrorTracker,
+              {
+                copyEntireMediaDir: false, // Never copy entire directory for selection
+              }
+            );
+          }
+        }
+      }
+
+      // Third pass: Generate formatted content and write files
+      pm.update('generating_files', 70, 'Generating export files...');
+
+      for (const { chat, processedChat } of processedChats) {
+        // Generate formatted content
+        const formattedContent = await formatter.formatChat(
+          processedChat,
+          validatedOptions
+        );
+
+        // Generate filename
+        const filename = this.generateFilename(chat, format);
+        const filepath = FileUtils.joinPath(outputDir, filename);
+
+        // Write file (assets are already copied)
+        await FileUtils.writeFile(filepath, formattedContent);
+
+        allResults.push({
+          filename,
+          chatTitle: chat.title || 'Untitled',
+          assetCount: processedChat.assets.length,
+          messageCount: processedChat.messages.length,
+          filepath,
+        });
       }
 
       pm.update('finalizing', 90, 'Finalizing upcycle...');
