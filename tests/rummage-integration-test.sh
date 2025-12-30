@@ -148,10 +148,10 @@ try {
 
 # Test 8: Test selection manager
 test "selection manager functionality" "node -e \"
-const { SelectionManager } = require('./utils/SelectionManager');
+const { BinManager } = require('./utils/BinManager');
 try {
-  const sm = new SelectionManager('./');
-  console.log('Selection manager initialized');
+  const bm = new BinManager('./');
+  console.log('Bin manager initialized');
   process.exit(0);
 } catch (e) {
   console.error('Selection manager failed:', e.message);

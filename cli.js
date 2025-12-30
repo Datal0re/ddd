@@ -8,7 +8,7 @@ const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
 const { CliPrompts } = require('./utils/CliPrompts');
-const { SelectionManager } = require('./utils/SelectionManager');
+const { BinManager } = require('./utils/BinManager');
 
 const program = new Command();
 
@@ -114,6 +114,7 @@ program
         return;
       }
 
+      // Show dumpsters first
       console.log(chalk.blue('🗑️ Available dumpsters:'));
 
       if (options.verbose) {
@@ -143,8 +144,199 @@ program
         `Found ${dumpsters.length} dumpster${dumpsters.length !== 1 ? 's' : ''}`,
         'hoard'
       );
+
+      // Now show bins
+      const bm = new BinManager(__dirname);
+      await bm.initialize();
+      const bins = bm.listBins();
+
+      if (bins.length > 0) {
+        console.log(chalk.blue('\n📋 Available bins:'));
+
+        if (options.verbose) {
+          const binTableData = bins.map(bin => ({
+            name: bin.name,
+            created: new Date(bin.createdAt).toLocaleDateString(),
+            chats: bin.chatCount,
+            status: bin.isActive ? chalk.green('Active') : chalk.dim('Inactive'),
+          }));
+
+          console.log(
+            '\n' +
+              require('./utils/CommonUtils').FormatUtils.formatTable(
+                binTableData,
+                ['name', 'created', 'chats', 'status'],
+                { padding: 2 }
+              )
+          );
+        } else {
+          bins.forEach(bin => {
+            const status = bin.isActive ? chalk.green('(active)') : '';
+            console.log(
+              `  🗑️ ${chalk.cyan(bin.name)} (${bin.chatCount} chats) ${status}`
+            );
+          });
+        }
+
+        ErrorHandler.logSuccess(
+          `Found ${bins.length} bin${bins.length !== 1 ? 's' : ''}`,
+          'hoard'
+        );
+      }
     } catch (error) {
       ErrorHandler.handleAsyncError(error, 'listing dumpsters', null, false);
+      process.exit(1);
+    }
+  });
+
+// Bin management commands
+const binCommands = {
+  /**
+   * Create a new selection bin
+   */
+  async create(bm, name) {
+    try {
+      const binName = name || (await CliPrompts.promptForBinName());
+
+      await bm.createBin(binName);
+      console.log(chalk.green(`✅ Created bin "${binName}"`));
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to create bin: ${error.message}`));
+    }
+  },
+
+  /**
+   * Delete (burn) a selection bin
+   */
+  async burn(bm, name) {
+    try {
+      const bins = bm.listBins();
+
+      if (bins.length === 0) {
+        console.log(chalk.yellow('📋 No bins to burn.'));
+        return;
+      }
+
+      const binName =
+        name || (await CliPrompts.selectFromBins(bins, 'Select a bin to burn:'));
+
+      const confirmed = await CliPrompts.confirmAction(
+        `Burn bin "${binName}"? This will permanently delete all selected chats.`
+      );
+
+      if (confirmed) {
+        await bm.deleteBin(binName);
+        console.log(chalk.green(`🔥 Burned bin "${binName}" to ashes`));
+      } else {
+        console.log(chalk.yellow('💨 Bin burning cancelled.'));
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to burn bin: ${error.message}`));
+    }
+  },
+
+  /**
+   * List all selection bins
+   */
+  async list(bm) {
+    try {
+      const bins = bm.listBins();
+
+      if (bins.length === 0) {
+        console.log(chalk.yellow('📋 No bins found.'));
+        console.log(
+          chalk.dim('   💡 Tip: Use "ddd bin create <name>" to create your first bin.')
+        );
+        return;
+      }
+
+      console.log(chalk.blue('📋 Available bins:'));
+
+      bins.forEach(bin => {
+        const status = bin.isActive ? chalk.green('(active)') : '';
+        console.log(`  🗑️ ${chalk.cyan(bin.name)} (${bin.chatCount} chats) ${status}`);
+      });
+
+      // Show current bin info
+      const currentSummary = bm.getActiveBinSummary();
+      console.log(`\n${chalk.dim(currentSummary)}`);
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to list bins: ${error.message}`));
+    }
+  },
+
+  /**
+   * Rename a selection bin
+   */
+  async rename(bm, name) {
+    try {
+      const bins = bm.listBins();
+
+      if (bins.length === 0) {
+        console.log(chalk.yellow('📋 No bins to rename.'));
+        return;
+      }
+
+      const oldName =
+        name || (await CliPrompts.selectFromBins(bins, 'Select a bin to rename:'));
+      const newName = await CliPrompts.promptForBinName('new');
+
+      if (oldName === newName) {
+        console.log(chalk.yellow('📋 Bin name is the same.'));
+        return;
+      }
+
+      await bm.renameBin(oldName, newName);
+      console.log(chalk.green(`✅ Renamed bin "${oldName}" to "${newName}"`));
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to rename bin: ${error.message}`));
+    }
+  },
+};
+
+program
+  .command('bin')
+  .description('Manage selection bins for organizing chat selections')
+  .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
+  .argument('[name]', 'Bin name for create/rename operations (optional)')
+  .action(async (subcommand, name) => {
+    const { BinManager } = require('./utils/BinManager');
+    const { DumpsterManager } = require('./utils/DumpsterManager');
+    // const { CliPrompts } = require('./utils/CliPrompts');
+
+    try {
+      const dm = new DumpsterManager(__dirname);
+      await dm.initialize();
+
+      const bm = new BinManager(__dirname);
+      await bm.initialize();
+
+      if (!subcommand) {
+        // Default to list if no subcommand
+        await binCommands.list(bm);
+        return;
+      }
+
+      switch (subcommand.toLowerCase()) {
+        case 'create':
+          await binCommands.create(bm, name);
+          break;
+        case 'burn':
+          await binCommands.burn(bm, name);
+          break;
+        case 'list':
+          await binCommands.list(bm);
+          break;
+        case 'rename':
+          await binCommands.rename(bm, name);
+          break;
+        default:
+          console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
+          console.log('Available subcommands: create, burn, list, rename');
+          process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Bin operation failed: ${error.message}`));
       process.exit(1);
     }
   });
@@ -167,8 +359,9 @@ program // TODO: update help info to match new functionality in rummage
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
 
-      // Initialize selection manager
-      const selectionManager = new SelectionManager(__dirname);
+      // Initialize bin manager
+      const bm = new BinManager(__dirname);
+      await bm.initialize();
 
       // Get available dumpsters
       const dumpsters = await dm.listDumpsters();
@@ -213,7 +406,7 @@ program // TODO: update help info to match new functionality in rummage
         // Enhanced rummage workflow
         const workflowResult = await performRummageWorkflow(
           dm,
-          selectionManager,
+          bm,
           currentDumpster,
           options
         );
@@ -240,21 +433,21 @@ program // TODO: update help info to match new functionality in rummage
             currentDumpster = null; // Force dumpster selection prompt
             break;
           case 'view_selection':
-            await displaySelectionBinStatus(selectionManager);
+            await displaySelectionBinStatus(bm);
             continueRummaging = true;
             break;
           case 'clear_selection': {
-            const isEmpty = await selectionManager.isEmpty();
+            const isEmpty = bm.is_activeBinEmpty();
             if (isEmpty) {
               console.log(chalk.yellow('📋 Selection bin is already empty.'));
             } else {
-              const currentCount = await selectionManager.getSelectionCount();
+              const currentCount = bm.getActiveBinCount();
               const confirmed = await CliPrompts.confirmSelectionAction(
                 'Clear',
                 currentCount
               );
               if (confirmed) {
-                await selectionManager.clearSelection();
+                await bm.clearActiveBin();
                 console.log(
                   chalk.green(
                     `✅ Selection bin cleared successfully (${currentCount} chat${currentCount !== 1 ? 's' : ''} removed).`
@@ -449,8 +642,9 @@ program
       }
 
       // Check selection bin status first to provide context
-      const selectionManager = new SelectionManager(__dirname);
-      const chatsByDumpster = await selectionManager.getChatsByDumpster();
+      const bm = new BinManager(__dirname);
+      await bm.initialize();
+      const chatsByDumpster = bm.getActiveBinChatsByDumpster();
 
       // Calculate totals from detailed chat data
       const allChats = Object.values(chatsByDumpster).flat();
@@ -541,7 +735,7 @@ program
       // Log export source
       if (validatedOptions.verbose) {
         if (exportSource === 'selection') {
-          const selectionCount = await selectionManager.getSelectionCount();
+          const selectionCount = bm.getActiveBinCount();
           console.log(
             chalk.blue(`🔄 Upcycling selection bin (${selectionCount} chats)`)
           );
@@ -632,11 +826,11 @@ program
 /**
  * Perform enhanced rummage workflow with search and selection
  * @param {DumpsterManager} dm - DumpsterManager instance
- * @param {SelectionManager} selectionManager - SelectionManager instance
+ * @param {BinManager} bm - BinManager instance
  * @param {string} dumpsterName - Name of dumpster to rummage
  * @param {Object} options - Command options
  */
-async function performRummageWorkflow(dm, selectionManager, dumpsterName, options) {
+async function performRummageWorkflow(dm, bm, dumpsterName, options) {
   try {
     // Get search query first
     const searchQuery = await CliPrompts.promptSearchQuery();
@@ -763,7 +957,7 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
 
     switch (action) {
       case 'add-to-bin':
-        await addChatsToSelection(selectionManager, selectedChats, dumpsterName);
+        await addChatsToSelection(bm, selectedChats, dumpsterName);
         console.log(
           chalk.green(
             `✅ Added ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''} to selection bin`
@@ -793,11 +987,11 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
 
 /**
  * Add selected chats to selection bin
- * @param {SelectionManager} selectionManager - SelectionManager instance
+ * @param {BinManager} bm - BinManager instance
  * @param {Array} selectedChats - Array of selected chat objects
  * @param {string} dumpsterName - Source dumpster name
  */
-async function addChatsToSelection(selectionManager, selectedChats, dumpsterName) {
+async function addChatsToSelection(bm, selectedChats, dumpsterName) {
   const chatData = selectedChats.map(chat => ({
     chatId: chat.filename,
     filename: chat.filename,
@@ -812,7 +1006,7 @@ async function addChatsToSelection(selectionManager, selectedChats, dumpsterName
     },
   }));
 
-  await selectionManager.addChats(chatData, dumpsterName);
+  await bm.addChatsToActiveBin(chatData, dumpsterName);
 }
 
 /**
@@ -825,10 +1019,10 @@ async function upcycleSelectedChats(selectedChats, dumpsterName) {
   const dm = new DumpsterManager(__dirname);
   await dm.initialize();
 
-  const selectionManager = new SelectionManager(__dirname);
+  const bm = new BinManager(__dirname);
 
   // Temporarily add selected chats to selection bin
-  await addChatsToSelection(selectionManager, selectedChats, dumpsterName);
+  await addChatsToSelection(bm, selectedChats, dumpsterName);
 
   // Trigger upcycle command with selection bin
   console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
@@ -851,12 +1045,12 @@ async function upcycleSelectedChats(selectedChats, dumpsterName) {
 
 /**
  * Display current selection bin status
- * @param {SelectionManager} selectionManager - SelectionManager instance
+ * @param {BinManager} bm - BinManager instance
  */
-async function displaySelectionBinStatus(selectionManager) {
+async function displaySelectionBinStatus(bm) {
   try {
-    // Use getChatsByDumpster for detailed information
-    const chatsByDumpster = await selectionManager.getChatsByDumpster();
+    // Use getActiveBinChatsByDumpster for detailed information
+    const chatsByDumpster = bm.getActiveBinChatsByDumpster();
 
     // Validate structure
     if (!chatsByDumpster || typeof chatsByDumpster !== 'object') {

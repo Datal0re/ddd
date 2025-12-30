@@ -9,7 +9,7 @@ const { ErrorHandler } = require('./ErrorHandler');
 const FileUtils = require('./FileUtils');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
-const { SelectionManager } = require('./SelectionManager');
+const { BinManager } = require('./BinManager');
 const fs = require('fs').promises;
 const chalk = require('chalk');
 const MDFormatter = require('./formatters/MDFormatter');
@@ -20,12 +20,20 @@ class UpcycleManager {
   constructor(dumpsterManager, progressManager = null) {
     this.dumpsterManager = dumpsterManager;
     this.progressManager = progressManager;
-    this.selectionManager = new SelectionManager(dumpsterManager.baseDir);
+    this.binManager = new BinManager(dumpsterManager.baseDir);
     this.formatters = {
       md: MDFormatter,
       txt: TXTFormatter,
       html: HTMLFormatter,
     };
+  }
+
+  /**
+   * Initialize bin manager (call after construction)
+   * @returns {Promise<void>}
+   */
+  async initializeBinManager() {
+    await this.binManager.initialize();
   }
 
   /**
@@ -85,7 +93,8 @@ class UpcycleManager {
       // Load selection and get chats grouped by dumpster
       pm.start('loading', 'Loading selection bin...');
 
-      const chatsByDumpster = await this.selectionManager.getChatsByDumpster();
+      await this.initializeBinManager();
+      const chatsByDumpster = this.binManager.getActiveBinChatsByDumpster();
 
       if (Object.keys(chatsByDumpster).length === 0) {
         throw new Error('Selection bin is empty');
@@ -110,10 +119,11 @@ class UpcycleManager {
         pm.stop();
       }
 
-      // Create output directory
+      // Create output directory using current bin name
+      const currentBinName = this.binManager.getActiveBinName();
       const outputDir = FileUtils.joinPath(
         validatedOptions.outputDir,
-        `selection-${format}`
+        `${currentBinName}-${format}`
       );
       await FileUtils.ensureDirectory(outputDir);
 

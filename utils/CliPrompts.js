@@ -288,9 +288,10 @@ class CliPrompts {
     ];
 
     // Get actual chats by dumpster for accurate information
-    const { SelectionManager } = require('./SelectionManager');
-    const selectionManager = new SelectionManager(process.cwd());
-    const chatsByDumpster = await selectionManager.getChatsByDumpster();
+    const { BinManager } = require('./BinManager');
+    const binManager = new BinManager(process.cwd());
+    await binManager.initialize();
+    const chatsByDumpster = binManager.getActiveBinChatsByDumpster();
     const totalCount = Object.values(chatsByDumpster).flat().length;
 
     if (totalCount > 0) {
@@ -382,6 +383,62 @@ class CliPrompts {
         { name: '🚀 Export selection', value: 'upcycle_selection' },
         { name: '👋 Quit', value: 'quit' },
       ],
+    });
+  }
+
+  /**
+   * Prompt user for bin name
+   * @param {string} context - Context for the prompt (create/rename)
+   * @returns {Promise<string>} Bin name
+   */
+  static async promptForBinName(context = 'new') {
+    const message =
+      context === 'new' ? 'Enter name for new bin:' : 'Enter new bin name:';
+
+    return await input({
+      message,
+      validate: input => {
+        if (!input || input.trim() === '') {
+          return 'Bin name cannot be empty';
+        }
+
+        if (input.length < 2) {
+          return 'Bin name must be at least 2 characters';
+        }
+
+        if (input.length > 50) {
+          return 'Bin name cannot exceed 50 characters';
+        }
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
+          return 'Bin name can only contain letters, numbers, underscores, and hyphens';
+        }
+
+        return true;
+      },
+    });
+  }
+
+  /**
+   * Select from available bins
+   * @param {Array} bins - Array of bin objects
+   * @param {string} message - Selection prompt message
+   * @returns {Promise<string>} Selected bin name
+   */
+  static async selectFromBins(bins, message = 'Select a bin:') {
+    if (bins.length === 0) {
+      throw new Error('No bins available to select from');
+    }
+
+    const choices = bins.map(bin => ({
+      name: bin.name,
+      value: bin.name,
+      description: `${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' (current)' : ''}`,
+    }));
+
+    return await select({
+      message,
+      choices,
     });
   }
 }
