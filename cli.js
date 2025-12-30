@@ -158,7 +158,7 @@ program // TODO: update help info to match new functionality in rummage
   )
   .option(
     '-l, --limit <number>',
-    'number of chats to show (optional - will prompt if not provided)'
+    'number of chats to show (optional - leave empty to show all)'
   )
   .option('-v, --verbose', 'Verbose output')
   .action(async (dumpsterName, options) => {
@@ -620,9 +620,14 @@ program
  */
 async function performRummageWorkflow(dm, selectionManager, dumpsterName, options) {
   try {
-    // Get search query and options
+    // Get search query first
     const searchQuery = await CliPrompts.promptSearchQuery();
-    const searchOptions = await CliPrompts.promptSearchOptions();
+
+    // Only get search options if query is not empty
+    const searchOptions =
+      searchQuery.trim() === ''
+        ? { scope: 'all', caseSensitive: false } // Default options for empty query
+        : await CliPrompts.promptSearchOptions();
 
     console.log(chalk.blue(`🔍 Searching chats in "${dumpsterName}"...`));
 

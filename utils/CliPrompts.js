@@ -86,28 +86,33 @@ class CliPrompts {
   }
 
   /**
-   * Prompt user for number of chats to display
+   * Prompt user for chat limit
    * @param {string} message - Prompt message
    * @param {string} defaultValue - Default value
-   * @returns {Promise<number>} Validated number
+   * @returns {Promise<number|null>} Validated number or null for "show all"
    */
   static async promptForChatLimit(
-    message = 'How many chats would you like to see?',
-    defaultValue = '10'
+    message = 'How many chats would you like to see? (leave empty for all):',
+    defaultValue = ''
   ) {
     const userInput = await input({
       message,
       default: defaultValue,
       validate: inputValue => {
+        // Allow empty input for "show all"
+        if (inputValue.trim() === '') return true;
+
         const num = parseInt(inputValue);
-        if (isNaN(num)) return 'Please enter a number';
+        if (isNaN(num)) return 'Please enter a number or leave empty for all';
         if (num < 1) return 'Must show at least 1 chat';
         if (num > UI_CONFIG.MAX_CHAT_SELECTION)
           return `Maximum ${UI_CONFIG.MAX_CHAT_SELECTION} chats at once`;
         return true;
       },
     });
-    return parseInt(userInput);
+
+    // Return null for empty input (show all), otherwise return number
+    return userInput.trim() === '' ? null : parseInt(userInput);
   }
 
   /**
