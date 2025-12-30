@@ -354,7 +354,7 @@ program
 
         if (!shouldBurn) {
           console.log(
-            chalk.yellow('🔥 Fire extinguished - dumpster lives to see another day')
+            chalk.yellow('💨 Fire extinguished - dumpster lives to see another day')
           );
           return;
         }

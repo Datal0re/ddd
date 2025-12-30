@@ -43,7 +43,7 @@ class SelectionManager {
    */
   createEmptySelectionBin() {
     return {
-      version: '1.0.0',
+      version: '0.0.5', // TODO: Make version update with a variable
       createdAt: Date.now(),
       lastModified: Date.now(),
       items: [],
@@ -57,7 +57,7 @@ class SelectionManager {
    */
   validateSelectionBin(data) {
     const selectionBin = {
-      version: data.version || '1.0.0',
+      version: data.version || '0.0.5',
       createdAt: data.createdAt || Date.now(),
       lastModified: Date.now(),
       items: [],
