@@ -632,18 +632,44 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
       );
     } else {
       // Perform actual search
+      let searchResponse;
+      let searchResults = [];
+
       try {
-        searchResults = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
+        searchResponse = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
+        searchResults = searchResponse.results || [];
+
+        if (options.verbose) {
+          console.log(
+            chalk.dim(`🔍 Search response: ${JSON.stringify(searchResponse, null, 2)}`)
+          );
+        }
+
         pm.succeed(
           `Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
         );
       } catch (searchError) {
-        pm.fail(`Search failed: ${searchError.message}`);
+        console.error(chalk.red(`🔍 Search error: ${searchError.message}`));
+        if (options.verbose) {
+          console.error(chalk.dim(`Stack trace: ${searchError.stack}`));
+        }
+        pm.fail('Search operation failed');
         console.log(
-          chalk.yellow('💡 Try different search terms or check dumpster integrity.')
+          chalk.yellow(
+            '💡 This may be due to corrupted chat files or search term issues.'
+          )
         );
         return;
       }
+    }
+
+    // Defensive programming: Ensure searchResults is always an array
+    if (!Array.isArray(searchResults)) {
+      console.error(chalk.red('❌ Critical: searchResults is not an array'));
+      console.error(
+        chalk.dim(`Type: ${typeof searchResults}, Value: ${searchResults}`)
+      );
+      return;
     }
 
     if (searchResults.length === 0) {
@@ -770,18 +796,57 @@ async function viewChatDetails(selectedChats) {
   }
 }
 
-/**
- * Display current selection bin status
- * @param {SelectionManager} selectionManager - SelectionManager instance
- */
-async function displaySelectionBinStatus(selectionManager) {
-  try {
-    const selectionStats = await selectionManager.getSelectionStats();
+  /**
+   * Display current selection bin status
+   * @param {SelectionManager} selectionManager - SelectionManager instance
+   */
+  async function displaySelectionBinStatus(selectionManager) {
+    try {
+      const selectionStats = await selectionManager.getSelectionStats();
+      
+      // Validate selectionStats structure
+      if (!selectionStats || typeof selectionStats !== 'object') {
+        console.log(chalk.yellow('\n📋 Selection bin status unavailable.'));
+        return;
+      }
+      
+      if (selectionStats.totalCount === 0) {
+        console.log(chalk.yellow('\n📋 Selection bin is currently empty.'));
+        return;
+      }
 
-    if (selectionStats.totalCount === 0) {
-      console.log(chalk.yellow('\n📋 Selection bin is currently empty.'));
-      return;
+      console.log(chalk.blue('\n📋 Current Selection Bin:'));
+      console.log(
+        `   ${selectionStats.totalCount} chat${selectionStats.totalCount !== 1 ? 's' : ''} selected`
+      );
+
+      const totalMessages = Object.values(selectionStats.chatsByDumpster || {})
+        .reduce(
+          (sum, chats) =>
+            sum +
+              chats.reduce((msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0), 0),
+          0
+        );
+
+      if (totalMessages > 0) {
+        console.log(`   ${totalMessages} total messages`);
+      }
+
+      const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+      if (dumpsterCount > 0) {
+        console.log(`   From ${dumpsterCount} dumpster${dumpsterCount !== 1 ? 's' : ''}`);
+      }
+
+      // Show recent selections
+      console.log(chalk.dim('\n📜 Recent selections:'));
+      Object.entries(selectionStats.chatsByDumpster).forEach(([name, chats]) => {
+        console.log(`   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`);
+      });
+    } catch (error) {
+      console.log(chalk.red(`❌ Failed to load selection bin status: ${error.message}`));
+      // Don't re-throw error to avoid breaking the rummage loop
     }
+  }
 
     console.log(chalk.blue('\n📋 Current Selection Bin:'));
     console.log(
