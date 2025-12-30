@@ -149,7 +149,7 @@ program
     }
   });
 
-program
+program // TODO: update help info to match new functionality in rummage
   .command('rummage')
   .description('Rummage through chats in a dumpster with search and selection')
   .argument(
@@ -162,8 +162,6 @@ program
   )
   .option('-v, --verbose', 'Verbose output')
   .action(async (dumpsterName, options) => {
-    const pm = createProgressManager(null, options.verbose);
-
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
@@ -213,13 +211,21 @@ program
         );
 
         // Enhanced rummage workflow
-        await performRummageWorkflow(
+        const workflowResult = await performRummageWorkflow(
           dm,
           selectionManager,
           currentDumpster,
-          options,
-          pm
+          options
         );
+
+        // If workflow returned early due to no selection, skip to next action prompt
+        if (workflowResult && workflowResult.noSelection) {
+          // Continue to next action prompt (user can try new search, etc.)
+        } else if (workflowResult && workflowResult.exit) {
+          // Workflow wants to exit entirely (e.g., after upcycle)
+          continueRummaging = false;
+          continue;
+        }
 
         // Ask user what to do next
         const action = await CliPrompts.promptRummageNextAction();
@@ -250,7 +256,7 @@ program
         }
       }
     } catch (error) {
-      pm.fail('Rummage failed');
+      console.log(chalk.red('❌ Rummage failed'));
       ErrorHandler.handleAsyncError(error, 'rummaging dumpster', null, false);
       process.exit(1);
     }
@@ -611,29 +617,37 @@ program
  * @param {SelectionManager} selectionManager - SelectionManager instance
  * @param {string} dumpsterName - Name of dumpster to rummage
  * @param {Object} options - Command options
- * @param {ProgressManager} pm - Progress manager
  */
-async function performRummageWorkflow(dm, selectionManager, dumpsterName, options, pm) {
+async function performRummageWorkflow(dm, selectionManager, dumpsterName, options) {
   try {
     // Get search query and options
     const searchQuery = await CliPrompts.promptSearchQuery();
     const searchOptions = await CliPrompts.promptSearchOptions();
 
-    pm.start('searching', `Searching chats in "${dumpsterName}"...`);
+    console.log(chalk.blue(`🔍 Searching chats in "${dumpsterName}"...`));
 
     // Perform search
     let searchResults;
     if (searchQuery.trim() === '') {
       // No query - show recent chats
       const limit = options.limit || (await CliPrompts.promptForChatLimit());
-      searchResults = await dm.getChats(dumpsterName, limit);
-      pm.succeed(
-        `Found ${searchResults.length} recent chat${searchResults.length !== 1 ? 's' : ''}`
+      const chats = await dm.getChats(dumpsterName, limit);
+
+      // Convert to expected format for UI compatibility
+      searchResults = chats.map((chat, index) => ({
+        chat,
+        searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
+        rank: index,
+      }));
+
+      console.log(
+        chalk.green(
+          `✅ Found ${searchResults.length} recent chat${searchResults.length !== 1 ? 's' : ''}`
+        )
       );
     } else {
       // Perform actual search
       let searchResponse;
-      let searchResults = [];
 
       try {
         searchResponse = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
@@ -645,15 +659,17 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
           );
         }
 
-        pm.succeed(
-          `Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+        console.log(
+          chalk.green(
+            `✅ Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+          )
         );
       } catch (searchError) {
         console.error(chalk.red(`🔍 Search error: ${searchError.message}`));
         if (options.verbose) {
           console.error(chalk.dim(`Stack trace: ${searchError.stack}`));
         }
-        pm.fail('Search operation failed');
+        console.log(chalk.red('❌ Search operation failed'));
         console.log(
           chalk.yellow(
             '💡 This may be due to corrupted chat files or search term issues.'
@@ -679,40 +695,75 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
       return;
     }
 
+    // Additional validation: Ensure search results have expected structure
+    const validResults = searchResults.filter(
+      result =>
+        result && result.chat && typeof result.chat === 'object' && result.chat.filename
+    );
+
+    if (validResults.length === 0) {
+      console.error(chalk.red('❌ No valid chat data found in search results'));
+      if (options.verbose) {
+        console.error(chalk.dim('Sample result:', searchResults[0]));
+      }
+      return;
+    }
+
+    if (validResults.length !== searchResults.length) {
+      console.warn(
+        chalk.yellow(
+          `⚠️  Filtered out ${searchResults.length - validResults.length} invalid results`
+        )
+      );
+    }
+
     // Display search results and allow selection
-    const selectedChats = await CliPrompts.selectMultipleChats(searchResults, {
-      showPreviews: searchQuery.trim() !== '',
-      searchQuery,
-    });
+    const message =
+      searchQuery.trim() !== ''
+        ? `Select chats matching "${searchQuery}":`
+        : 'Select chats to process:';
+
+    const selectedChats = await CliPrompts.selectMultipleChats(
+      validResults,
+      message,
+      []
+    );
 
     if (selectedChats.length === 0) {
       console.log(chalk.yellow('No chats selected.'));
-      return;
+      // Return special signal to indicate workflow should continue to next action
+      return { noSelection: true };
     }
 
     // Prompt for action on selected chats
     const action = await CliPrompts.promptSelectionActions(selectedChats.length);
 
     switch (action) {
-      case 'add_to_selection':
-        await addChatsToSelection(selectionManager, selectedChats);
+      case 'add-to-bin':
+        await addChatsToSelection(selectionManager, selectedChats, dumpsterName);
         console.log(
           chalk.green(
             `✅ Added ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''} to selection bin`
           )
         );
         break;
-      case 'upcycle_selected':
+      case 'upcycle':
         await upcycleSelectedChats(selectedChats);
+        return { exit: true }; // Signal main loop to exit after upcycle
+      case 'new-search':
+        // User wants to search again, no action needed
         break;
-      case 'view_details':
-        await viewChatDetails(selectedChats);
+      case 'switch-dumpster':
+        // User wants to switch dumpster, no action needed
+        break;
+      case 'quit':
+        // User wants to quit, no action needed
         break;
       default:
         console.log(chalk.yellow('Action cancelled.'));
     }
   } catch (error) {
-    pm.fail('Rummage workflow failed');
+    console.log(chalk.red('❌ Rummage workflow failed'));
     throw error;
   }
 }
@@ -721,13 +772,14 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
  * Add selected chats to selection bin
  * @param {SelectionManager} selectionManager - SelectionManager instance
  * @param {Array} selectedChats - Array of selected chat objects
+ * @param {string} dumpsterName - Source dumpster name
  */
-async function addChatsToSelection(selectionManager, selectedChats) {
+async function addChatsToSelection(selectionManager, selectedChats, dumpsterName) {
   const chatData = selectedChats.map(chat => ({
     chatId: chat.filename,
     filename: chat.filename,
     title: chat.title || 'Untitled',
-    sourceDumpster: chat.dumpsterName,
+    sourceDumpster: dumpsterName,
     addedAt: Date.now(),
     metadata: {
       messageCount: chat.messageCount || 0,
@@ -737,7 +789,7 @@ async function addChatsToSelection(selectionManager, selectedChats) {
     },
   }));
 
-  await selectionManager.addChats(chatData);
+  await selectionManager.addChats(chatData, dumpsterName);
 }
 
 /**
@@ -752,7 +804,8 @@ async function upcycleSelectedChats(selectedChats) {
   const selectionManager = new SelectionManager(__dirname);
 
   // Temporarily add selected chats to selection bin
-  await addChatsToSelection(selectionManager, selectedChats);
+  const firstChatSource = selectedChats[0]?.dumpsterName || 'unknown';
+  await addChatsToSelection(selectionManager, selectedChats, firstChatSource);
 
   // Trigger upcycle command with selection bin
   console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
@@ -771,29 +824,6 @@ async function upcycleSelectedChats(selectedChats) {
   const { generateExportReport } = require('./utils/upcycleHelpers');
   const report = generateExportReport(result, true);
   console.log(report);
-}
-
-/**
- * View detailed information about selected chats
- * @param {Array} selectedChats - Array of selected chat objects
- */
-async function viewChatDetails(selectedChats) {
-  console.log(chalk.blue('\n📋 Selected Chat Details:'));
-
-  for (const chat of selectedChats) {
-    console.log(`\n${chalk.green('📝 ' + (chat.title || 'Untitled'))}`);
-    console.log(
-      `   📅 Created: ${chat.create_time ? new Date(chat.create_time * 1000).toLocaleDateString() : 'Unknown'}`
-    );
-    console.log(`   💬 Messages: ${chat.messageCount || 'Unknown'}`);
-    console.log(`   📁 File: ${chat.filename}`);
-
-    if (chat.preview) {
-      console.log(
-        `   👁️  Preview: ${chat.preview.substring(0, 100)}${chat.preview.length > 100 ? '...' : ''}`
-      );
-    }
-  }
 }
 
 /**
