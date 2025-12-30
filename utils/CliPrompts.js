@@ -338,26 +338,36 @@ class CliPrompts {
   }
 
   /**
+   * Prompt user for next rummage action
+   * @returns {Promise<string>} User choice
+   */
+  static async promptRummageNextAction() {
+    return await select({
+      message: 'What would you like to do next?',
+      choices: [
+        { name: '🔍 New search', value: 'new_search' },
+        { name: '🔄 Switch dumpster', value: 'switch_dumpster' },
+        { name: '📋 View selection bin', value: 'view_selection' },
+        { name: '🚀 Export selection bin', value: 'upcycle_selection' },
+        { name: '👋 Quit', value: 'quit' },
+      ],
+    });
+  }
+
+  /**
    * Prompt user to continue or quit after an action
    * @param {string} action - Action that was completed
    * @returns {Promise<string>} User choice
    */
   static async promptContinueOrQuit(action) {
     return await select({
-      message: `${action} What would you like to do next?`,
+      message: `${action} completed. What would you like to do?`,
       choices: [
-        {
-          name: '🔍 Search again',
-          value: 'search-again',
-        },
-        {
-          name: '🗑️ Switch dumpster',
-          value: 'switch-dumpster',
-        },
-        {
-          name: '❌ Quit',
-          value: 'quit',
-        },
+        { name: '🔍 New search', value: 'new_search' },
+        { name: '🔄 Switch dumpster', value: 'switch_dumpster' },
+        { name: '📋 View selection bin', value: 'view_selection' },
+        { name: '🚀 Export selection', value: 'upcycle_selection' },
+        { name: '👋 Quit', value: 'quit' },
       ],
     });
   }

@@ -151,20 +151,26 @@ program
 
 program
   .command('rummage')
-  .description('Rummage through chats in a dumpster')
+  .description('Rummage through chats in a dumpster with search and selection')
   .argument(
     '[dumpster-name]',
-    'name of dumpster to view (optional - will prompt for selection)'
+    'name of dumpster to rummage through (optional - will prompt for selection)'
   )
   .option(
     '-l, --limit <number>',
     'number of chats to show (optional - will prompt if not provided)'
   )
+  .option('-v, --verbose', 'Verbose output')
   .action(async (dumpsterName, options) => {
+    const pm = createProgressManager(null, options.verbose);
+
     try {
       const { DumpsterManager } = require('./utils/DumpsterManager');
       const dm = new DumpsterManager(__dirname);
       await dm.initialize();
+
+      // Initialize selection manager
+      const selectionManager = new SelectionManager(__dirname);
 
       // Get available dumpsters
       const dumpsters = await dm.listDumpsters();
@@ -176,70 +182,75 @@ program
         return;
       }
 
-      // Prompt for dumpster selection if not provided
-      if (!dumpsterName) {
-        dumpsterName = await CliPrompts.selectFromDumpsters(
-          dumpsters,
-          'Select a dumpster to rummage through:'
-        );
-      } else {
-        // Validate provided dumpster name
+      // Main rummage loop
+      let currentDumpster = dumpsterName;
+      let continueRummaging = true;
+
+      while (continueRummaging) {
+        // Prompt for dumpster selection if not provided or switching
+        if (!currentDumpster) {
+          currentDumpster = await CliPrompts.selectFromDumpsters(
+            dumpsters,
+            'Select a dumpster to rummage through:'
+          );
+          console.log(); // Add spacing
+        } else {
+          if (currentDumpster !== dumpsterName) {
+            // User switched to a different dumpster
+            dumpsterName = currentDumpster;
+          }
+        }
+
+        // Validate dumpster name
         SchemaValidator.validateRequired(
-          [{ name: 'dumpsterName', value: dumpsterName }],
+          [{ name: 'dumpsterName', value: currentDumpster }],
           'rummage command'
         );
         SchemaValidator.validateNonEmptyString(
-          dumpsterName,
+          currentDumpster,
           'dumpsterName',
           'rummage command'
         );
-      }
 
-      // Prompt for limit if not provided
-      let limit;
-      if (!options.limit) {
-        limit = await CliPrompts.promptForChatLimit();
-      } else {
-        limit = SchemaValidator.validateNumber(options.limit, 'limit', {
-          min: 1,
-          max: 100,
-          context: 'rummage command',
-        });
-      }
+        // Enhanced rummage workflow
+        await performRummageWorkflow(
+          dm,
+          selectionManager,
+          currentDumpster,
+          options,
+          pm
+        );
 
-      const pm = createProgressManager(progress => {
-        // Allow both spinner updates and progress tracking
-        if (options.verbose) {
-          console.log(
-            `[${progress.stage}] ${progress.message} (${Math.round(progress.progress)}%)`
-          );
+        // Ask user what to do next
+        const action = await CliPrompts.promptRummageNextAction();
+
+        switch (action) {
+          case 'new_search':
+            continueRummaging = true;
+            currentDumpster = null; // Force dumpster selection prompt
+            break;
+          case 'switch_dumpster':
+            continueRummaging = true;
+            currentDumpster = null; // Force dumpster selection prompt
+            break;
+          case 'view_selection':
+            await displaySelectionBinStatus(selectionManager);
+            continueRummaging = true;
+            break;
+          case 'upcycle_selection':
+            await promptUpcycleFromSelection();
+            continueRummaging = false; // Exit after upcycle
+            break;
+          case 'quit':
+            continueRummaging = false;
+            console.log(chalk.blue('👋 Happy rummaging!'));
+            break;
+          default:
+            continueRummaging = false;
         }
-      }, options.verbose);
-      pm.start('initializing', `Loading chats from "${dumpsterName}"...`);
-
-      const chats = await dm.getChats(dumpsterName, limit);
-
-      if (chats.length === 0) {
-        pm.warn(`No chats found in "${dumpsterName}"`);
-        return;
       }
-
-      pm.succeed(
-        `Found ${chats.length} chat${chats.length !== 1 ? 's' : ''} in "${dumpsterName}"`
-      );
-      console.log(chalk.blue(`💬 Chats in ${dumpsterName}:`));
-
-      chats.forEach((chat, index) => {
-        const title = chat.title || `Chat ${index + 1}`;
-        const timestamp =
-          require('./utils/CommonUtils').TimestampUtils.extractTimestamp(chat);
-        const dateStr = timestamp
-          ? ` (${require('./utils/CommonUtils').TimestampUtils.formatTimestamp(timestamp, 'date')})`
-          : '';
-
-        console.log(`  ${index + 1}. ${chalk.green(title)}${chalk.dim(dateStr)}`);
-      });
     } catch (error) {
+      pm.fail('Rummage failed');
       ErrorHandler.handleAsyncError(error, 'rummaging dumpster', null, false);
       process.exit(1);
     }
@@ -593,5 +604,228 @@ program
       process.exit(1);
     }
   });
+
+/**
+ * Perform enhanced rummage workflow with search and selection
+ * @param {DumpsterManager} dm - DumpsterManager instance
+ * @param {SelectionManager} selectionManager - SelectionManager instance
+ * @param {string} dumpsterName - Name of dumpster to rummage
+ * @param {Object} options - Command options
+ * @param {ProgressManager} pm - Progress manager
+ */
+async function performRummageWorkflow(dm, selectionManager, dumpsterName, options, pm) {
+  try {
+    // Get search query and options
+    const searchQuery = await CliPrompts.promptSearchQuery();
+    const searchOptions = await CliPrompts.promptSearchOptions();
+
+    pm.start('searching', `Searching chats in "${dumpsterName}"...`);
+
+    // Perform search
+    let searchResults;
+    if (searchQuery.trim() === '') {
+      // No query - show recent chats
+      const limit = options.limit || (await CliPrompts.promptForChatLimit());
+      searchResults = await dm.getChats(dumpsterName, limit);
+      pm.succeed(
+        `Found ${searchResults.length} recent chat${searchResults.length !== 1 ? 's' : ''}`
+      );
+    } else {
+      // Perform actual search
+      searchResults = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
+      pm.succeed(
+        `Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+      );
+    }
+
+    if (searchResults.length === 0) {
+      console.log(
+        chalk.yellow('No chats found. Try a different search term or options.')
+      );
+      return;
+    }
+
+    // Display search results and allow selection
+    const selectedChats = await CliPrompts.selectMultipleChats(searchResults, {
+      showPreviews: searchQuery.trim() !== '',
+      searchQuery,
+    });
+
+    if (selectedChats.length === 0) {
+      console.log(chalk.yellow('No chats selected.'));
+      return;
+    }
+
+    // Prompt for action on selected chats
+    const action = await CliPrompts.promptSelectionActions(selectedChats.length);
+
+    switch (action) {
+      case 'add_to_selection':
+        await addChatsToSelection(selectionManager, selectedChats);
+        console.log(
+          chalk.green(
+            `✅ Added ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''} to selection bin`
+          )
+        );
+        break;
+      case 'upcycle_selected':
+        await upcycleSelectedChats(selectedChats);
+        break;
+      case 'view_details':
+        await viewChatDetails(selectedChats);
+        break;
+      default:
+        console.log(chalk.yellow('Action cancelled.'));
+    }
+  } catch (error) {
+    pm.fail('Rummage workflow failed');
+    throw error;
+  }
+}
+
+/**
+ * Add selected chats to selection bin
+ * @param {SelectionManager} selectionManager - SelectionManager instance
+ * @param {Array} selectedChats - Array of selected chat objects
+ */
+async function addChatsToSelection(selectionManager, selectedChats) {
+  const chatData = selectedChats.map(chat => ({
+    chatId: chat.filename,
+    filename: chat.filename,
+    title: chat.title || 'Untitled',
+    sourceDumpster: chat.dumpsterName,
+    addedAt: Date.now(),
+    metadata: {
+      messageCount: chat.messageCount || 0,
+      createTime: chat.create_time,
+      updateTime: chat.update_time,
+      preview: chat.title || 'Untitled',
+    },
+  }));
+
+  await selectionManager.addChats(chatData);
+}
+
+/**
+ * Upcycle selected chats directly
+ * @param {Array} selectedChats - Array of selected chat objects
+ */
+async function upcycleSelectedChats(selectedChats) {
+  const { DumpsterManager } = require('./utils/DumpsterManager');
+  const dm = new DumpsterManager(__dirname);
+  await dm.initialize();
+
+  const selectionManager = new SelectionManager(__dirname);
+
+  // Temporarily add selected chats to selection bin
+  await addChatsToSelection(selectionManager, selectedChats);
+
+  // Trigger upcycle command with selection bin
+  console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
+
+  // Execute upcycle with selection bin
+  const UpcycleManager = require('./utils/UpcycleManager');
+  const upcycleManager = new UpcycleManager(dm);
+
+  const format = await CliPrompts.selectExportFormat();
+  const result = await upcycleManager.upcycleSelection(format, {
+    includeMedia: true,
+    verbose: true,
+  });
+
+  // Display results
+  const { generateExportReport } = require('./utils/upcycleHelpers');
+  const report = generateExportReport(result, true);
+  console.log(report);
+}
+
+/**
+ * View detailed information about selected chats
+ * @param {Array} selectedChats - Array of selected chat objects
+ */
+async function viewChatDetails(selectedChats) {
+  console.log(chalk.blue('\n📋 Selected Chat Details:'));
+
+  for (const chat of selectedChats) {
+    console.log(`\n${chalk.green('📝 ' + (chat.title || 'Untitled'))}`);
+    console.log(
+      `   📅 Created: ${chat.create_time ? new Date(chat.create_time * 1000).toLocaleDateString() : 'Unknown'}`
+    );
+    console.log(`   💬 Messages: ${chat.messageCount || 'Unknown'}`);
+    console.log(`   📁 File: ${chat.filename}`);
+
+    if (chat.preview) {
+      console.log(
+        `   👁️  Preview: ${chat.preview.substring(0, 100)}${chat.preview.length > 100 ? '...' : ''}`
+      );
+    }
+  }
+}
+
+/**
+ * Display current selection bin status
+ * @param {SelectionManager} selectionManager - SelectionManager instance
+ */
+async function displaySelectionBinStatus(selectionManager) {
+  try {
+    const selectionStats = await selectionManager.getSelectionStats();
+
+    if (selectionStats.totalCount === 0) {
+      console.log(chalk.yellow('\n📋 Selection bin is currently empty.'));
+      return;
+    }
+
+    console.log(chalk.blue('\n📋 Current Selection Bin:'));
+    console.log(
+      `   ${selectionStats.totalCount} chat${selectionStats.totalCount !== 1 ? 's' : ''} selected`
+    );
+
+    const totalMessages = Object.values(selectionStats.chatsByDumpster || {}).reduce(
+      (sum, chats) =>
+        sum +
+        chats.reduce((msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0), 0),
+      0
+    );
+
+    if (totalMessages > 0) {
+      console.log(`   ${totalMessages} total messages`);
+    }
+
+    const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+    if (dumpsterCount > 0) {
+      console.log(`   From ${dumpsterCount} dumpster${dumpsterCount !== 1 ? 's' : ''}`);
+    }
+
+    // Show recent selections
+    console.log(chalk.dim('\n📜 Recent selections:'));
+    Object.entries(selectionStats.chatsByDumpster).forEach(([name, chats]) => {
+      console.log(`   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`);
+    });
+  } catch (error) {
+    console.log(chalk.red(`❌ Failed to load selection bin status: ${error.message}`));
+  }
+}
+
+/**
+ * Prompt user to upcycle from current selection bin
+ */
+async function promptUpcycleFromSelection() {
+  const { DumpsterManager } = require('./utils/DumpsterManager');
+  const dm = new DumpsterManager(__dirname);
+  await dm.initialize();
+
+  const UpcycleManager = require('./utils/UpcycleManager');
+  const upcycleManager = new UpcycleManager(dm);
+
+  const format = await CliPrompts.selectExportFormat();
+  const result = await upcycleManager.upcycleSelection(format, {
+    includeMedia: true,
+    verbose: true,
+  });
+
+  const { generateExportReport } = require('./utils/upcycleHelpers');
+  const report = generateExportReport(result, true);
+  console.log(report);
+}
 
 program.parse();
