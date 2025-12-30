@@ -2,7 +2,7 @@
 
 A Node.js CLI tool to process and explore exported ChatGPT conversation data. Transform ZIP exports into organized, searchable dumpsters with extracted media assets.
 
-[![version](https://img.shields.io/badge/version-0.0.4-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
+[![version](https://img.shields.io/badge/version-0.0.5-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
 
 ## 🗑️ What It Does
 
@@ -145,6 +145,31 @@ data/
 - **Size Limits**: Configurable limits for uploads and extracted content
 - **Input Validation**: Comprehensive parameter validation throughout
 
+## 🧪 Testing
+
+The project includes a comprehensive shell-based test suite for realistic CLI testing:
+
+```bash
+# Run the main test suite
+npm test
+
+# Run specific test categories
+npm run test:basic        # Basic functionality tests
+npm run test:workflows    # End-to-end workflow tests
+npm run test:with-logs    # Tests with detailed logging
+
+# Test data management
+npm run test:setup        # Generate synthetic test data and ZIP file
+npm run test:cleanup      # Clean up test artifacts
+```
+
+### Test Structure
+
+- **Shell Script Tests**: Real CLI command testing with actual scenarios
+- **Synthetic Test Data**: Consistent, reproducible ChatGPT export structure
+- **Workflow Testing**: End-to-end validation of complete user workflows
+- **Quick Validation**: Fast tests for basic functionality verification
+
 ## 📦 Requirements
 
 - **Node.js**: >=14.0.0
@@ -172,4 +197,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Version**: 0.0.4 | **Last Updated**: 2024-12-29
+**Version**: 0.0.5 | **Last Updated**: 2025-12-29

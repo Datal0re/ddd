@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v0.0.5 - 2024-12-29
+
+### Bug Fixes and Critical Improvements
+
+- **Fixed Output Directory Bug**: Resolved critical issue where `--output` parameter wasn't being mapped to `outputDir` in upcycle commands
+- **Version Bump**: Updated package.json to version 0.0.5
+- **Enhanced Reliability**: Improved CLI parameter handling for export functionality
+
+### Testing Infrastructure Overhaul
+
+- **Replaced Node.js Test Suite**: Removed outdated Node.js tests (`full-suite-test.js`, `help-test.js`, `progress-demo.js`, etc.)
+- **Added Shell-Based Testing**: Implemented comprehensive shell script test suite for more realistic CLI testing
+  - `minimal-test.sh`: Basic functionality testing
+  - `minimal-workflow-test.sh`: End-to-end workflow testing
+  - `simple-test.sh`: Quick validation tests
+- **Synthetic Test Data Generator**: Added `generate-test-data.js` for consistent, reproducible test data
+- **Synthetic Test Data**: Created `tests/test-basic-synthetic/` with sample ChatGPT export structure
+- **New Test Commands**: Updated package.json with comprehensive test scripts:
+  - `npm test`: Run main test suite
+  - `npm run test:basic`: Run basic functionality tests
+  - `npm run test:workflows`: Run workflow integration tests
+  - `npm run test:setup`: Generate test data and ZIP file
+  - `npm run test:cleanup`: Clean up test artifacts
+
+### Development Workflow Improvements
+
+- **Simplified Testing**: Shell scripts provide more accurate CLI behavior testing
+- **Better Test Coverage**: New test suite covers real-world usage scenarios
+- **Easier Maintenance**: Shell-based tests are easier to understand and modify
+- **Consistent Test Data**: Synthetic data ensures reliable, repeatable tests
+
 ## v0.0.4 - 2024-12-29
 
 ### Enhanced Interactive CLI Experience

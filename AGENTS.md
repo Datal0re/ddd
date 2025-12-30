@@ -86,10 +86,13 @@ npm run lint:fix         # Run ESLint with auto-fix
 npm run format           # Format code with Prettier
 npm run format:check     # Check code formatting
 
-# Testing
-npm test                 # Run full test suite
-npm run test:help        # Test CLI help functionality
-npm run test:validate    # Test validation utilities
+# Testing (Shell-based CLI testing)
+npm test                 # Run main test suite
+npm run test:basic       # Basic functionality tests
+npm run test:workflows   # End-to-end workflow tests
+npm run test:with-logs   # Tests with detailed logging
+npm run test:setup       # Generate synthetic test data
+npm run test:cleanup     # Clean up test artifacts
 ```
 
 ### CLI Commands (using ddd binary)
@@ -136,7 +139,7 @@ ddd upcycle              # Export dumpsters to various formats (interactive)
 ```text
 data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point (binary: ddd)
-├── package.json              # Dependencies and scripts (v0.0.4)
+├── package.json              # Dependencies and scripts (v0.0.5)
 ├── eslint.config.js         # ESLint configuration
 ├── .prettierrc.json         # Prettier configuration
 ├── .prettierignore          # Prettier ignore rules
@@ -163,15 +166,17 @@ data-dumpster-diver/
 │       ├── HTMLFormatter.js  # HTML export formatter
 │       ├── MDFormatter.js    # Markdown export formatter
 │       └── TXTFormatter.js   # Plain text export formatter
-├── tests/                  # Comprehensive test suite
-│   ├── full-suite-test.js   # Full test suite
-│   ├── help-test.js         # Help functionality tests
-│   ├── test-progress.js     # Progress manager tests
-│   ├── test-spinner.js      # Spinner functionality tests
-│   ├── test-utils.js        # Utility tests
-│   ├── progress-demo.js     # Progress demonstration
-│   ├── full_suite.test.zsh  # Shell test suite
-│   └── help.test.zsh        # Shell help tests
+├── tests/                  # Shell-based test suite
+│   ├── README.md            # Test documentation
+│   ├── generate-test-data.js # Synthetic test data generator
+│   ├── minimal-test.sh      # Basic functionality tests
+│   ├── minimal-workflow-test.sh # End-to-end workflow tests
+│   ├── simple-test.sh       # Quick validation tests
+│   └── test-basic-synthetic/ # Synthetic test data
+│       ├── conversations.json
+│       ├── user.json
+│       ├── message_feedback.json
+│       └── chat.html
 ├── AGENTS.md               # Development guidelines (this file)
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License
@@ -215,6 +220,7 @@ All commands use interactive prompts when arguments are omitted, making the CLI 
 - **Options**: `-o/--output <path>`, `--include-media`, `--self-contained`, `-v/--verbose`
 - **Interactive**: Prompts for format selection and dumpster choice
 - **Backend**: Uses `UpcycleManager.js` and formatter system
+- **Note**: Fixed in v0.0.5 - `--output` parameter now properly maps to output directory
 
 ## Export Formatters
 
@@ -273,17 +279,20 @@ Configuration is handled through `config/constants.js`:
 
 ## Testing
 
-The project includes comprehensive test coverage:
+The project includes comprehensive test coverage using shell-based CLI testing:
 
 ### Automated Testing
 
 ```bash
-# Run all tests
+# Run main test suite
 npm test
 
 # Run specific test suites
-npm run test:help        # Test CLI help functionality
-npm run test:validate    # Test validation utilities
+npm run test:basic        # Basic functionality tests
+npm run test:workflows    # End-to-end workflow tests
+npm run test:with-logs    # Tests with detailed logging
+npm run test:setup        # Generate synthetic test data and ZIP file
+npm run test:cleanup      # Clean up test artifacts
 ```
 
 ### Manual Testing
@@ -302,10 +311,11 @@ ddd upcycle txt test --output ./tests/upcycle-bin
 
 ### Test Structure
 
-- **Unit Tests**: Individual utility function testing
-- **Integration Tests**: CLI command testing with real scenarios
-- **Shell Script Tests**: End-to-end testing using `full_suite.test.zsh`
-- **Progress System Tests**: Dedicated tests for progress tracking
+- **Shell Script Tests**: Real CLI command testing with actual scenarios
+- **Synthetic Test Data**: Consistent, reproducible ChatGPT export structure in `test-basic-synthetic/`
+- **Workflow Testing**: End-to-end validation of complete user workflows
+- **Quick Validation**: Fast tests for basic functionality verification
+- **Test Data Management**: Automated setup and cleanup of test artifacts
 
 ## Dependency Management
 
