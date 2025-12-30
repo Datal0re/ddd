@@ -25,7 +25,8 @@ coverage/
 lib-cov
 *.zip
 tests/*.txt
-tests/upcycles/
+tests/upcycle-bin/
+tests/test-basic-synthetic/
 
 # Build outputs
 dist/
