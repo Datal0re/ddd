@@ -2,7 +2,7 @@
 
 const { Command } = require('commander');
 const chalk = require('chalk');
-const logo = require('./logo')
+const logo = require('./logo');
 
 const { ErrorHandler } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
@@ -19,7 +19,7 @@ program
 CLI tool to process and explore exported ChatGPT conversation data
 `
   )
-  .version('0.0.4');
+  .version('0.0.5');
 
 program
   .command('dump')
@@ -489,6 +489,7 @@ program
 
       const result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
         ...validatedOptions,
+        outputDir: validatedOptions.output,
         onProgress,
       });
 
