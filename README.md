@@ -8,9 +8,9 @@ A Node.js CLI tool to process and explore exported ChatGPT conversation data. Tr
 
 - **Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters (interactive)
 - **Hoard**: View your collection of processed dumpsters
-- **Rummage**: Explore chats within specific dumpsters (interactive)
+- **Rummage**: Search and select chats from dumpsters for export (interactive with multi-select)
 - **Burn**: Safely delete dumpsters with confirmation prompts and text verification
-- **Upcycle**: Export dumpsters to various formats (HTML, Markdown, Text)
+- **Upcycle**: Export dumpsters or selection bin to various formats (HTML, Markdown, Text)
 - **Organize**: Automatically extract and organize media assets (images, files, audio)
 - **Secure**: Validate ZIP files against path traversal and zip bomb attacks
 - **Interactive**: User-friendly prompts when arguments are omitted
@@ -44,9 +44,9 @@ ddd dump  # Will prompt for file path and name
 ddd hoard
 ddd hoard --verbose  # Detailed view with creation dates
 
-# Explore chats in a dumpster (interactive selection)
-ddd rummage my-chats --limit 10
-ddd rummage  # Will prompt for dumpster and limit
+# Search and select chats from dumpsters (interactive workflow)
+ddd rummage
+# Will prompt for dumpster, search query, and selection options
 
 # Burn (delete) a dumpster safely (with confirmation and text verification)
 ddd burn my-chats
@@ -56,7 +56,7 @@ ddd burn --force    # Skip confirmation
 # Export dumpsters to various formats (interactive prompts)
 ddd upcycle txt my-chats --output ./exports
 ddd upcycle html my-chats --include-media --self-contained
-ddd upcycle  # Will prompt for format and dumpster
+ddd upcycle  # Will prompt for format and export source (dumpster vs selection bin)
 
 # Get help
 ddd --help

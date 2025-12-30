@@ -9,6 +9,7 @@ const { ErrorHandler } = require('./ErrorHandler');
 const FileUtils = require('./FileUtils');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
+const { SelectionManager } = require('./SelectionManager');
 const fs = require('fs').promises;
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
@@ -18,6 +19,7 @@ class UpcycleManager {
   constructor(dumpsterManager, progressManager = null) {
     this.dumpsterManager = dumpsterManager;
     this.progressManager = progressManager;
+    this.selectionManager = new SelectionManager(dumpsterManager.baseDir);
     this.formatters = {
       md: MDFormatter,
       txt: TXTFormatter,
@@ -59,6 +61,150 @@ class UpcycleManager {
     };
 
     return { ...defaultOptions, ...options };
+  }
+
+  /**
+   * Upcycle selection bin to specified format
+   * @param {string} format - Export format
+   * @param {Object} options - Export options
+   * @returns {Promise<Object>} Upcycle result
+   */
+  async upcycleSelection(format, options = {}) {
+    const assetErrorTracker = new AssetErrorTracker();
+
+    try {
+      const validatedOptions = this.validateUpcycleOptions(format, options);
+      const formatter = this.formatters[format];
+      const chatUpcycler = new ChatUpcycler(this.dumpsterManager.baseDir);
+
+      // Use the passed progress manager if available, otherwise create one
+      const pm =
+        this.progressManager || createProgressManager(null, validatedOptions.verbose);
+
+      // Load selection and get chats grouped by dumpster
+      pm.start('loading', 'Loading selection bin...');
+
+      const chatsByDumpster = await this.selectionManager.getChatsByDumpster();
+
+      if (Object.keys(chatsByDumpster).length === 0) {
+        throw new Error('Selection bin is empty');
+      }
+
+      pm.succeed(
+        `Found chats in ${Object.keys(chatsByDumpster).length} dumpster${Object.keys(chatsByDumpster).length !== 1 ? 's' : ''}`
+      );
+
+      // Switch to progress bar for chat processing
+      if (pm.spinner && pm.spinnerActive) {
+        pm.stop();
+      }
+
+      // Create output directory
+      const outputDir = FileUtils.joinPath(
+        validatedOptions.outputDir,
+        `selection-${format}`
+      );
+      await FileUtils.ensureDirectory(outputDir);
+
+      let totalProcessed = 0;
+      let totalSkipped = 0;
+      const allResults = [];
+      const totalChats = Object.values(chatsByDumpster).reduce(
+        (sum, chats) => sum + chats.length,
+        0
+      );
+
+      pm.update('processing', 20, `Processing ${totalChats} selected chats...`);
+
+      // Create a progress bar for chat processing
+      const chatProgressBar = pm.createProgressBar(
+        totalChats,
+        'Processing selected chats'
+      );
+
+      // Process each dumpster's selected chats
+      for (const [dumpsterName, selectedChats] of Object.entries(chatsByDumpster)) {
+        pm.update(
+          'processing',
+          20 + (totalProcessed / totalChats) * 60,
+          `Processing chats from ${dumpsterName}...`
+        );
+
+        // Load full chat data for each selected chat
+        for (let i = 0; i < selectedChats.length; i++) {
+          const selectedItem = selectedChats[i];
+
+          try {
+            // Load full chat data
+            const chat = await this.dumpsterManager.getChat(
+              dumpsterName,
+              selectedItem.filename
+            );
+
+            const result = await this.upcycleChat(
+              dumpsterName,
+              chat,
+              format,
+              formatter,
+              chatUpcycler,
+              outputDir,
+              validatedOptions,
+              assetErrorTracker
+            );
+
+            allResults.push(result);
+            totalProcessed++;
+          } catch (error) {
+            assetErrorTracker.addError('chat_processing', error.message, {
+              chatTitle: selectedItem.title || 'Untitled',
+              chatId: selectedItem.filename,
+              dumpsterName,
+            });
+            totalSkipped++;
+          }
+
+          // Update progress bar
+          chatProgressBar.update(totalProcessed + totalSkipped, {
+            dumpster: dumpsterName,
+            processed: totalProcessed,
+            skipped: totalSkipped,
+          });
+        }
+      }
+
+      pm.update('finalizing', 90, 'Finalizing upcycle...');
+
+      chatProgressBar.update(totalChats, {
+        total_processed: totalProcessed,
+        total_skipped: totalSkipped,
+      });
+
+      // Final progress completion
+      pm.update(
+        'completed',
+        100,
+        `Selection upcycle complete! Processed ${totalProcessed} chats.`
+      );
+
+      const assetErrorSummary = assetErrorTracker.getErrorSummary();
+
+      return {
+        success: true,
+        source: 'selection',
+        dumpsterCount: Object.keys(chatsByDumpster).length,
+        format,
+        outputDir,
+        total: totalChats,
+        processed: totalProcessed,
+        skipped: totalSkipped,
+        files: allResults.map(r => r.filename).filter(f => f),
+        options: validatedOptions,
+        assetErrors: assetErrorSummary,
+      };
+    } catch (error) {
+      ErrorHandler.logError('Selection upcycle failed');
+      throw error;
+    }
   }
 
   /**

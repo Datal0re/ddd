@@ -1,6 +1,7 @@
-const { input, select, confirm } = require('@inquirer/prompts');
+const { input, select, confirm, checkbox } = require('@inquirer/prompts');
 const { SchemaValidator } = require('./SchemaValidator');
 const fs = require('fs').promises;
+const { UI_CONFIG } = require('../config/constants');
 
 /**
  * Common CLI prompt utilities for Data Dumpster Diver
@@ -100,7 +101,8 @@ class CliPrompts {
         const num = parseInt(inputValue);
         if (isNaN(num)) return 'Please enter a number';
         if (num < 1) return 'Must show at least 1 chat';
-        if (num > 100) return 'Maximum 100 chats at once';
+        if (num > UI_CONFIG.MAX_CHAT_SELECTION)
+          return `Maximum ${UI_CONFIG.MAX_CHAT_SELECTION} chats at once`;
         return true;
       },
     });
@@ -135,6 +137,203 @@ class CliPrompts {
           if (!input.trim()) return 'Please enter a value';
           return true;
         }),
+    });
+  }
+
+  /**
+   * Prompt user for search query
+   * @param {string} message - Prompt message
+   * @returns {Promise<string>} Search query (can be empty)
+   */
+  static async promptSearchQuery(
+    message = '🔍 Enter search query (leave empty to show all):'
+  ) {
+    return await input({
+      message,
+      default: '', // Allow empty input for "show all"
+    });
+  }
+
+  /**
+   * Prompt user for search options
+   * @returns {Promise<Object>} Search options object
+   */
+  static async promptSearchOptions() {
+    const scope = await select({
+      message: '📋 Search scope:',
+      default: 'all',
+      choices: [
+        {
+          name: '🔤 Search in titles and messages',
+          value: 'all',
+        },
+        {
+          name: '📝 Search in titles only',
+          value: 'title',
+        },
+        {
+          name: '💬 Search in message content only',
+          value: 'content',
+        },
+      ],
+    });
+
+    const caseSensitive = await confirm({
+      message: '🔤 Case sensitive search?',
+      default: false,
+    });
+
+    return {
+      scope,
+      caseSensitive,
+    };
+  }
+
+  /**
+   * Prompt user to select multiple chats using checkboxes
+   * @param {Array} searchResults - Array of search result objects
+   * @param {string} message - Prompt message
+   * @param {Array} defaultSelected - Array of default selected chat IDs
+   * @returns {Promise<Array>} Array of selected chat objects
+   */
+  static async selectMultipleChats(searchResults, message, defaultSelected = []) {
+    const choices = searchResults.map((result, index) => {
+      const chat = result.chat;
+      const title = chat.title || 'Untitled Chat';
+      const timestamp = chat.update_time || chat.create_time;
+      const dateStr = timestamp
+        ? new Date(timestamp * 1000).toLocaleDateString()
+        : 'Unknown date';
+
+      // Show match information if available
+      let matchInfo = '';
+      if (result.searchResult && result.searchResult.matchCount > 0) {
+        matchInfo = ` - ${result.searchResult.matchCount} match${result.searchResult.matchCount !== 1 ? 'es' : ''}`;
+      }
+
+      return {
+        name: `${index + 1}. ${title} (${dateStr})${matchInfo}`,
+        value: result.chat.filename,
+        checked: defaultSelected.includes(result.chat.filename),
+      };
+    });
+
+    const selectedFilenames = await checkbox({
+      message,
+      choices,
+      pageSize: UI_CONFIG.CHECKBOX_PAGE_SIZE, // Show items at a time
+    });
+
+    // Return the full chat objects for selected items
+    return searchResults
+      .filter(result => selectedFilenames.includes(result.chat.filename))
+      .map(result => result.chat);
+  }
+
+  /**
+   * Prompt user for action after selecting chats
+   * @param {Array} selectedChats - Array of selected chat objects
+   * @param {Object} _selectionStats - Selection statistics (optional, unused)
+   * @returns {Promise<string>} Selected action
+   */
+  static async promptSelectionActions(selectedChats, _selectionStats = null) {
+    const message = `📊 Selected: ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''}`;
+
+    const choices = [
+      {
+        name: `📋 Add to selection bin`,
+        value: 'add-to-bin',
+      },
+      {
+        name: `🔄 Upcycle selected chats`,
+        value: 'upcycle',
+      },
+      {
+        name: '🔍 New search in same dumpster',
+        value: 'new-search',
+      },
+      {
+        name: '🗑️ Switch dumpster',
+        value: 'switch-dumpster',
+      },
+      {
+        name: '❌ Quit',
+        value: 'quit',
+      },
+    ];
+
+    return await select({
+      message,
+      choices,
+    });
+  }
+
+  /**
+   * Prompt user for upcycle source selection
+   * @param {Object} selectionStats - Current selection statistics
+   * @returns {Promise<string>} Selection choice
+   */
+  static async promptUpcycleSource(selectionStats) {
+    const choices = [
+      {
+        name: '📦 Export entire dumpster',
+        value: 'dumpster',
+      },
+    ];
+
+    if (selectionStats && selectionStats.totalCount > 0) {
+      choices.unshift({
+        name: `📋 Export from selection bin (${selectionStats.totalCount} chats)`,
+        value: 'selection',
+      });
+    }
+
+    if (choices.length === 1) {
+      console.log('📋 Selection bin is empty, will export from dumpster.');
+      return 'dumpster';
+    }
+
+    return await select({
+      message: '🔄 Choose export source:',
+      choices,
+    });
+  }
+
+  /**
+   * Prompt user to confirm selection action
+   * @param {string} action - Action being performed
+   * @param {number} count - Number of items
+   * @returns {Promise<boolean>} User confirmation
+   */
+  static async confirmSelectionAction(action, count) {
+    return await confirm({
+      message: `${action} ${count} chat${count !== 1 ? 's' : ''}?`,
+      default: true,
+    });
+  }
+
+  /**
+   * Prompt user to continue or quit after an action
+   * @param {string} action - Action that was completed
+   * @returns {Promise<string>} User choice
+   */
+  static async promptContinueOrQuit(action) {
+    return await select({
+      message: `${action} What would you like to do next?`,
+      choices: [
+        {
+          name: '🔍 Search again',
+          value: 'search-again',
+        },
+        {
+          name: '🗑️ Switch dumpster',
+          value: 'switch-dumpster',
+        },
+        {
+          name: '❌ Quit',
+          value: 'quit',
+        },
+      ],
     });
   }
 }
