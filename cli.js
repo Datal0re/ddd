@@ -243,6 +243,28 @@ program // TODO: update help info to match new functionality in rummage
             await displaySelectionBinStatus(selectionManager);
             continueRummaging = true;
             break;
+          case 'clear_selection': {
+            const isEmpty = await selectionManager.isEmpty();
+            if (isEmpty) {
+              console.log(chalk.yellow('📋 Selection bin is already empty.'));
+            } else {
+              const currentCount = await selectionManager.getSelectionCount();
+              const confirmed = await CliPrompts.confirmSelectionAction(
+                'Clear',
+                currentCount
+              );
+              if (confirmed) {
+                await selectionManager.clearSelection();
+                console.log(
+                  chalk.green(
+                    `✅ Selection bin cleared successfully (${currentCount} chat${currentCount !== 1 ? 's' : ''} removed).`
+                  )
+                );
+              }
+            }
+            continueRummaging = true;
+            break;
+          }
           case 'upcycle_selection':
             await promptUpcycleFromSelection();
             continueRummaging = false; // Exit after upcycle
@@ -428,25 +450,22 @@ program
 
       // Check selection bin status first to provide context
       const selectionManager = new SelectionManager(__dirname);
-      const selectionStats = await selectionManager.getSelectionStats();
+      const chatsByDumpster = await selectionManager.getChatsByDumpster();
+
+      // Calculate totals from detailed chat data
+      const allChats = Object.values(chatsByDumpster).flat();
+      const totalCount = allChats.length;
 
       // Display selection bin status if it has content
-      if (selectionStats.totalCount > 0 && !dumpsterName) {
-        const totalMessages = Object.values(
-          selectionStats.chatsByDumpster || {}
-        ).reduce(
-          (sum, chats) =>
-            sum +
-            chats.reduce(
-              (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
-              0
-            ),
+      if (totalCount > 0 && !dumpsterName) {
+        const totalMessages = allChats.reduce(
+          (sum, chat) => sum + (chat.metadata?.messageCount || 0),
           0
         );
-        const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+        const dumpsterCount = Object.keys(chatsByDumpster).length;
 
         console.log(chalk.blue(`\n📋 Selection Bin Status:`));
-        console.log(`   ${selectionStats.totalCount} chats selected`);
+        console.log(`   ${totalCount} chats selected`);
         if (totalMessages > 0) {
           console.log(`   ${totalMessages} total messages`);
         }
@@ -455,7 +474,7 @@ program
             `   From ${dumpsterCount} dumpster${dumpsterCount !== 1 ? 's' : ''}`
           );
           // Show dumpsters with chat counts
-          Object.entries(selectionStats.chatsByDumpster).forEach(([name, chats]) => {
+          Object.entries(chatsByDumpster).forEach(([name, chats]) => {
             console.log(
               `   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`
             );
@@ -483,7 +502,7 @@ program
       // If no dumpster name provided, determine if we should use selection bin
       let exportSource = 'dumpster'; // Default
       if (!dumpsterName) {
-        exportSource = await CliPrompts.promptUpcycleSource(selectionStats);
+        exportSource = await CliPrompts.promptUpcycleSource();
 
         if (exportSource === 'dumpster') {
           // Only prompt for dumpster if user chose dumpster export
@@ -522,10 +541,9 @@ program
       // Log export source
       if (validatedOptions.verbose) {
         if (exportSource === 'selection') {
+          const selectionCount = await selectionManager.getSelectionCount();
           console.log(
-            chalk.blue(
-              `🔄 Upcycling selection bin (${selectionStats.totalCount} chats)`
-            )
+            chalk.blue(`🔄 Upcycling selection bin (${selectionCount} chats)`)
           );
         } else {
           console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
@@ -741,7 +759,7 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
     }
 
     // Prompt for action on selected chats
-    const action = await CliPrompts.promptSelectionActions(selectedChats.length);
+    const action = await CliPrompts.promptSelectionActions(selectedChats);
 
     switch (action) {
       case 'add-to-bin':
@@ -753,7 +771,7 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
         );
         break;
       case 'upcycle':
-        await upcycleSelectedChats(selectedChats);
+        await upcycleSelectedChats(selectedChats, dumpsterName);
         return { exit: true }; // Signal main loop to exit after upcycle
       case 'new-search':
         // User wants to search again, no action needed
@@ -800,8 +818,9 @@ async function addChatsToSelection(selectionManager, selectedChats, dumpsterName
 /**
  * Upcycle selected chats directly
  * @param {Array} selectedChats - Array of selected chat objects
+ * @param {string} dumpsterName - Source dumpster name
  */
-async function upcycleSelectedChats(selectedChats) {
+async function upcycleSelectedChats(selectedChats, dumpsterName) {
   const { DumpsterManager } = require('./utils/DumpsterManager');
   const dm = new DumpsterManager(__dirname);
   await dm.initialize();
@@ -809,8 +828,7 @@ async function upcycleSelectedChats(selectedChats) {
   const selectionManager = new SelectionManager(__dirname);
 
   // Temporarily add selected chats to selection bin
-  const firstChatSource = selectedChats[0]?.dumpsterName || 'unknown';
-  await addChatsToSelection(selectionManager, selectedChats, firstChatSource);
+  await addChatsToSelection(selectionManager, selectedChats, dumpsterName);
 
   // Trigger upcycle command with selection bin
   console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
@@ -837,28 +855,29 @@ async function upcycleSelectedChats(selectedChats) {
  */
 async function displaySelectionBinStatus(selectionManager) {
   try {
-    const selectionStats = await selectionManager.getSelectionStats();
+    // Use getChatsByDumpster for detailed information
+    const chatsByDumpster = await selectionManager.getChatsByDumpster();
 
-    // Validate selectionStats structure
-    if (!selectionStats || typeof selectionStats !== 'object') {
+    // Validate structure
+    if (!chatsByDumpster || typeof chatsByDumpster !== 'object') {
       console.log(chalk.yellow('\n📋 Selection bin status unavailable.'));
       return;
     }
 
-    if (selectionStats.totalCount === 0) {
+    // Calculate totals
+    const allChats = Object.values(chatsByDumpster).flat();
+    const totalCount = allChats.length;
+
+    if (totalCount === 0) {
       console.log(chalk.yellow('\n📋 Selection bin is currently empty.'));
       return;
     }
 
     console.log(chalk.blue('\n📋 Current Selection Bin:'));
-    console.log(
-      `   ${selectionStats.totalCount} chat${selectionStats.totalCount !== 1 ? 's' : ''} selected`
-    );
+    console.log(`   ${totalCount} chat${totalCount !== 1 ? 's' : ''} selected`);
 
-    const totalMessages = Object.values(selectionStats.chatsByDumpster || {}).reduce(
-      (sum, chats) =>
-        sum +
-        chats.reduce((msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0), 0),
+    const totalMessages = allChats.reduce(
+      (sum, chat) => sum + (chat.metadata?.messageCount || 0),
       0
     );
 
@@ -866,14 +885,14 @@ async function displaySelectionBinStatus(selectionManager) {
       console.log(`   ${totalMessages} total messages`);
     }
 
-    const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+    const dumpsterCount = Object.keys(chatsByDumpster).length;
     if (dumpsterCount > 0) {
       console.log(`   From ${dumpsterCount} dumpster${dumpsterCount !== 1 ? 's' : ''}`);
     }
 
-    // Show recent selections
-    console.log(chalk.dim('\n📜 Recent selections:'));
-    Object.entries(selectionStats.chatsByDumpster).forEach(([name, chats]) => {
+    // Show breakdown by dumpster
+    console.log(chalk.dim('\n📜 Breakdown by dumpster:'));
+    Object.entries(chatsByDumpster).forEach(([name, chats]) => {
       console.log(`   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`);
     });
   } catch (error) {

@@ -279,7 +279,7 @@ class CliPrompts {
    * @param {Object} selectionStats - Current selection statistics
    * @returns {Promise<string>} Selection choice
    */
-  static async promptUpcycleSource(selectionStats) {
+  static async promptUpcycleSource(_selectionStats) {
     const choices = [
       {
         name: '📦 Export entire dumpster',
@@ -287,9 +287,15 @@ class CliPrompts {
       },
     ];
 
-    if (selectionStats && selectionStats.totalCount > 0) {
+    // Get actual chats by dumpster for accurate information
+    const { SelectionManager } = require('./SelectionManager');
+    const selectionManager = new SelectionManager(process.cwd());
+    const chatsByDumpster = await selectionManager.getChatsByDumpster();
+    const totalCount = Object.values(chatsByDumpster).flat().length;
+
+    if (totalCount > 0) {
       // Calculate additional stats for better UX
-      const totalMessages = Object.values(selectionStats.chatsByDumpster || {}).reduce(
+      const totalMessages = Object.values(chatsByDumpster).reduce(
         (sum, chats) =>
           sum +
           chats.reduce(
@@ -298,9 +304,9 @@ class CliPrompts {
           ),
         0
       );
-      const dumpsterCount = Object.keys(selectionStats.chatsByDumpster || {}).length;
+      const dumpsterCount = Object.keys(chatsByDumpster).length;
 
-      let selectionDescription = `📋 Export from selection bin (${selectionStats.totalCount} chats`;
+      let selectionDescription = `📋 Export from selection bin (${totalCount} chats`;
       if (totalMessages > 0) {
         selectionDescription += `, ${totalMessages} messages`;
       }
@@ -353,6 +359,7 @@ class CliPrompts {
         { name: '🔍 New search', value: 'new_search' },
         { name: '🔄 Switch dumpster', value: 'switch_dumpster' },
         { name: '📋 View selection bin', value: 'view_selection' },
+        { name: '🗑️ Clear selection bin', value: 'clear_selection' },
         { name: '🚀 Export selection bin', value: 'upcycle_selection' },
         { name: '👋 Quit', value: 'quit' },
       ],
@@ -371,6 +378,7 @@ class CliPrompts {
         { name: '🔍 New search', value: 'new_search' },
         { name: '🔄 Switch dumpster', value: 'switch_dumpster' },
         { name: '📋 View selection bin', value: 'view_selection' },
+        { name: '🗑️ Clear selection bin', value: 'clear_selection' },
         { name: '🚀 Export selection', value: 'upcycle_selection' },
         { name: '👋 Quit', value: 'quit' },
       ],

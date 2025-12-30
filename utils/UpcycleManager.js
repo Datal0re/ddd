@@ -632,31 +632,6 @@ class UpcycleManager {
         }
       }
     }
-
-    // Additionally, copy the entire media directory recursively to catch any files not in mapping
-    try {
-      const dumpsterMediaDir = FileUtils.joinPath(
-        this.dumpsterManager.baseDir,
-        'data/dumpsters',
-        dumpsterName,
-        'media'
-      );
-
-      if (await FileUtils.fileExists(dumpsterMediaDir)) {
-        await FileUtils.copyDirectory(dumpsterMediaDir, mediaDir);
-      }
-    } catch (error) {
-      if (assetErrorTracker) {
-        assetErrorTracker.addWarning(
-          'media_directory_copy_failed',
-          'Failed to recursively copy media directory',
-          {
-            dumpsterName,
-            error: error.message,
-          }
-        );
-      }
-    }
   }
 }
 
