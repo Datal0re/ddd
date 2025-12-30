@@ -632,10 +632,18 @@ async function performRummageWorkflow(dm, selectionManager, dumpsterName, option
       );
     } else {
       // Perform actual search
-      searchResults = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
-      pm.succeed(
-        `Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
-      );
+      try {
+        searchResults = await dm.searchChats(dumpsterName, searchQuery, searchOptions);
+        pm.succeed(
+          `Found ${searchResults.length} chat${searchResults.length !== 1 ? 's' : ''} matching "${searchQuery}"`
+        );
+      } catch (searchError) {
+        pm.fail(`Search failed: ${searchError.message}`);
+        console.log(
+          chalk.yellow('💡 Try different search terms or check dumpster integrity.')
+        );
+        return;
+      }
     }
 
     if (searchResults.length === 0) {
