@@ -44,6 +44,11 @@ class WizardUtils {
           continue; // Skip this step
         }
 
+        // Validate required context for certain steps
+        if (step.name === 'selectedChats' && !context.dumpsterName) {
+          throw new Error('No dumpster selected. Please select a dumpster first.');
+        }
+
         const stepResult = await this.executeStep(step, context);
 
         // Merge step result into context
@@ -90,16 +95,16 @@ class WizardUtils {
   }
 
   /**
-   * Execute a select prompt step
+   * Execute an input prompt step
    */
-  static async executeSelect(step, _context) {
-    const choices =
-      typeof step.choices === 'function' ? step.choices(_context) : step.choices;
+  static async executeInput(step, context) {
+    const message =
+      typeof step.message === 'function' ? step.message(context) : step.message;
 
-    const result = await select({
-      message: step.message,
-      choices,
+    const result = await input({
+      message,
       default: step.default,
+      validate: step.validate,
     });
 
     return { [step.name]: result };
@@ -108,12 +113,15 @@ class WizardUtils {
   /**
    * Execute a checkbox prompt step
    */
-  static async executeCheckbox(step, _context) {
+  static async executeCheckbox(step, context) {
     const choices =
-      typeof step.choices === 'function' ? step.choices(_context) : step.choices;
+      typeof step.choices === 'function' ? await step.choices(context) : step.choices;
+
+    const message =
+      typeof step.message === 'function' ? step.message(context) : step.message;
 
     const result = await checkbox({
-      message: step.message,
+      message,
       choices,
       default: step.default,
     });
@@ -124,9 +132,12 @@ class WizardUtils {
   /**
    * Execute a confirm prompt step
    */
-  static async executeConfirm(step, _context) {
+  static async executeConfirm(step, context) {
+    const message =
+      typeof step.message === 'function' ? step.message(context) : step.message;
+
     const result = await confirm({
-      message: step.message,
+      message,
       default: step.default || false,
     });
 
@@ -134,13 +145,19 @@ class WizardUtils {
   }
 
   /**
-   * Execute an input prompt step
+   * Execute a select prompt step
    */
-  static async executeInput(step, _context) {
-    const result = await input({
-      message: step.message,
+  static async executeSelect(step, context) {
+    const choices =
+      typeof step.choices === 'function' ? await step.choices(context) : step.choices;
+
+    const message =
+      typeof step.message === 'function' ? step.message(context) : step.message;
+
+    const result = await select({
+      message,
+      choices,
       default: step.default,
-      validate: step.validate,
     });
 
     return { [step.name]: result };
@@ -173,7 +190,7 @@ class WizardUtils {
     return [
       // Step 1: Choose dumpster or use provided one
       this.conditional(ctx => !ctx.dumpsterName, {
-        name: 'dumpsterSelection',
+        name: 'dumpsterName',
         type: 'select',
         message: '🗑️ Select a dumpster to rummage through:',
         choices: dumpsters.map(d => ({
@@ -246,18 +263,36 @@ class WizardUtils {
         message: ctx =>
           `📋 Select chats to ${ctx.actionType === 'manage' ? 'manage' : 'process'}:`,
         choices: async ctx => {
-          const dumpsterName = ctx.dumpsterName || dumpsterName;
-
-          let searchResults;
-          if (ctx.actionType === 'search') {
-            if (ctx.searchQuery?.trim()) {
-              searchResults = await dumpsterManager.searchChats(
-                dumpsterName,
-                ctx.searchQuery,
-                { scope: ctx.searchScope, caseSensitive: ctx.caseSensitive }
+          try {
+            // dumpsterName should always be available due to conditional selection step
+            if (!ctx.dumpsterName) {
+              console.error(
+                chalk.red('❌ No dumpster selected. Please select a dumpster first.')
               );
-            } else {
-              // Show all chats
+              return [];
+            }
+            const dumpsterName = ctx.dumpsterName;
+
+            let searchResults;
+            if (ctx.actionType === 'search') {
+              if (ctx.searchQuery?.trim()) {
+                const searchResponse = await dumpsterManager.searchChats(
+                  dumpsterName,
+                  ctx.searchQuery,
+                  { scope: ctx.searchScope, caseSensitive: ctx.caseSensitive }
+                );
+                searchResults = searchResponse.results || [];
+              } else {
+                // Show all chats
+                const limit = ctx.chatLimit ? parseInt(ctx.chatLimit) : 50;
+                const chats = await dumpsterManager.getChats(dumpsterName, limit);
+                searchResults = chats.map((chat, index) => ({
+                  chat,
+                  searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
+                  rank: index,
+                }));
+              }
+            } else if (ctx.actionType === 'browse') {
               const limit = ctx.chatLimit ? parseInt(ctx.chatLimit) : 50;
               const chats = await dumpsterManager.getChats(dumpsterName, limit);
               searchResults = chats.map((chat, index) => ({
@@ -265,50 +300,47 @@ class WizardUtils {
                 searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
                 rank: index,
               }));
-            }
-          } else if (ctx.actionType === 'browse') {
-            const limit = ctx.chatLimit ? parseInt(ctx.chatLimit) : 50;
-            const chats = await dumpsterManager.getChats(dumpsterName, limit);
-            searchResults = chats.map((chat, index) => ({
-              chat,
-              searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
-              rank: index,
-            }));
-          } else {
-            // For manage action, show selection bin contents
-            const bins = binManager.listBins();
-            const activeBin = bins.find(bin => bin.isActive);
-            if (activeBin) {
-              const chatsByDumpster = binManager.getBinChatsByDumpster(activeBin.name);
-              const allChats = Object.values(chatsByDumpster).flat();
-              searchResults = allChats.map(chat => ({
-                chat,
-                searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
-                rank: 0,
-              }));
             } else {
-              searchResults = [];
+              // For manage action, show selection bin contents
+              const bins = binManager.listBins();
+              const activeBin = bins.find(bin => bin.isActive);
+              if (activeBin) {
+                const chatsByDumpster = binManager.getBinChatsByDumpster(
+                  activeBin.name
+                );
+                const allChats = Object.values(chatsByDumpster).flat();
+                searchResults = allChats.map(chat => ({
+                  chat,
+                  searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
+                  rank: 0,
+                }));
+              } else {
+                searchResults = [];
+              }
             }
+
+            return searchResults.map((result, index) => {
+              const chat = result.chat;
+              const title = chat.title || 'Untitled Chat';
+              const timestamp = chat.update_time || chat.create_time;
+              const dateStr = timestamp
+                ? new Date(timestamp * 1000).toLocaleDateString()
+                : 'Unknown date';
+
+              let matchInfo = '';
+              if (result.searchResult && result.searchResult.matchCount > 0) {
+                matchInfo = ` - ${result.searchResult.matchCount} match${result.searchResult.matchCount !== 1 ? 'es' : ''}`;
+              }
+
+              return {
+                name: `${index + 1}. ${title} (${dateStr})${matchInfo}`,
+                value: chat.filename,
+              };
+            });
+          } catch (error) {
+            console.error(chalk.red(`❌ Failed to load chats: ${error.message}`));
+            return []; // Return empty choices on error
           }
-
-          return searchResults.map((result, index) => {
-            const chat = result.chat;
-            const title = chat.title || 'Untitled Chat';
-            const timestamp = chat.update_time || chat.create_time;
-            const dateStr = timestamp
-              ? new Date(timestamp * 1000).toLocaleDateString()
-              : 'Unknown date';
-
-            let matchInfo = '';
-            if (result.searchResult && result.searchResult.matchCount > 0) {
-              matchInfo = ` - ${result.searchResult.matchCount} match${result.searchResult.matchCount !== 1 ? 'es' : ''}`;
-            }
-
-            return {
-              name: `${index + 1}. ${title} (${dateStr})${matchInfo}`,
-              value: chat.filename,
-            };
-          });
         },
       },
 

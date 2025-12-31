@@ -768,10 +768,14 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
 
   while (continueRummaging) {
     try {
-      // Create wizard context
+      // Create wizard context with all required variables
       const initialContext = {
         dumpsterName: initialDumpsterName,
         verbose: options.verbose,
+        actionType: null,
+        selectedChats: [],
+        selectedAction: null,
+        emptySelectionAction: null,
       };
 
       // Execute wizard
@@ -786,7 +790,9 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
       // Determine if user wants to continue
       const action = wizardResult.selectedAction || wizardResult.emptySelectionAction;
 
-      if (action === 'quit' || action === 'upcycle') {
+      if (action === 'quit') {
+        continueRummaging = false;
+      } else if (action === 'upcycle') {
         continueRummaging = false;
       } else if (action === 'new-search' || action === 'switch-dumpster') {
         initialDumpsterName = null; // Reset for new selection
@@ -815,46 +821,48 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
  * @param {Object} _options - Command options (unused)
  */
 async function handleWizardResults(wizardResult, dm, bm, _options) {
-  const { dumpsterName, selectedChats, selectedAction } = wizardResult;
+  const { dumpsterName, selectedChats, selectedAction, emptySelectionAction } =
+    wizardResult;
+  const action = selectedAction || emptySelectionAction;
 
   // Handle empty selection
   if (!selectedChats || selectedChats.length === 0) {
+    // Handle navigation actions even with empty selection
+    if (action === 'new-search') {
+      console.log(chalk.blue('↻ Preparing new search...'));
+      return;
+    }
+    if (action === 'switch-dumpster') {
+      console.log(chalk.blue('🗑️ Switching dumpster...'));
+      return;
+    }
+    if (action === 'quit') {
+      console.log(chalk.blue('👋 Exiting rummage wizard...'));
+      return;
+    }
     return;
   }
 
-  // Get actual chat objects from filenames
-  const chatObjects = await getChatObjectsFromFilenames(
-    dm,
-    dumpsterName,
-    selectedChats
-  );
-
   // Process selected action
-  switch (selectedAction) {
+  switch (action) {
     case 'add-to-bin':
-      await handleAddToBin(bm, chatObjects, dumpsterName);
+      await handleAddToBin(bm, selectedChats, dumpsterName);
       break;
     case 'upcycle':
-      await handleUpcycleSelected(chatObjects, dumpsterName, dm, bm);
+      await handleUpcycleSelected(selectedChats, dumpsterName, dm, bm);
+      break;
+    case 'new-search':
+      console.log(chalk.blue('↻ Preparing new search...'));
+      break;
+    case 'switch-dumpster':
+      console.log(chalk.blue('🗑️ Switching dumpster...'));
+      break;
+    case 'quit':
+      console.log(chalk.blue('👋 Exiting rummage wizard...'));
       break;
     default:
-      console.log(chalk.yellow('Action cancelled or not implemented.'));
+      console.log(chalk.yellow(`⚠️ Unknown or unhandled action: ${action}`));
   }
-}
-
-/**
- * Get full chat objects from selected filenames
- * @param {DumpsterManager} dm - DumpsterManager instance
- * @param {string} dumpsterName - Name of dumpster
- * @param {Array} filenames - Array of selected filenames
- * @returns {Promise<Array>} Array of chat objects
- */
-async function getChatObjectsFromFilenames(dm, dumpsterName, filenames) {
-  const allChats = await dm.getChats(dumpsterName, 1000); // Get all chats
-
-  return filenames
-    .map(filename => allChats.find(chat => chat.filename === filename))
-    .filter(chat => chat !== undefined); // Filter out any undefined
 }
 
 /**
