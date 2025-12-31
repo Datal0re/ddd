@@ -4,7 +4,7 @@ const { Command } = require('commander');
 const chalk = require('chalk');
 const logo = require('./logo');
 
-const { ErrorHandler } = require('./utils/ErrorHandler');
+const { ErrorHandler, FileNotFoundError } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
 const { CliPrompts } = require('./utils/CliPrompts');
@@ -12,6 +12,82 @@ const { BinManager } = require('./utils/BinManager');
 const { WizardUtils } = require('./utils/WizardUtils');
 
 const program = new Command();
+
+// Process-level error handling for unexpected errors
+process.on('uncaughtException', error => {
+  ErrorHandler.logError('Uncaught Exception');
+  ErrorHandler.logError(error.message);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error(error.stack);
+  }
+
+  process.exit(99); // Fatal error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  ErrorHandler.logError('Unhandled Promise Rejection');
+  ErrorHandler.logError(reason);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Promise:', promise);
+  }
+
+  process.exit(98); // Promise rejection
+});
+
+// Graceful shutdown handlers
+process.on('SIGINT', () => {
+  console.log(
+    chalk.yellow('\n👋 Received interrupt signal. Gracefully shutting down...')
+  );
+  process.exit(130); // Standard exit code for SIGINT
+});
+
+process.on('SIGTERM', () => {
+  console.log(
+    chalk.yellow('\n👋 Received termination signal. Gracefully shutting down...')
+  );
+  process.exit(143); // Standard exit code for SIGTERM
+});
+
+// Process-level error handling
+process.on('uncaughtException', error => {
+  ErrorHandler.logError('Uncaught Exception');
+  ErrorHandler.logError(error.message);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error(error.stack);
+  }
+
+  process.exit(99); // Fatal error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  ErrorHandler.logError('Unhandled Promise Rejection');
+  ErrorHandler.logError(reason);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Promise:', promise);
+  }
+
+  process.exit(98); // Promise rejection
+});
+
+// Graceful shutdown handlers
+process.on('SIGINT', () => {
+  console.log(
+    chalk.yellow('\n👋 Received interrupt signal. Gracefully shutting down...')
+  );
+  process.exit(130); // Standard exit code for SIGINT
+});
+
+process.on('SIGTERM', () => {
+  console.log(
+    chalk.yellow('\n👋 Received termination signal. Gracefully shutting down...')
+  );
+  process.exit(143); // Standard exit code for SIGTERM
+});
 
 program
   .name('ddd')
@@ -91,8 +167,7 @@ program
         console.error(error.stack);
       }
 
-      ErrorHandler.handleFileError(error, 'dump command', false);
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'dump command');
     }
   });
 
@@ -185,8 +260,7 @@ program
         );
       }
     } catch (error) {
-      ErrorHandler.handleAsyncError(error, 'listing dumpsters', null, false);
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'listing dumpsters');
     }
   });
 
@@ -337,8 +411,7 @@ program
           throw new Error(`Unknown bin subcommand: ${subcommand}`);
       }
     } catch (error) {
-      console.error(chalk.red(`❌ Bin operation failed: ${error.message}`));
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'bin operation');
     }
   });
 
@@ -381,8 +454,7 @@ program
       await performWizardRummage(dm, bm, dumpsters, dumpsterName, options);
     } catch (error) {
       console.log(chalk.red('❌ Rummage wizard failed'));
-      ErrorHandler.handleAsyncError(error, 'rummaging dumpster', null, false);
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'rummaging dumpster');
     }
   });
 
@@ -445,9 +517,7 @@ program
       // Check if dumpster exists
       const dumpster = dm.getDumpster(dumpsterName);
       if (!dumpster) {
-        const error = new Error(`Dumpster "${dumpsterName}" not found`);
-        ErrorHandler.handleFileError(error, 'burn command');
-        throw error;
+        throw new FileNotFoundError(dumpsterName, 'burn command');
       }
 
       // Get dumpster stats for confirmation
@@ -511,8 +581,7 @@ program
       }
     } catch (error) {
       pm.fail(`Failed to start dumpster fire: ${error.message}`);
-      ErrorHandler.handleAsyncError(error, 'burning dumpster', null, false);
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'burning dumpster');
     }
   });
 
@@ -705,9 +774,9 @@ program
         const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
         if (!dumpster) {
-          const error = new Error(`Dumpster "${dumpsterName}" not found`);
+          const error = new FileNotFoundError(dumpsterName, 'upcycle command');
           pm.fail(error.message);
-          ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
+          ErrorHandler.logInfo('Available dumpsters:');
           dumpsters.forEach(d => {
             console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
           });
@@ -751,8 +820,7 @@ program
       );
     } catch (error) {
       pm.fail(`Upcycle failed: ${error.message}`);
-      ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);
-      throw error;
+      ErrorHandler.handleErrorAndExit(error, 'upcycling dumpster');
     }
   });
 
@@ -800,14 +868,7 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
       }
     } catch (error) {
       console.log(chalk.red('❌ Wizard step failed'));
-      ErrorHandler.handleAsyncError(error, 'wizard rummaging', null, false);
-
-      // Offer to retry or exit
-      const retry = await CliPrompts.confirmAction('Would you like to try again?');
-
-      if (!retry) {
-        continueRummaging = false;
-      }
+      ErrorHandler.handleErrorAndExit(error, 'wizard rummaging');
     }
   }
 
