@@ -21,7 +21,8 @@ class RummageService extends BaseCommandService {
    * @param {Object} managers - Required managers (dumpster, bin)
    * @returns {Promise<Object>} Result object
    */
-  async performWizardRummage(initialDumpsterName, options = {}, managers) {
+  async performWizardRummage(initialDumpsterName, options = {}) {
+    const managers = this.getManagers(['dumpster', 'bin', 'progress']);
     try {
       // Get available dumpsters
       const dumpsters = await managers.dumpster.listDumpsters();
