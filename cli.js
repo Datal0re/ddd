@@ -6,11 +6,14 @@ const logo = require('./logo');
 const { VERSION } = require('./config/constants');
 
 const { ErrorHandler, FileNotFoundError } = require('./utils/ErrorHandler');
-const { SchemaValidator } = require('./utils/SchemaValidator');
+const { CommandValidator } = require('./utils/validators/CommandValidator');
 const { createProgressManager } = require('./utils/ProgressManager');
 const { CliPrompts } = require('./utils/CliPrompts');
 const { BinManager } = require('./utils/BinManager');
 const { WizardUtils } = require('./utils/WizardUtils');
+
+// Create validator instance for CLI validation
+const validator = new CommandValidator();
 
 const program = new Command();
 
@@ -79,10 +82,13 @@ program
       if (!file) {
         file = await CliPrompts.promptForFilePath();
       } else {
-        SchemaValidator.validateRequired(
+        const validation = validator.validateRequiredParameters(
           [{ name: 'file', value: file }],
           'dump command'
         );
+        if (!validation.valid) {
+          throw new Error(validation.message);
+        }
       }
 
       // Generate suggested name from file path if no name provided
@@ -93,13 +99,22 @@ program
       if (!options.name || options.name === 'default') {
         options.name = await CliPrompts.promptForDumpsterName(suggestedName);
       } else {
-        SchemaValidator.validateDumpsterName(options.name, { context: 'dump command' });
+        const nameValidation = validator.validateDumpsterName(
+          options.name,
+          'dump command'
+        );
+        if (!nameValidation.valid) {
+          throw new Error(nameValidation.message);
+        }
       }
 
-      await SchemaValidator.validatePath(file, {
+      const pathValidation = await validator.validatePath(file, {
         mustExist: true,
         context: 'dump command',
       });
+      if (!pathValidation.valid) {
+        throw new Error(pathValidation.message);
+      }
 
       // Create progress spinner
       pm.start('initializing', 'Initializing dumpster creation...');
@@ -455,27 +470,33 @@ program
           'Select a dumpster to burn:'
         );
       } else {
-        // Validate provided dumpster name
-        SchemaValidator.validateRequired(
-          [{ name: 'dumpsterName', value: dumpsterName }],
-          'burn command'
-        );
-        SchemaValidator.validateNonEmptyString(
-          dumpsterName,
-          'dumpsterName',
-          'burn command'
-        );
+        // Validate burn command parameters
+        const burnValidation = validator.validateBurnCommand(dumpsterName, options);
+        if (!burnValidation.valid) {
+          throw new Error(burnValidation.message);
+        }
       }
 
       // Handle optional boolean flags
-      const force =
-        options.force !== undefined
-          ? SchemaValidator.validateBoolean(options.force, 'force', 'burn command')
-          : false;
-      const dryRun =
-        options.dryRun !== undefined
-          ? SchemaValidator.validateBoolean(options.dryRun, 'dryRun', 'burn command')
-          : false;
+      let force = false;
+      let dryRun = false;
+
+      if (options.force !== undefined) {
+        const forceValidation = validator.validateBoolean(
+          options.force,
+          'force',
+          'burn command'
+        );
+        force = forceValidation.valid ? forceValidation.value : false;
+      }
+      if (options.dryRun !== undefined) {
+        const dryRunValidation = validator.validateBoolean(
+          options.dryRun,
+          'dryRun',
+          'burn command'
+        );
+        dryRun = dryRunValidation.valid ? dryRunValidation.value : false;
+      }
 
       // Check if dumpster exists
       const dumpster = dm.getDumpster(dumpsterName);
@@ -622,15 +643,15 @@ program
         format = await CliPrompts.selectExportFormat();
       } else {
         // Validate provided format
-        SchemaValidator.validateRequired(
-          [{ name: 'format', value: format }],
-          'upcycle command'
-        );
-        format = SchemaValidator.validateExportFormat(
+        const formatValidation = validator.validateExportFormat(
           format,
           ['txt', 'md', 'html'],
           'upcycle command'
         );
+        if (!formatValidation.valid) {
+          throw new Error(formatValidation.message);
+        }
+        format = formatValidation.format;
       }
 
       // If no dumpster name provided, determine if we should use selection bin
@@ -646,26 +667,19 @@ program
           );
         }
       } else {
-        // Validate provided dumpster name
-        SchemaValidator.validateNonEmptyString(
-          dumpsterName,
-          'dumpsterName',
-          'upcycle command'
-        );
         exportSource = 'dumpster'; // Explicit dumpster name means dumpster export
       }
 
-      // Validate options
-      const validatedOptions = SchemaValidator.validateSchema(
-        options,
-        {
-          output: { type: 'string', required: false },
-          includeMedia: { type: 'boolean', required: false },
-          selfContained: { type: 'boolean', required: false },
-          verbose: { type: 'boolean', required: false },
-        },
-        'upcycle command'
+      // Validate upcycle command parameters
+      const upcycleValidation = validator.validateUpcycleCommand(
+        format,
+        dumpsterName,
+        options
       );
+      if (!upcycleValidation.valid) {
+        throw new Error(upcycleValidation.message);
+      }
+      const validatedOptions = upcycleValidation.options || {};
 
       pm.start(
         'initializing',
