@@ -347,12 +347,33 @@ const binCommands = {
   },
 };
 
-program
-  .command('bin')
-  .description('Manage selection bins for organizing chat selections')
-  .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
-  .argument('[name]', 'Bin name for create/rename operations (optional)')
-  .action(async (subcommand, name) => {
+  program
+    .command('bin')
+    .description('Manage selection bins for organizing chat selections')
+    .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
+    .argument('[name]', 'Bin name for create/rename operations (optional)')
+    .option('-v, --verbose', 'Verbose output')
+    .action(async (subcommand, name) => {
+      try {
+        // Initialize service layer with new pattern
+        const initService = new CommandInitService(__dirname);
+        const dependencies = await initService.createServiceDependencies('bin');
+        const binService = new BinService(dependencies);
+
+        // Execute bin subcommand through service
+        const result = await binService.executeBinCommand(subcommand, name);
+
+        if (!result.success) {
+          ErrorHandler.handleErrorAndExit(
+            result.error || new Error(result.message),
+            'bin command'
+          );
+        }
+
+      } catch (error) {
+        ErrorHandler.handleErrorAndExit(error, 'bin command');
+      }
+    });
     const { BinManager } = require('./utils/BinManager');
     const { DumpsterManager } = require('./utils/DumpsterManager');
     // const { CliPrompts } = require('./utils/CliPrompts');
