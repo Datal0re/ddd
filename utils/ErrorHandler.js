@@ -91,6 +91,11 @@ class ErrorHandler {
     const fullMessage = context ? `${context}: ${message}` : message;
     console.error(chalk.red(`❌ Error: ${fullMessage}`));
   }
+
+  static logInfo(message, context = null) {
+    const fullMessage = context ? `${context}: ${message}` : message;
+    console.log(chalk.blue(`ℹ️ ${fullMessage}`));
+  }
 }
 
 module.exports = {

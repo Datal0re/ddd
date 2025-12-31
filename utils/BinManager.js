@@ -38,8 +38,9 @@ class BinManager {
         `Bin manager initialized with ${this.bins.size} bins`,
         'BinManager'
       );
-    } catch (error) {
-      ErrorHandler.handleFileError(error, 'initializing bin manager', false);
+    } catch (fileError) {
+      ErrorHandler.logError('Failed to initialize bin manager');
+      console.error(fileError); // Use error for eslint
       // Start with empty bins if loading fails
       this.bins = new Map();
       await this.createBin('default', 'Default selection bin');
@@ -75,8 +76,9 @@ class BinManager {
           },
         ])
       );
-    } catch (error) {
-      ErrorHandler.handleFileError(error, 'loading bins', false);
+    } catch (fileError) {
+      ErrorHandler.logError('Failed to load bins');
+      console.error(fileError); // Use error for eslint
       this.bins = new Map();
     }
   }
@@ -86,16 +88,12 @@ class BinManager {
    * @returns {Promise<void>}
    */
   async saveBins() {
-    try {
-      // Ensure data directory exists
-      await FileUtils.ensureDirectory(FileUtils.getDirName(this.binsFile));
+    // Ensure data directory exists
+    await FileUtils.ensureDirectory(FileUtils.getDirName(this.binsFile));
 
-      // Convert to array format for serialization
-      const binsArray = [...this.bins.entries()];
-      await FileUtils.writeJsonFile(this.binsFile, binsArray);
-    } catch (error) {
-      ErrorHandler.handleFileError(error, 'saving bins', true);
-    }
+    // Convert to array format for serialization
+    const binsArray = [...this.bins.entries()];
+    await FileUtils.writeJsonFile(this.binsFile, binsArray);
   }
 
   /**
