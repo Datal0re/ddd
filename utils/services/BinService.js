@@ -14,12 +14,10 @@ const { VERSION } = require('../../config/constants');
  * Extracted from CLI bin command handler and CliPrompts business logic
  */
 class BinService extends BaseCommandService {
-  /**
-   * Create bin service with dependencies
-   * @param {Object} dependencies - Service dependencies
-   */
-  constructor(dependencies = {}) {
-    super(dependencies);
+  constructor() {
+    super();
+    // Note: BinService doesn't need baseDir for all operations
+    this.baseDir = null;
   }
 
   /**
@@ -28,9 +26,7 @@ class BinService extends BaseCommandService {
    * @param {string} name - Bin name (optional, will prompt if not provided)
    * @returns {Promise<Object>} Result object
    */
-  async createBin(binManager, name = {}) {
-    const managers = this.getManagers(['bin']);
-
+  async createBin(binManager, name = null) {
     try {
       const binName = name || (await CliPrompts.promptForBinName());
 

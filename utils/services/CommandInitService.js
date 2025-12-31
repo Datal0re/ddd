@@ -11,7 +11,7 @@ const { createProgressManager } = require('../ProgressManager');
  * Service for centralized command initialization
  * Handles manager instantiation, caching, and dependency injection
  */
-class CommandInitializationService {
+class CommandInitService {
   constructor(baseDir) {
     this.baseDir = baseDir;
     this.managers = new Map();
@@ -57,12 +57,12 @@ class CommandInitializationService {
       }
 
       this.managers.set(cacheKey, manager);
-      ErrorHandler.logInfo(`Created ${type} manager`, 'CommandInitializationService');
+      ErrorHandler.logInfo(`Created ${type} manager`, 'CommandInitService');
       return manager;
     } catch (error) {
       ErrorHandler.logError(
         `Failed to create ${type} manager: ${error.message}`,
-        'CommandInitializationService'
+        'CommandInitService'
       );
       throw error;
     }
@@ -143,7 +143,7 @@ class CommandInitializationService {
       } catch (error) {
         ErrorHandler.logError(
           `Failed to initialize ${managerType} for ${commandType}: ${error.message}`,
-          'CommandInitializationService'
+          'CommandInitService'
         );
         throw new Error(
           `Command initialization failed for ${commandType}: ${error.message}`
@@ -153,7 +153,7 @@ class CommandInitializationService {
 
     ErrorHandler.logInfo(
       `Initialized ${commandType} command with managers: ${Object.keys(managers).join(', ')}`,
-      'CommandInitializationService'
+      'CommandInitService'
     );
     return managers;
   }
@@ -220,7 +220,7 @@ class CommandInitializationService {
 
       ErrorHandler.logInfo(
         `Cleared ${keysToDelete.length} cached ${type} managers`,
-        'CommandInitializationService'
+        'CommandInitService'
       );
     } else {
       // Clear all managers
@@ -228,7 +228,7 @@ class CommandInitializationService {
       this.managers.clear();
       ErrorHandler.logInfo(
         `Cleared all ${count} cached managers`,
-        'CommandInitializationService'
+        'CommandInitService'
       );
     }
   }
@@ -247,7 +247,7 @@ class CommandInitializationService {
         } catch (error) {
           ErrorHandler.logError(
             `Error during manager cleanup for ${key}: ${error.message}`,
-            'CommandInitializationService'
+            'CommandInitService'
           );
         }
       }
@@ -256,11 +256,11 @@ class CommandInitializationService {
     this.managers.clear();
     ErrorHandler.logInfo(
       `Cleaned up ${managerCount} managers`,
-      'CommandInitializationService'
+      'CommandInitService'
     );
   }
 }
 
 module.exports = {
-  CommandInitializationService,
+  CommandInitService,
 };

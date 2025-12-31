@@ -661,4 +661,6 @@ class UpcycleManager {
   }
 }
 
-module.exports = UpcycleManager;
+module.exports = {
+  UpcycleManager,
+};
