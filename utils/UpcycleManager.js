@@ -79,6 +79,17 @@ class UpcycleManager {
    * @returns {Promise<Object>} Upcycle result
    */
   async upcycleSelection(format, options = {}) {
+    return this.upcycleBin(format, null, options);
+  }
+
+  /**
+   * Upcycle a specific bin to specified format
+   * @param {string} format - Export format
+   * @param {string} binName - Name of bin to upcycle (null for active bin)
+   * @param {Object} options - Export options
+   * @returns {Promise<Object>} Upcycle result
+   */
+  async upcycleBin(format, binName, options = {}) {
     const assetErrorTracker = new AssetErrorTracker();
 
     try {
@@ -94,10 +105,15 @@ class UpcycleManager {
       pm.start('loading', 'Loading selection bin...');
 
       await this.initializeBinManager();
-      const chatsByDumpster = this.binManager.getActiveBinChatsByDumpster();
+
+      // Get chats from specified bin or active bin
+      const chatsByDumpster = binName
+        ? this.binManager.getBinChatsByDumpster(binName)
+        : this.binManager.getActiveBinChatsByDumpster();
 
       if (Object.keys(chatsByDumpster).length === 0) {
-        throw new Error('Selection bin is empty');
+        const binDisplayName = binName || 'active';
+        throw new Error(`Bin "${binDisplayName}" is empty`);
       }
 
       if (validatedOptions.verbose) {
@@ -119,8 +135,8 @@ class UpcycleManager {
         pm.stop();
       }
 
-      // Create output directory using current bin name
-      const currentBinName = this.binManager.getActiveBinName();
+      // Create output directory using bin name
+      const currentBinName = binName || this.binManager.getActiveBinName();
       const outputDir = FileUtils.joinPath(
         validatedOptions.outputDir,
         `${currentBinName}-${format}`

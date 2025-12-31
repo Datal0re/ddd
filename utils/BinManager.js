@@ -361,6 +361,72 @@ class BinManager {
   }
 
   /**
+   * Add chats to a specific bin
+   * @param {Array} chats - Array of chat objects
+   * @param {string} binName - Name of bin to add chats to
+   * @param {string} sourceDumpster - Source dumpster name
+   * @param {Object} searchResult - Optional search result metadata
+   * @returns {Promise<number>} Number of chats added
+   */
+  async addChatsToBin(chats, binName, sourceDumpster, searchResult = null) {
+    const sanitizedName = this.sanitizeBinName(binName);
+
+    if (!this.bins.has(sanitizedName)) {
+      ErrorHandler.handleValidationError(
+        `Bin "${sanitizedName}" not found`,
+        'addChatsToBin'
+      );
+    }
+
+    const bin = this.bins.get(sanitizedName);
+    let addedCount = 0;
+
+    if (!bin.items) {
+      bin.items = [];
+    }
+
+    for (const chat of chats) {
+      // Check if chat already exists in the bin
+      const exists = bin.items.some(
+        item =>
+          item.chatId === (chat.chatId || chat.filename) &&
+          item.sourceDumpster === sourceDumpster
+      );
+
+      if (!exists) {
+        const selectionItem = {
+          chatId: chat.chatId || chat.filename,
+          filename: chat.filename,
+          title: chat.title || 'Untitled Chat',
+          sourceDumpster,
+          addedAt: new Date(),
+          metadata: {
+            messageCount: this.countMessages(chat),
+            createTime: chat.create_time || chat.created_time,
+            updateTime: chat.update_time || chat.updated_time,
+            preview: this.generateChatPreview(chat),
+            ...(searchResult && {
+              searchQuery: searchResult.query,
+              relevanceScore: searchResult.relevanceScore,
+              matchCount: searchResult.matchCount,
+            }),
+          },
+        };
+
+        bin.items.push(selectionItem);
+        addedCount++;
+      }
+    }
+
+    if (addedCount > 0) {
+      bin.lastModified = new Date();
+      await this.saveBins();
+    }
+
+    return addedCount;
+  }
+
+  /**
    * Remove chats from the active bin
    * @param {Array} chatIds - Array of chat IDs to remove
    * @returns {Promise<number>} Number of chats removed
@@ -436,6 +502,43 @@ class BinManager {
 
     if (activeBin.items) {
       for (const item of activeBin.items) {
+        if (!chatsByDumpster[item.sourceDumpster]) {
+          chatsByDumpster[item.sourceDumpster] = [];
+        }
+
+        chatsByDumpster[item.sourceDumpster].push({
+          filename: item.filename,
+          title: item.title,
+          chatId: item.chatId,
+          addedAt: item.addedAt,
+          metadata: item.metadata,
+        });
+      }
+    }
+
+    return chatsByDumpster;
+  }
+
+  /**
+   * Get chats from a specific bin grouped by dumpster
+   * @param {string} binName - Name of bin to get chats from
+   * @returns {Object} Chats grouped by dumpster name
+   */
+  getBinChatsByDumpster(binName) {
+    const sanitizedName = this.sanitizeBinName(binName);
+
+    if (!this.bins.has(sanitizedName)) {
+      ErrorHandler.handleValidationError(
+        `Bin "${sanitizedName}" not found`,
+        'getBinChatsByDumpster'
+      );
+    }
+
+    const bin = this.bins.get(sanitizedName);
+    const chatsByDumpster = {};
+
+    if (bin.items) {
+      for (const item of bin.items) {
         if (!chatsByDumpster[item.sourceDumpster]) {
           chatsByDumpster[item.sourceDumpster] = [];
         }

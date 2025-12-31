@@ -733,11 +733,34 @@ program
       );
 
       // Log export source
+      let selectedBinName = null;
+
+      // Handle selection export
+      if (exportSource === 'selection') {
+        // Get bins with content for selection
+        const bins = bm.listBins();
+        const binsWithContent = bins.filter(bin => bin.chatCount > 0);
+
+        if (binsWithContent.length === 0) {
+          pm.fail('No bins contain any chats to upcycle');
+          process.exit(1);
+        }
+
+        // If multiple bins have content, prompt for selection
+        if (binsWithContent.length > 1) {
+          selectedBinName = await CliPrompts.selectBinForUpcycle(binsWithContent);
+        } else {
+          selectedBinName = binsWithContent[0].name;
+        }
+      }
+
       if (validatedOptions.verbose) {
         if (exportSource === 'selection') {
-          const selectionCount = bm.getActiveBinCount();
+          const selectedBin = bm.listBins().find(bin => bin.name === selectedBinName);
           console.log(
-            chalk.blue(`🔄 Upcycling selection bin (${selectionCount} chats)`)
+            chalk.blue(
+              `🔄 Upcycling bin "${selectedBinName}" (${selectedBin.chatCount} chats)`
+            )
           );
         } else {
           console.log(chalk.blue(`🔄 Upcycling dumpster: ${dumpsterName}`));
@@ -761,8 +784,8 @@ program
 
       let result;
       if (exportSource === 'selection') {
-        // Selection bin export - disable entire media directory copy
-        result = await upcycleManager.upcycleSelection(format, {
+        // Bin export - disable entire media directory copy
+        result = await upcycleManager.upcycleBin(format, selectedBinName, {
           ...validatedOptions,
           outputDir: validatedOptions.output,
           onProgress,
@@ -810,7 +833,7 @@ program
 
       const sourceDescription =
         exportSource === 'selection'
-          ? `selection bin (${result.processed} chats)`
+          ? `bin "${selectedBinName}" (${result.processed} chats)`
           : `"${dumpsterName}"`;
 
       pm.succeed(
@@ -956,14 +979,15 @@ async function performRummageWorkflow(dm, bm, dumpsterName, options) {
     const action = await CliPrompts.promptSelectionActions(selectedChats);
 
     switch (action) {
-      case 'add-to-bin':
-        await addChatsToSelection(bm, selectedChats, dumpsterName);
+      case 'add-to-bin': {
+        const targetBin = await addChatsToSelection(bm, selectedChats, dumpsterName);
         console.log(
           chalk.green(
-            `✅ Added ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''} to selection bin`
+            `✅ Added ${selectedChats.length} chat${selectedChats.length !== 1 ? 's' : ''} to "${targetBin}" bin`
           )
         );
         break;
+      }
       case 'upcycle':
         await upcycleSelectedChats(selectedChats, dumpsterName);
         return { exit: true }; // Signal main loop to exit after upcycle
@@ -992,6 +1016,45 @@ async function performRummageWorkflow(dm, bm, dumpsterName, options) {
  * @param {string} dumpsterName - Source dumpster name
  */
 async function addChatsToSelection(bm, selectedChats, dumpsterName) {
+  // Get available bins for selection
+  const availableBins = bm.listBins();
+
+  // If only one bin (default), use it directly
+  if (availableBins.length === 1) {
+    const chatData = selectedChats.map(chat => ({
+      chatId: chat.filename,
+      filename: chat.filename,
+      title: chat.title || 'Untitled',
+      sourceDumpster: dumpsterName,
+      addedAt: Date.now(),
+      metadata: {
+        messageCount: chat.messageCount || 0,
+        createTime: chat.create_time,
+        updateTime: chat.update_time,
+        preview: chat.title || 'Untitled',
+      },
+    }));
+
+    await bm.addChatsToActiveBin(chatData, dumpsterName);
+    return availableBins[0].name;
+  }
+
+  // Prompt user to select which bin to add to
+  const selectedBinName = await CliPrompts.selectBinForSelection(
+    availableBins,
+    selectedChats.length
+  );
+
+  let targetBinName = selectedBinName;
+
+  // If user wants to create a new bin
+  if (selectedBinName === 'create-new') {
+    const newBinName = await CliPrompts.promptNewBinName();
+    await bm.createBin(newBinName, `Created during rummage from ${dumpsterName}`);
+    targetBinName = newBinName;
+  }
+
+  // Prepare chat data
   const chatData = selectedChats.map(chat => ({
     chatId: chat.filename,
     filename: chat.filename,
@@ -1006,7 +1069,14 @@ async function addChatsToSelection(bm, selectedChats, dumpsterName) {
     },
   }));
 
-  await bm.addChatsToActiveBin(chatData, dumpsterName);
+  // Add to the selected bin
+  if (targetBinName === bm.getActiveBinName()) {
+    await bm.addChatsToActiveBin(chatData, dumpsterName);
+  } else {
+    await bm.addChatsToBin(chatData, targetBinName, dumpsterName);
+  }
+
+  return targetBinName;
 }
 
 /**

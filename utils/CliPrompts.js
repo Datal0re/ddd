@@ -2,7 +2,6 @@ const { input, select, confirm, checkbox } = require('@inquirer/prompts');
 const { SchemaValidator } = require('./SchemaValidator');
 const fs = require('fs').promises;
 const { UI_CONFIG } = require('../config/constants');
-const chalk = require('chalk');
 
 /**
  * Common CLI prompt utilities for Data Dumpster Diver
@@ -291,28 +290,39 @@ class CliPrompts {
     const { BinManager } = require('./BinManager');
     const binManager = new BinManager(process.cwd());
     await binManager.initialize();
-    const chatsByDumpster = binManager.getActiveBinChatsByDumpster();
-    const totalCount = Object.values(chatsByDumpster).flat().length;
+    const bins = binManager.listBins();
 
-    if (totalCount > 0) {
-      // Calculate additional stats for better UX
-      const totalMessages = Object.values(chatsByDumpster).reduce(
-        (sum, chats) =>
-          sum +
-          chats.reduce(
-            (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
-            0
-          ),
-        0
-      );
-      const dumpsterCount = Object.keys(chatsByDumpster).length;
+    // Check if any bins have content
+    let totalChats = 0;
+    let totalMessages = 0;
+    let totalDumpsters = 0;
 
-      let selectionDescription = `📋 Export from selection bin (${totalCount} chats`;
+    for (const bin of bins) {
+      const chatsByDumpster = binManager.getBinChatsByDumpster(bin.name);
+      const binChatCount = Object.values(chatsByDumpster).flat().length;
+      totalChats += binChatCount;
+
+      if (binChatCount > 0) {
+        totalDumpsters += Object.keys(chatsByDumpster).length;
+        totalMessages += Object.values(chatsByDumpster).reduce(
+          (sum, chats) =>
+            sum +
+            chats.reduce(
+              (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
+              0
+            ),
+          0
+        );
+      }
+    }
+
+    if (totalChats > 0) {
+      let selectionDescription = `📋 Export from selection bins (${totalChats} chats`;
       if (totalMessages > 0) {
         selectionDescription += `, ${totalMessages} messages`;
       }
-      if (dumpsterCount > 1) {
-        selectionDescription += `, from ${dumpsterCount} dumpsters`;
+      if (totalDumpsters > 0) {
+        selectionDescription += `, from ${totalDumpsters} dumpsters`;
       }
       selectionDescription += ')';
 
@@ -323,15 +333,36 @@ class CliPrompts {
     }
 
     if (choices.length === 1) {
-      console.log('📋 Selection bin is empty, will export from dumpster.');
-      console.log(
-        chalk.dim('   💡 Tip: Use "ddd rummage" to select chats for export.')
-      );
-      return 'dumpster';
+      return choices[0].value;
     }
 
     return await select({
-      message: '🔄 Choose export source:',
+      message: 'What would you like to upcycle?',
+      choices,
+    });
+  }
+
+  /**
+   * Select bin for upcycle export
+   * @param {Array} bins - Array of bin objects with their chat counts
+   * @returns {Promise<string>} Selected bin name
+   */
+  static async selectBinForUpcycle(bins) {
+    // Filter bins that have content
+    const binsWithContent = bins.filter(bin => bin.chatCount > 0);
+
+    if (binsWithContent.length === 0) {
+      throw new Error('No bins contain any chats to upcycle');
+    }
+
+    const choices = binsWithContent.map(bin => ({
+      name: `${bin.name} (${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' - current' : ''})`,
+      value: bin.name,
+      description: bin.description || `Export from "${bin.name}" bin`,
+    }));
+
+    return await select({
+      message: '📋 Select bin to upcycle:',
       choices,
     });
   }
@@ -435,6 +466,34 @@ class CliPrompts {
       value: bin.name,
       description: `${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' (current)' : ''}`,
     }));
+
+    return await select({
+      message,
+      choices,
+    });
+  }
+
+  /**
+   * Select bin for adding chats with option to create new bin
+   * @param {Array} bins - Array of bin objects
+   * @param {number} selectedCount - Number of selected chats
+   * @returns {Promise<string>} Selected bin name or 'create-new'
+   */
+  static async selectBinForSelection(bins, selectedCount) {
+    const message = `📋 Select bin to add ${selectedCount} chat${selectedCount !== 1 ? 's' : ''}:`;
+
+    const choices = bins.map(bin => ({
+      name: `${bin.name} (${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' - current' : ''})`,
+      value: bin.name,
+      description: bin.description || `Add to "${bin.name}" bin`,
+    }));
+
+    // Add option to create new bin
+    choices.push({
+      name: '+ Create new bin',
+      value: 'create-new',
+      description: 'Create a new selection bin',
+    });
 
     return await select({
       message,
