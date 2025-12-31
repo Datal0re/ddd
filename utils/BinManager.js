@@ -7,13 +7,15 @@
 const FileUtils = require('./FileUtils');
 const { ErrorHandler } = require('./ErrorHandler');
 const chalk = require('chalk');
+const { VERSION } = require('../config/constants');
 
 class BinManager {
   constructor(baseDir) {
     this.baseDir = baseDir;
     this.binsFile = FileUtils.joinPath(baseDir, 'data', 'bins.json');
     this.bins = new Map();
-    this.activeBinName = 'default';
+    this.stagingBinName = 'staging';
+    this.activeBinName = 'staging';
   }
 
   /**
@@ -24,14 +26,21 @@ class BinManager {
     try {
       await this.loadBins();
 
-      // Ensure default bin exists
-      if (!this.bins.has('default')) {
-        await this.createBin('default', 'Default selection bin');
+      // Ensure staging bin exists
+      if (!this.bins.has(this.stagingBinName)) {
+        await this.createBin(
+          this.stagingBinName,
+          'Temporary storage for chat selections'
+        );
       }
 
       // Ensure active bin is valid
       if (!this.bins.has(this.activeBinName)) {
-        this.activeBinName = 'default';
+        ErrorHandler.logError(
+          `Bin ${this.activeBinName} not found. Switching to ${this.stagingBinName} instead`, 
+          'BinManager'
+        );
+        this.activeBinName = this.stagingBinName;
       }
 
       ErrorHandler.logInfo(
@@ -39,11 +48,13 @@ class BinManager {
         'BinManager'
       );
     } catch (fileError) {
-      ErrorHandler.logError('Failed to initialize bin manager');
-      console.error(fileError); // Use error for eslint
+      ErrorHandler.logError(`Failed to initialize bin manager: ${fileError}`);
       // Start with empty bins if loading fails
       this.bins = new Map();
-      await this.createBin('default', 'Default selection bin');
+      await this.createBin(
+        this.stagingBinName,
+        'Temporary storage for chat selections'
+      );
     }
   }
 
@@ -97,13 +108,85 @@ class BinManager {
   }
 
   /**
+   * Migrate default bin to staging bin if needed
+   * @returns {Promise<void>}
+   */
+  async migrateDefaultToStaging() {
+    if (this._shouldMigrateDefaultToStaging()) {
+      await this._performMigration();
+    } else if (this.bins.has(this.stagingBinName)) {
+      await this._cleanupLegacyDefaultBin();
+    }
+  }
+
+  /**
+   * Check if migration from default to staging is needed
+   * @private
+   * @returns {boolean} True if migration should occur
+   */
+  _shouldMigrateDefaultToStaging() {
+    return this.bins.has('default') && !this.bins.has(this.stagingBinName);
+  }
+
+  /**
+   * Perform migration from default bin to staging bin
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _performMigration() {
+    const defaultBin = this.bins.get('default');
+
+    // Create staging bin with migrated data
+    const stagingBin = {
+      ...defaultBin,
+      description: 'Temporary storage for chat selections (migrated from default)',
+      lastModified: new Date(),
+    };
+
+    this.bins.set(this.stagingBinName, stagingBin);
+    this.bins.delete('default');
+
+    // Update active bin if it was default
+    if (this.activeBinName === 'default') {
+      this.activeBinName = this.stagingBinName;
+    }
+
+    ErrorHandler.logInfo('Migrated "default" bin to "staging" bin', 'BinManager');
+
+    // Save the migration
+    await this.saveBins();
+  }
+
+  /**
+   * Remove legacy default bin if staging bin already exists
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _cleanupLegacyDefaultBin() {
+    if (this.bins.has('default')) {
+      this.bins.delete('default');
+
+      // Update active bin if it was default
+      if (this.activeBinName === 'default') {
+        this.activeBinName = this.stagingBinName;
+      }
+
+      await this.saveBins();
+      ErrorHandler.logInfo(
+        'Removed legacy "default" bin, using "staging" bin',
+        'BinManager'
+      );
+    }
+  }
+
+  /**
    * Create a new empty bin structure
    * @param {string} description - Optional description for the bin
    * @returns {Object} Empty bin structure
    */
   createEmptyBinStructure(description = '') {
     return {
-      version: '0.0.5',
+      version: VERSION,
       createdAt: new Date(),
       lastModified: new Date(),
       description: description,
@@ -123,6 +206,7 @@ class BinManager {
         'Bin name must be a non-empty string',
         'createBin'
       );
+      return false;
     }
 
     const sanitizedName = this.sanitizeBinName(binName);
@@ -132,6 +216,7 @@ class BinManager {
         `Bin "${sanitizedName}" already exists`,
         'createBin'
       );
+      return false;
     }
 
     try {
@@ -152,6 +237,14 @@ class BinManager {
    * @returns {Promise<boolean>} True if deleted successfully
    */
   async deleteBin(binName) {
+    if (!binName || typeof binName !== 'string') {
+      ErrorHandler.handleValidationError(
+        'Bin name must be a non-empty string',
+        'deleteBin'
+      );
+      return false;
+    }
+
     const sanitizedName = this.sanitizeBinName(binName);
 
     if (!this.bins.has(sanitizedName)) {
@@ -159,18 +252,20 @@ class BinManager {
         `Bin "${sanitizedName}" not found`,
         'deleteBin'
       );
+      return false;
     }
 
-    if (sanitizedName === 'default') {
-      ErrorHandler.handleValidationError('Cannot delete the default bin', 'deleteBin');
+    if (sanitizedName === this.stagingBinName) {
+      ErrorHandler.handleValidationError('Cannot delete staging bin', 'deleteBin');
+      return false;
     }
 
     try {
       this.bins.delete(sanitizedName);
 
-      // Switch to default bin if deleting the active bin
+      // Switch to staging bin if deleting the active bin
       if (this.activeBinName === sanitizedName) {
-        this.activeBinName = 'default';
+        this.activeBinName = this.stagingBinName;
       }
 
       await this.saveBins();
@@ -188,6 +283,22 @@ class BinManager {
    * @returns {Promise<boolean>} True if renamed successfully
    */
   async renameBin(oldName, newName) {
+    if (!oldName || typeof oldName !== 'string') {
+      ErrorHandler.handleValidationError(
+        'Old bin name must be a non-empty string',
+        'renameBin'
+      );
+      return false;
+    }
+
+    if (!newName || typeof newName !== 'string') {
+      ErrorHandler.handleValidationError(
+        'New bin name must be a non-empty string',
+        'renameBin'
+      );
+      return false;
+    }
+
     const sanitizedOldName = this.sanitizeBinName(oldName);
     const sanitizedNewName = this.sanitizeBinName(newName);
 
@@ -196,6 +307,7 @@ class BinManager {
         `Bin "${sanitizedOldName}" not found`,
         'renameBin'
       );
+      return false;
     }
 
     if (this.bins.has(sanitizedNewName)) {
@@ -203,13 +315,7 @@ class BinManager {
         `Bin "${sanitizedNewName}" already exists`,
         'renameBin'
       );
-    }
-
-    if (!newName || typeof newName !== 'string') {
-      ErrorHandler.handleValidationError(
-        'New bin name must be a non-empty string',
-        'renameBin'
-      );
+      return false;
     }
 
     try {
@@ -241,6 +347,14 @@ class BinManager {
    * @returns {Promise<boolean>} True if set successfully
    */
   async setActiveBin(binName) {
+    if (!binName || typeof binName !== 'string') {
+      ErrorHandler.handleValidationError(
+        'Bin name must be a non-empty string',
+        'setActiveBin'
+      );
+      return false;
+    }
+
     const sanitizedName = this.sanitizeBinName(binName);
 
     if (!this.bins.has(sanitizedName)) {
@@ -248,6 +362,7 @@ class BinManager {
         `Bin "${sanitizedName}" not found`,
         'setActiveBin'
       );
+      return false;
     }
 
     this.activeBinName = sanitizedName;
@@ -287,9 +402,9 @@ class BinManager {
   getActiveBin() {
     const activeBin = this.bins.get(this.activeBinName);
     if (!activeBin) {
-      // Fallback to default bin if active bin is missing
-      this.activeBinName = 'default';
-      return this.bins.get('default') || this.createEmptyBinStructure();
+      // Fallback to staging bin if active bin is missing
+      this.activeBinName = this.stagingBinName;
+      return this.bins.get(this.stagingBinName) || this.createEmptyBinStructure();
     }
     return activeBin;
   }
@@ -311,51 +426,7 @@ class BinManager {
    */
   async addChatsToActiveBin(chats, sourceDumpster, searchResult = null) {
     const activeBin = this.getActiveBin();
-    let addedCount = 0;
-
-    if (!activeBin.items) {
-      activeBin.items = [];
-    }
-
-    for (const chat of chats) {
-      // Check if chat already exists in the bin
-      const exists = activeBin.items.some(
-        item =>
-          item.chatId === (chat.chatId || chat.filename) &&
-          item.sourceDumpster === sourceDumpster
-      );
-
-      if (!exists) {
-        const selectionItem = {
-          chatId: chat.chatId || chat.filename,
-          filename: chat.filename,
-          title: chat.title || 'Untitled Chat',
-          sourceDumpster,
-          addedAt: new Date(),
-          metadata: {
-            messageCount: this.countMessages(chat),
-            createTime: chat.create_time || chat.created_time,
-            updateTime: chat.update_time || chat.updated_time,
-            preview: this.generateChatPreview(chat),
-            ...(searchResult && {
-              searchQuery: searchResult.query,
-              relevanceScore: searchResult.relevanceScore,
-              matchCount: searchResult.matchCount,
-            }),
-          },
-        };
-
-        activeBin.items.push(selectionItem);
-        addedCount++;
-      }
-    }
-
-    if (addedCount > 0) {
-      activeBin.lastModified = new Date();
-      await this.saveBins();
-    }
-
-    return addedCount;
+    return this._addChatsToBinInternal(chats, sourceDumpster, activeBin, searchResult);
   }
 
   /**
@@ -377,6 +448,19 @@ class BinManager {
     }
 
     const bin = this.bins.get(sanitizedName);
+    return this._addChatsToBinInternal(chats, sourceDumpster, bin, searchResult);
+  }
+
+  /**
+   * Internal method to add chats to a bin (shared logic)
+   * @private
+   * @param {Array} chats - Array of chat objects
+   * @param {string} sourceDumpster - Source dumpster name
+   * @param {Object} bin - Target bin object
+   * @param {Object} searchResult - Optional search result metadata
+   * @returns {Promise<number>} Number of chats added
+   */
+  async _addChatsToBinInternal(chats, sourceDumpster, bin, searchResult = null) {
     let addedCount = 0;
 
     if (!bin.items) {
@@ -558,7 +642,7 @@ class BinManager {
    * Check if the active bin is empty
    * @returns {boolean} True if empty
    */
-  is_activeBinEmpty() {
+  isActiveBinEmpty() {
     const stats = this.getActiveBinStats();
     return stats.totalCount === 0;
   }
@@ -710,6 +794,153 @@ class BinManager {
     }
 
     return summary.trim();
+  }
+
+  /**
+   * Check if a bin is the staging bin
+   * @param {string} binName - Name of bin to check
+   * @returns {boolean} True if bin is staging bin
+   */
+  isStagingBin(binName) {
+    const sanitizedName = this.sanitizeBinName(binName);
+    return sanitizedName === this.stagingBinName;
+  }
+
+  /**
+   * Move all chats from staging to another bin
+   * @param {string} targetBinName - Name of target bin
+   * @returns {Promise<number>} Number of chats moved
+   */
+  async moveFromStaging(targetBinName) {
+    // Input validation
+    if (!targetBinName || typeof targetBinName !== 'string') {
+      ErrorHandler.handleValidationError(
+        'Target bin name must be a non-empty string',
+        'moveFromStaging'
+      );
+      return 0;
+    }
+
+    const sanitizedTargetName = this.sanitizeBinName(targetBinName);
+
+    if (!this.bins.has(sanitizedTargetName)) {
+      ErrorHandler.handleValidationError(
+        `Target bin "${sanitizedTargetName}" not found`,
+        'moveFromStaging'
+      );
+      return 0;
+    }
+
+    // Cannot move to staging bin itself
+    if (sanitizedTargetName === this.stagingBinName) {
+      ErrorHandler.handleValidationError(
+        'Cannot move chats from staging to staging bin',
+        'moveFromStaging'
+      );
+      return 0;
+    }
+
+    const stagingBin = this.bins.get(this.stagingBinName);
+    const targetBin = this.bins.get(sanitizedTargetName);
+
+    if (!stagingBin.items || stagingBin.items.length === 0) {
+      ErrorHandler.logInfo('Staging bin is empty, nothing to move', 'BinManager');
+      return 0;
+    }
+
+    // Initialize target bin items if needed
+    if (!targetBin.items) {
+      targetBin.items = [];
+    }
+
+    // Move all items from staging to target
+    const itemsToMove = [...stagingBin.items];
+    let movedCount = 0;
+
+    for (const item of itemsToMove) {
+      // Check if item already exists in target
+      const exists = targetBin.items.some(
+        targetItem =>
+          targetItem.chatId === item.chatId &&
+          targetItem.sourceDumpster === item.sourceDumpster
+      );
+
+      if (!exists) {
+        targetBin.items.push({
+          ...item,
+          addedAt: new Date(), // Update added timestamp for new location
+        });
+        movedCount++;
+      }
+    }
+
+    // Clear staging bin after successful move
+    if (movedCount > 0) {
+      stagingBin.items = [];
+      stagingBin.lastModified = new Date();
+      targetBin.lastModified = new Date();
+
+      await this.saveBins();
+      ErrorHandler.logSuccess(
+        `Moved ${movedCount} chat${movedCount !== 1 ? 's' : ''} from staging to "${sanitizedTargetName}"`,
+        'BinManager'
+      );
+    }
+
+    return movedCount;
+  }
+
+  /**
+   * Clear the staging bin
+   * @returns {Promise<number>} Number of chats cleared
+   */
+  async clearStaging() {
+    const stagingBin = this.bins.get(this.stagingBinName);
+
+    if (!stagingBin.items || stagingBin.items.length === 0) {
+      ErrorHandler.logInfo('Staging bin is already empty', 'BinManager');
+      return 0;
+    }
+
+    const clearedCount = stagingBin.items.length;
+    stagingBin.items = [];
+    stagingBin.lastModified = new Date();
+
+    await this.saveBins();
+    ErrorHandler.logSuccess(
+      `Cleared ${clearedCount} chat${clearedCount !== 1 ? 's' : ''} from staging bin`,
+      'BinManager'
+    );
+
+    return clearedCount;
+  }
+
+  /**
+   * Get staging bin information
+   * @returns {Object} Staging bin info with chat count and metadata
+   */
+  getStagingBinInfo() {
+    const stagingBin = this.bins.get(this.stagingBinName);
+
+    if (!stagingBin) {
+      return {
+        name: this.stagingBinName,
+        exists: false,
+        chatCount: 0,
+        isStaging: true,
+      };
+    }
+
+    return {
+      name: this.stagingBinName,
+      exists: true,
+      chatCount: stagingBin.items ? stagingBin.items.length : 0,
+      description: stagingBin.description || '',
+      createdAt: stagingBin.createdAt,
+      lastModified: stagingBin.lastModified,
+      isStaging: true,
+      isActive: this.activeBinName === this.stagingBinName,
+    };
   }
 }
 

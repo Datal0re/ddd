@@ -3,6 +3,8 @@
  * Contains all configuration values used across the application
  */
 
+// Central Verion number location
+const VERSION = '0.0.5';
 // Security and performance constants
 const LIMITS = {
   MAX_UPLOAD_SIZE: 500 * 1024 * 1024, // 500MB limit
@@ -153,6 +155,7 @@ function validateConfig() {
 validateConfig();
 
 module.exports = {
+  VERSION,
   LIMITS,
   FILE_EXTENSIONS,
   CONTENT_TYPES,

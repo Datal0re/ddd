@@ -274,11 +274,12 @@ class CliPrompts {
   }
 
   /**
-   * Prompt user for upcycle source selection
-   * @param {Object} selectionStats - Current selection statistics
-   * @returns {Promise<string>} Selection choice
+   * Prompt user to select export source (dumpster or bins)
+   * @param {Object} selectionStats - Statistics for bins
+   * @param {BinManager} binManager - BinManager instance for getting bin statistics
+   * @returns {Promise<string>} Selected source ('dumpster' or 'bins')
    */
-  static async promptUpcycleSource(_selectionStats) {
+  static async promptUpcycleSource(_selectionStats, binManager = null) {
     const choices = [
       {
         name: '📦 Export entire dumpster',
@@ -287,9 +288,11 @@ class CliPrompts {
     ];
 
     // Get actual chats by dumpster for accurate information
-    const { BinManager } = require('./BinManager');
-    const binManager = new BinManager(process.cwd());
-    await binManager.initialize();
+    if (!binManager) {
+      const { BinManager } = require('./BinManager');
+      binManager = new BinManager(process.cwd());
+      await binManager.initialize();
+    }
     const bins = binManager.listBins();
 
     // Check if any bins have content
@@ -480,20 +483,81 @@ class CliPrompts {
    * @returns {Promise<string>} Selected bin name or 'create-new'
    */
   static async selectBinForSelection(bins, selectedCount) {
-    const message = `📋 Select bin to add ${selectedCount} chat${selectedCount !== 1 ? 's' : ''}:`;
+    const message = `📋 Where to add ${selectedCount} chat${selectedCount !== 1 ? 's' : ''}:`;
 
-    const choices = bins.map(bin => ({
-      name: `${bin.name} (${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' - current' : ''})`,
-      value: bin.name,
-      description: bin.description || `Add to "${bin.name}" bin`,
-    }));
+    const choices = [];
+
+    // Separate staging bin from named bins
+    const stagingBin = bins.find(bin => bin.name === 'staging');
+    const namedBins = bins.filter(bin => bin.name !== 'staging');
+
+    // Add staging bin first if it exists
+    if (stagingBin) {
+      choices.push({
+        name: `📋 Add to staging (temporary)`,
+        value: 'staging',
+        description: `Add to temporary staging area (${stagingBin.chatCount} chat${stagingBin.chatCount !== 1 ? 's' : ''})`,
+      });
+    }
+
+    // Add named bins
+    namedBins.forEach(bin => {
+      choices.push({
+        name: `📋 Add to "${bin.name}" (${bin.chatCount} chat${bin.chatCount !== 1 ? 's' : ''}${bin.isActive ? ' - active' : ''})`,
+        value: bin.name,
+        description: bin.description || `Add to "${bin.name}" bin`,
+      });
+    });
 
     // Add option to create new bin
     choices.push({
       name: '+ Create new bin',
       value: 'create-new',
-      description: 'Create a new selection bin',
+      description: 'Create a new named bin for organization',
     });
+
+    return await select({
+      message,
+      choices,
+    });
+  }
+
+  /**
+   * Prompt for staging bin actions
+   * @param {number} chatCount - Number of chats in staging
+   * @returns {Promise<string>} Selected action
+   */
+  static async promptStagingBinAction(chatCount = 0) {
+    const message =
+      chatCount > 0
+        ? `📋 Staging bin contains ${chatCount} chat${chatCount !== 1 ? 's' : ''}. What would you like to do?`
+        : '📋 Staging bin is empty. What would you like to do?';
+
+    const choices = [
+      {
+        name: '+ Create new bin',
+        value: 'create-new',
+        description: 'Create a new named bin and move chats there',
+      },
+    ];
+
+    // Add bin options if they exist
+    // Note: This would need BinManager instance to get available bins
+    // For now, just show create option
+
+    if (chatCount > 0) {
+      choices.unshift({
+        name: '💾 Keep in staging for later',
+        value: 'keep-staging',
+        description: 'Leave chats in staging area for future organization',
+      });
+
+      choices.push({
+        name: '🗑️ Clear staging bin',
+        value: 'clear-staging',
+        description: 'Remove all chats from staging area',
+      });
+    }
 
     return await select({
       message,

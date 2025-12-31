@@ -3,6 +3,7 @@
 const { Command } = require('commander');
 const chalk = require('chalk');
 const logo = require('./logo');
+const { VERSION } = require('./config/constants')
 
 const { ErrorHandler, FileNotFoundError } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
@@ -97,7 +98,7 @@ program
 CLI tool to process and explore exported ChatGPT conversation data
 `
   )
-  .version('0.0.5');
+  .version(VERSION);
 
 program
   .command('dump')
@@ -673,7 +674,7 @@ program
       // If no dumpster name provided, determine if we should use selection bin
       let exportSource = 'dumpster'; // Default
       if (!dumpsterName) {
-        exportSource = await CliPrompts.promptUpcycleSource();
+        exportSource = await CliPrompts.promptUpcycleSource(null, bm);
 
         if (exportSource === 'dumpster') {
           // Only prompt for dumpster if user chose dumpster export
@@ -753,7 +754,7 @@ program
       // Initialize UpcycleManager
       const UpcycleManager = require('./utils/UpcycleManager');
 
-      const upcycleManager = new UpcycleManager(dm, pm);
+      const um = new UpcycleManager(dm, pm);
 
       // Perform upcycle with progress tracking
       const onProgress = progress => {
@@ -763,7 +764,7 @@ program
       let result;
       if (exportSource === 'selection') {
         // Bin export - disable entire media directory copy
-        result = await upcycleManager.upcycleBin(format, selectedBinName, {
+        result = await um.upcycleBin(format, selectedBinName, {
           ...validatedOptions,
           outputDir: validatedOptions.output,
           onProgress,
@@ -783,7 +784,7 @@ program
           throw error;
         }
 
-        result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
+        result = await um.upcycleDumpster(dumpsterName, format, {
           ...validatedOptions,
           outputDir: validatedOptions.output,
           onProgress,
@@ -962,10 +963,10 @@ async function handleUpcycleSelected(chatObjects, dumpsterName, dm, bm) {
     console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
 
     const UpcycleManager = require('./utils/UpcycleManager');
-    const upcycleManager = new UpcycleManager(dm);
+    const um = new UpcycleManager(dm);
 
     const format = await CliPrompts.selectExportFormat();
-    const result = await upcycleManager.upcycleSelection(format, {
+    const result = await um.upcycleSelection(format, {
       includeMedia: true,
       verbose: true,
     });
@@ -977,21 +978,6 @@ async function handleUpcycleSelected(chatObjects, dumpsterName, dm, bm) {
   } catch (error) {
     console.error(chalk.red(`❌ Failed to upcycle selected chats: ${error.message}`));
   }
-}
-
-/**
- * Legacy rummage workflow (kept for compatibility but should be unused)
- * @param {DumpsterManager} _dm - DumpsterManager instance (unused)
- * @param {BinManager} _bm - BinManager instance (unused)
- * @param {string} _dumpsterName - Name of dumpster to rummage (unused)
- * @param {Object} _options - Command options (unused)
- */
-// eslint-disable-next-line no-unused-vars
-async function performRummageWorkflow(_dm, _bm, _dumpsterName, _options) {
-  console.log(
-    chalk.yellow('⚠️  Legacy rummage workflow called - this should not happen')
-  );
-  return { noSelection: true };
 }
 
 /**
@@ -1062,41 +1048,6 @@ async function addChatsToSelection(bm, selectedChats, dumpsterName) {
   }
 
   return targetBinName;
-}
-
-/**
- * Upcycle selected chats directly (legacy - unused)
- * @param {Array} _selectedChats - Array of selected chat objects (unused)
- * @param {string} _dumpsterName - Source dumpster name (unused)
- */
-// eslint-disable-next-line no-unused-vars
-async function upcycleSelectedChats(_selectedChats, _dumpsterName) {
-  console.log(
-    chalk.yellow('⚠️  Legacy upcycleSelectedChats called - this should not happen')
-  );
-}
-
-/**
- * Display current selection bin status (legacy - unused)
- * @param {BinManager} _bm - BinManager instance (unused)
- */
-// eslint-disable-next-line no-unused-vars
-async function displaySelectionBinStatus(_bm) {
-  console.log(
-    chalk.yellow('⚠️  Legacy displaySelectionBinStatus called - this should not happen')
-  );
-}
-
-/**
- * Prompt user to upcycle from current selection bin (legacy - unused)
- */
-// eslint-disable-next-line no-unused-vars
-async function promptUpcycleFromSelection() {
-  console.log(
-    chalk.yellow(
-      '⚠️  Legacy promptUpcycleFromSelection called - this should not happen'
-    )
-  );
 }
 
 program.parse();
