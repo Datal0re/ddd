@@ -92,7 +92,7 @@ program
       }
 
       ErrorHandler.handleFileError(error, 'dump command', false);
-      process.exit(1);
+      throw error;
     }
   });
 
@@ -186,7 +186,7 @@ program
       }
     } catch (error) {
       ErrorHandler.handleAsyncError(error, 'listing dumpsters', null, false);
-      process.exit(1);
+      throw error;
     }
   });
 
@@ -334,11 +334,11 @@ program
         default:
           console.error(chalk.red(`Unknown subcommand: ${subcommand}`));
           console.log('Available subcommands: create, burn, list, rename');
-          process.exit(1);
+          throw new Error(`Unknown bin subcommand: ${subcommand}`);
       }
     } catch (error) {
       console.error(chalk.red(`❌ Bin operation failed: ${error.message}`));
-      process.exit(1);
+      throw error;
     }
   });
 
@@ -382,7 +382,7 @@ program
     } catch (error) {
       console.log(chalk.red('❌ Rummage wizard failed'));
       ErrorHandler.handleAsyncError(error, 'rummaging dumpster', null, false);
-      process.exit(1);
+      throw error;
     }
   });
 
@@ -445,11 +445,9 @@ program
       // Check if dumpster exists
       const dumpster = dm.getDumpster(dumpsterName);
       if (!dumpster) {
-        ErrorHandler.handleFileError(
-          `Dumpster "${dumpsterName}" not found - nothing to burn`,
-          'burn command'
-        );
-        process.exit(1);
+        const error = new Error(`Dumpster "${dumpsterName}" not found`);
+        ErrorHandler.handleFileError(error, 'burn command');
+        throw error;
       }
 
       // Get dumpster stats for confirmation
@@ -507,13 +505,14 @@ program
           )
         );
       } else {
+        const error = new Error(`Failed to burn dumpster "${dumpsterName}"`);
         pm.fail(`Failed to ignite dumpster "${dumpsterName}" - flames died out`);
-        process.exit(1);
+        throw error;
       }
     } catch (error) {
       pm.fail(`Failed to start dumpster fire: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'burning dumpster', null, false);
-      process.exit(1);
+      throw error;
     }
   });
 
@@ -651,8 +650,9 @@ program
         const binsWithContent = bins.filter(bin => bin.chatCount > 0);
 
         if (binsWithContent.length === 0) {
-          pm.fail('No bins contain any chats to upcycle');
-          process.exit(1);
+          const error = new Error('No bins contain any chats to upcycle');
+          pm.fail(error.message);
+          throw error;
         }
 
         // If multiple bins have content, prompt for selection
@@ -705,12 +705,13 @@ program
         const dumpster = dumpsters.find(d => d.name === dumpsterName);
 
         if (!dumpster) {
-          pm.fail(`Dumpster "${dumpsterName}" not found`);
+          const error = new Error(`Dumpster "${dumpsterName}" not found`);
+          pm.fail(error.message);
           ErrorHandler.logInfo('Available dumpsters:', 'upcycle');
           dumpsters.forEach(d => {
             console.log(`  ${chalk.green(d.name)} (${d.chatCount} chats)`);
           });
-          process.exit(1);
+          throw error;
         }
 
         result = await upcycleManager.upcycleDumpster(dumpsterName, format, {
@@ -751,7 +752,7 @@ program
     } catch (error) {
       pm.fail(`Upcycle failed: ${error.message}`);
       ErrorHandler.handleAsyncError(error, 'upcycling dumpster', null, false);
-      process.exit(1);
+      throw error;
     }
   });
 
