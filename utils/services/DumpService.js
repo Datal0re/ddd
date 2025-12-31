@@ -8,6 +8,7 @@ const path = require('path');
 const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../validators/CommandValidator');
 const { CliPrompts } = require('../CliPrompts');
+const { VERSION } = require('../../config/constants');
 
 /**
  * Service for handling dumpster creation operations
@@ -203,7 +204,7 @@ class DumpService extends BaseCommandService {
   getServiceInfo() {
     return {
       name: 'DumpService',
-      version: '1.0.0',
+      version: VERSION,
       description: 'Handles dumpster creation from ChatGPT export files',
       capabilities: [
         'file validation',

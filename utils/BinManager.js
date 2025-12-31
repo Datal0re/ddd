@@ -37,7 +37,7 @@ class BinManager {
       // Ensure active bin is valid
       if (!this.bins.has(this.activeBinName)) {
         ErrorHandler.logError(
-          `Bin ${this.activeBinName} not found. Switching to ${this.stagingBinName} instead`, 
+          `Bin ${this.activeBinName} not found. Switching to ${this.stagingBinName} instead`,
           'BinManager'
         );
         this.activeBinName = this.stagingBinName;

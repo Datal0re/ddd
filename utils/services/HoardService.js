@@ -7,6 +7,7 @@
 const { BaseCommandService } = require('./BaseCommandService');
 const { CommonUtils } = require('../CommonUtils');
 const chalk = require('chalk');
+const { VERSION } = require('../../config/constants');
 
 /**
  * Service for handling hoard (listing) operations
@@ -244,7 +245,7 @@ class HoardService extends BaseCommandService {
   getServiceInfo() {
     return {
       name: 'HoardService',
-      version: '1.0.0',
+      version: VERSION,
       description: 'Handles dumpster and bin listing operations',
       capabilities: [
         'dumpster listing',

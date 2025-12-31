@@ -8,11 +8,14 @@ const { createProgressManager } = require('./ProgressManager');
  */
 class WizardUtils {
   /**
-   * Create a wizard step indicator
-   * @param {number} currentStep - Current step number (1-based)
-   * @param {number} totalSteps - Total number of steps
-   * @param {string} stepName - Name of current step
-   * @returns {string} Formatted step indicator
+   * Create a formatted wizard step indicator for user display
+   * @param {number} currentStep - Current step number (1-based indexing)
+   * @param {number} totalSteps - Total number of steps in the wizard
+   * @param {string} stepName - Human-readable name of current step
+   * @returns {string} Formatted step indicator with progress and step name
+   * @example
+   * const indicator = WizardUtils.getStepIndicator(2, 5, 'User Information');
+   * // Returns: "[2/5] User Information" (with colors applied)
    */
   static getStepIndicator(currentStep, totalSteps, stepName) {
     const progress = `[${currentStep}/${totalSteps}]`;
@@ -21,10 +24,17 @@ class WizardUtils {
   }
 
   /**
-   * Execute a multi-step wizard
-   * @param {Array} steps - Array of step configurations
-   * @param {Object} context - Initial context object
-   * @returns {Promise<Object>} Final context with all answers
+   * Execute a multi-step wizard with progress tracking and error handling
+   * @param {Array<Object>} steps - Array of step configuration objects in execution order
+   * @param {Object} [context={}] - Initial context object with pre-populated values
+   * @returns {Promise<Object>} Promise resolving to final context object with all collected answers
+   * @throws {Error} If any step execution fails, with step number included in error context
+   * @example
+   * const steps = [
+   *   { name: 'name', type: 'input', message: 'Enter name:' },
+   *   { name: 'confirm', type: 'confirm', message: 'Confirm?' }
+   * ];
+   * const result = await WizardUtils.executeWizard(steps, { initial: 'value' });
    */
   static async executeWizard(steps, context = {}) {
     const pm = createProgressManager(null, false);
@@ -71,10 +81,19 @@ class WizardUtils {
   }
 
   /**
-   * Execute a single wizard step
-   * @param {Object} step - Step configuration
-   * @param {Object} _context - Current wizard context (unused)
-   * @returns {Promise<Object>} Step result
+   * Execute a single wizard step by delegating to the appropriate prompt handler
+   * @param {Object} step - Step configuration object
+   * @param {string} step.type - Type of prompt ('select', 'checkbox', 'confirm', 'input')
+   * @param {string} step.name - Name of the context property to store the result
+   * @param {string|Function} step.message - Prompt message or function that returns a message
+   * @param {*} [step.default] - Default value for the prompt
+   * @param {Function} [step.validate] - Validation function for user input
+   * @param {Array|Function} [step.choices] - Array of choices or function that returns choices (for select/checkbox)
+   * @param {Function} [step.when] - Conditional function to determine if step should execute
+   * @param {Function} [step.onComplete] - Callback function executed after step completion
+   * @param {Object} _context - Current wizard context containing previous answers (unused)
+   * @returns {Promise<Object>} Promise resolving to object with the step result mapped to step name
+   * @throws {Error} If step.type is not one of the supported prompt types
    */
   static async executeStep(step, _context) {
     const { type } = step;
@@ -95,7 +114,20 @@ class WizardUtils {
   }
 
   /**
-   * Execute an input prompt step
+   * Execute an input prompt step with text input from user
+   * @param {Object} step - Step configuration object
+   * @param {string} step.name - Name of the context property to store the result
+   * @param {string|Function} step.message - Prompt message or function that returns a message
+   * @param {string} [step.default] - Default value for the input
+   * @param {Function} [step.validate] - Validation function for the input
+   * @param {Object} context - Current wizard context containing previous answers
+   * @returns {Promise<Object>} Promise resolving to object with the step result
+   * @example
+   * const result = await WizardUtils.executeInput({
+   *   name: 'username',
+   *   message: 'Enter your username:',
+   *   validate: input => input.length > 0 || 'Username is required'
+   * }, context);
    */
   static async executeInput(step, context) {
     const message =
@@ -111,7 +143,23 @@ class WizardUtils {
   }
 
   /**
-   * Execute a checkbox prompt step
+   * Execute a checkbox prompt step for multi-select options
+   * @param {Object} step - Step configuration object
+   * @param {string} step.name - Name of the context property to store the result
+   * @param {string|Function} step.message - Prompt message or function that returns a message
+   * @param {Array<Object>|Function} step.choices - Array of choice objects or function that returns choices
+   * @param {Array} [step.default] - Default selected choices
+   * @param {Object} context - Current wizard context containing previous answers
+   * @returns {Promise<Object>} Promise resolving to object with the array of selected choices
+   * @example
+   * const result = await WizardUtils.executeCheckbox({
+   *   name: 'features',
+   *   message: 'Select features:',
+   *   choices: [
+   *     { name: 'Feature A', value: 'a' },
+   *     { name: 'Feature B', value: 'b' }
+   *   ]
+   * }, context);
    */
   static async executeCheckbox(step, context) {
     const choices =
@@ -130,7 +178,19 @@ class WizardUtils {
   }
 
   /**
-   * Execute a confirm prompt step
+   * Execute a confirm prompt step for yes/no questions
+   * @param {Object} step - Step configuration object
+   * @param {string} step.name - Name of the context property to store the result
+   * @param {string|Function} step.message - Prompt message or function that returns a message
+   * @param {boolean} [step.default=false] - Default value if user doesn't provide input
+   * @param {Object} context - Current wizard context containing previous answers
+   * @returns {Promise<Object>} Promise resolving to object with the boolean result
+   * @example
+   * const result = await WizardUtils.executeConfirm({
+   *   name: 'confirm',
+   *   message: 'Do you want to continue?',
+   *   default: true
+   * }, context);
    */
   static async executeConfirm(step, context) {
     const message =
@@ -145,7 +205,23 @@ class WizardUtils {
   }
 
   /**
-   * Execute a select prompt step
+   * Execute a select prompt step for single-choice selection
+   * @param {Object} step - Step configuration object
+   * @param {string} step.name - Name of the context property to store the result
+   * @param {string|Function} step.message - Prompt message or function that returns a message
+   * @param {Array<Object>|Function} step.choices - Array of choice objects or function that returns choices
+   * @param {string|number} [step.default] - Default choice value
+   * @param {Object} context - Current wizard context containing previous answers
+   * @returns {Promise<Object>} Promise resolving to object with the selected choice value
+   * @example
+   * const result = await WizardUtils.executeSelect({
+   *   name: 'action',
+   *   message: 'Choose an action:',
+   *   choices: [
+   *     { name: 'Create', value: 'create' },
+   *     { name: 'Delete', value: 'delete' }
+   *   ]
+   * }, context);
    */
   static async executeSelect(step, context) {
     const choices =
@@ -164,7 +240,19 @@ class WizardUtils {
   }
 
   /**
-   * Create a conditional prompt that only shows based on context
+   * Create a conditional prompt that only shows based on context evaluation
+   * @param {Function} condition - Function that takes context and returns boolean to determine if step should show
+   * @param {Object} step - Step configuration object to conditionally execute
+   * @returns {Object} Step configuration with conditional logic attached
+   * @example
+   * const conditionalStep = WizardUtils.conditional(
+   *   ctx => ctx.needsAdvanced,
+   *   {
+   *     name: 'advancedOption',
+   *     type: 'confirm',
+   *     message: 'Enable advanced features?'
+   *   }
+   * );
    */
   static conditional(condition, step) {
     return {
@@ -174,7 +262,19 @@ class WizardUtils {
   }
 
   /**
-   * Create a step with dynamic choices based on context
+   * Create a step with dynamic choices that are generated based on current context
+   * @param {Function} choiceFunction - Function that takes context and returns array of choices
+   * @param {Object} step - Step configuration object to modify
+   * @returns {Object} Step configuration with dynamic choice generation
+   * @example
+   * const dynamicStep = WizardUtils.dynamicChoices(
+   *   ctx => ctx.availableOptions.map(opt => ({ name: opt.label, value: opt.value })),
+   *   {
+   *     name: 'selection',
+   *     type: 'select',
+   *     message: 'Choose an option:'
+   *   }
+   * );
    */
   static dynamicChoices(choiceFunction, step) {
     return {
@@ -185,8 +285,12 @@ class WizardUtils {
 
   /**
    * Create a reusable wizard for rummaging through dumpsters
+   * @param {DumpsterManager} dm - Dumpster Manager instance for accessing chat data and search functionality
+   * @param {BinManager} bm - Bin Manager instance for managing selection bins
+   * @param {Array<Object>} dumpsters - Array of dumpster objects with name and chatCount properties
+   * @returns {Array<Object>} Array of wizard step configurations for the rummaging workflow
    */
-  static createRummageWizard(dumpsterManager, binManager, dumpsters) {
+  static createRummageWizard(dm, bm, dumpsters) {
     return [
       // Step 1: Choose dumpster or use provided one
       this.conditional(ctx => !ctx.dumpsterName, {
@@ -276,7 +380,7 @@ class WizardUtils {
             let searchResults;
             if (ctx.actionType === 'search') {
               if (ctx.searchQuery?.trim()) {
-                const searchResponse = await dumpsterManager.searchChats(
+                const searchResponse = await dm.searchChats(
                   dumpsterName,
                   ctx.searchQuery,
                   { scope: ctx.searchScope, caseSensitive: ctx.caseSensitive }
@@ -285,7 +389,7 @@ class WizardUtils {
               } else {
                 // Show all chats
                 const limit = ctx.chatLimit ? parseInt(ctx.chatLimit) : 50;
-                const chats = await dumpsterManager.getChats(dumpsterName, limit);
+                const chats = await dm.getChats(dumpsterName, limit);
                 searchResults = chats.map((chat, index) => ({
                   chat,
                   searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
@@ -294,7 +398,7 @@ class WizardUtils {
               }
             } else if (ctx.actionType === 'browse') {
               const limit = ctx.chatLimit ? parseInt(ctx.chatLimit) : 50;
-              const chats = await dumpsterManager.getChats(dumpsterName, limit);
+              const chats = await dm.getChats(dumpsterName, limit);
               searchResults = chats.map((chat, index) => ({
                 chat,
                 searchResult: { matchCount: 0, relevanceScore: 0, matches: [] },
@@ -302,10 +406,10 @@ class WizardUtils {
               }));
             } else {
               // For manage action, show selection bin contents
-              const bins = binManager.listBins();
+              const bins = bm.listBins();
               const activeBin = bins.find(bin => bin.isActive);
               if (activeBin) {
-                const chatsByDumpster = binManager.getBinChatsByDumpster(
+                const chatsByDumpster = bm.getBinChatsByDumpster(
                   activeBin.name
                 );
                 const allChats = Object.values(chatsByDumpster).flat();

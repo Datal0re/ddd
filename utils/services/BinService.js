@@ -7,6 +7,7 @@
 const { BaseCommandService } = require('./BaseCommandService');
 const { CliPrompts } = require('../CliPrompts');
 const chalk = require('chalk');
+const { VERSION } = require('../../config/constants');
 
 /**
  * Service for handling bin management operations
@@ -270,7 +271,7 @@ class BinService extends BaseCommandService {
   getServiceInfo() {
     return {
       name: 'BinService',
-      version: '1.0.0',
+      version: VERSION,
       description: 'Handles bin management operations',
       capabilities: [
         'bin creation',

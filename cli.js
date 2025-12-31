@@ -3,7 +3,7 @@
 const { Command } = require('commander');
 const chalk = require('chalk');
 const logo = require('./logo');
-const { VERSION } = require('./config/constants')
+const { VERSION } = require('./config/constants');
 
 const { ErrorHandler, FileNotFoundError } = require('./utils/ErrorHandler');
 const { SchemaValidator } = require('./utils/SchemaValidator');
@@ -15,44 +15,6 @@ const { WizardUtils } = require('./utils/WizardUtils');
 const program = new Command();
 
 // Process-level error handling for unexpected errors
-process.on('uncaughtException', error => {
-  ErrorHandler.logError('Uncaught Exception');
-  ErrorHandler.logError(error.message);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.error(error.stack);
-  }
-
-  process.exit(99); // Fatal error
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  ErrorHandler.logError('Unhandled Promise Rejection');
-  ErrorHandler.logError(reason);
-
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Promise:', promise);
-  }
-
-  process.exit(98); // Promise rejection
-});
-
-// Graceful shutdown handlers
-process.on('SIGINT', () => {
-  console.log(
-    chalk.yellow('\n👋 Received interrupt signal. Gracefully shutting down...')
-  );
-  process.exit(130); // Standard exit code for SIGINT
-});
-
-process.on('SIGTERM', () => {
-  console.log(
-    chalk.yellow('\n👋 Received termination signal. Gracefully shutting down...')
-  );
-  process.exit(143); // Standard exit code for SIGTERM
-});
-
-// Process-level error handling
 process.on('uncaughtException', error => {
   ErrorHandler.logError('Uncaught Exception');
   ErrorHandler.logError(error.message);
@@ -855,7 +817,7 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
       );
 
       // Process wizard results
-      await handleWizardResults(wizardResult, dm, bm, options);
+      await handleWizardResults(wizardResult, dm, bm);
 
       // Determine if user wants to continue
       const action = wizardResult.selectedAction || wizardResult.emptySelectionAction;
@@ -869,7 +831,23 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
       }
     } catch (error) {
       console.log(chalk.red('❌ Wizard step failed'));
-      ErrorHandler.handleErrorAndExit(error, 'wizard rummaging');
+      ErrorHandler.handleError(error, 'wizard rummaging');
+
+      // Ask user if they want to retry or quit
+      const { input } = require('@inquirer/prompts');
+      try {
+        const retry = await input({
+          message: 'Would you like to try again? (y/N)',
+          default: 'N',
+        });
+
+        if (retry.toLowerCase() !== 'y' && retry.toLowerCase() !== 'yes') {
+          continueRummaging = false;
+        }
+      } catch {
+        // If prompting fails, exit gracefully
+        continueRummaging = false;
+      }
     }
   }
 
@@ -881,9 +859,8 @@ async function performWizardRummage(dm, bm, dumpsters, initialDumpsterName, opti
  * @param {Object} wizardResult - Results from wizard execution
  * @param {DumpsterManager} dm - DumpsterManager instance
  * @param {BinManager} bm - BinManager instance
- * @param {Object} _options - Command options (unused)
  */
-async function handleWizardResults(wizardResult, dm, bm, _options) {
+async function handleWizardResults(wizardResult, dm, bm) {
   const { dumpsterName, selectedChats, selectedAction, emptySelectionAction } =
     wizardResult;
   const action = selectedAction || emptySelectionAction;
