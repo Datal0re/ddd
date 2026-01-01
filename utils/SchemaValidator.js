@@ -162,18 +162,12 @@ class SchemaValidator {
    * @returns {string} returns.reason - Reason for prompting requirement
    */
   static safeValidateBinName(name, options = {}) {
-    const { context = 'validation', detectEmpty = true } = options;
-
-    if (detectEmpty && (!name || name.trim() === '')) {
-      return { valid: false, requiresPrompt: true, reason: 'name is empty' };
-    }
-
-    try {
-      const validatedName = this.validateBinName(name, { context });
-      return { valid: true, data: validatedName };
-    } catch (error) {
-      return { valid: false, error, message: error.message };
-    }
+    return this.safeValidate(
+      this.validateBinName.bind(this),
+      name,
+      { ...options, emptyReason: 'name is empty' },
+      { context: options.context || 'validation' }
+    );
   }
 
   /**
@@ -510,18 +504,12 @@ class SchemaValidator {
    * @returns {string} returns.reason - Reason for prompting requirement
    */
   static safeValidateDumpsterName(name, options = {}) {
-    const { context = 'validation', detectEmpty = true } = options;
-
-    if (detectEmpty && (!name || name.trim() === '')) {
-      return { valid: false, requiresPrompt: true, reason: 'name is empty' };
-    }
-
-    try {
-      const validatedName = this.validateDumpsterName(name, { context });
-      return { valid: true, data: validatedName };
-    } catch (error) {
-      return { valid: false, error, message: error.message };
-    }
+    return this.safeValidate(
+      this.validateDumpsterName.bind(this),
+      name,
+      { ...options, emptyReason: 'name is empty' },
+      { context: options.context || 'validation' }
+    );
   }
 
   /**
@@ -550,6 +538,7 @@ class SchemaValidator {
       detectEmpty = true,
     } = options;
 
+    // Special handling for path validation due to async nature and special cases
     if (detectEmpty && (!filePath || filePath.trim() === '')) {
       return { valid: false, requiresPrompt: true, reason: 'path is empty' };
     }
@@ -571,6 +560,48 @@ class SchemaValidator {
   }
 
   /**
+   * Generic safe validation wrapper - handles empty detection and error catching
+   * @param {Function} validationMethod - The validation method to call (should throw on error)
+   * @param {any} value - Value to validate
+   * @param {Object} options - Validation options
+   * @param {string} options.context - Context for error messages
+   * @param {boolean} options.detectEmpty - Whether to detect empty values and return requiresPrompt
+   * @param {string} options.emptyReason - Custom reason for empty detection
+   * @param {Array} additionalArgs - Additional arguments to pass to validation method
+   * @returns {Object} Validation result object
+   * @returns {boolean} returns.valid - Whether validation passed
+   * @returns {any} returns.data - Validated value (if valid)
+   * @returns {Error} returns.error - Error object (if invalid)
+   * @returns {string} returns.message - Error message (if invalid)
+   * @returns {boolean} returns.requiresPrompt - Whether prompting is required (if empty detection enabled)
+   * @returns {string} returns.reason - Reason for prompting requirement
+   */
+  static safeValidate(validationMethod, value, options = {}, ...additionalArgs) {
+    const {
+      context = 'validation',
+      detectEmpty = true,
+      emptyReason = 'value is empty',
+    } = options;
+
+    if (
+      detectEmpty &&
+      (value === undefined ||
+        value === null ||
+        (typeof value === 'string' && value.trim() === '') ||
+        (Array.isArray(value) && value.length === 0))
+    ) {
+      return { valid: false, requiresPrompt: true, reason: emptyReason };
+    }
+
+    try {
+      const validatedValue = validationMethod.call(this, value, ...additionalArgs);
+      return { valid: true, data: validatedValue };
+    } catch (error) {
+      return { valid: false, error, message: error.message };
+    }
+  }
+
+  /**
    * Safe validation version of validateExportFormat - returns result object instead of throwing
    * @param {string} format - Export format to validate
    * @param {Array<string>} allowedFormats - Array of allowed formats (default: ['txt', 'md', 'html'])
@@ -586,26 +617,13 @@ class SchemaValidator {
    * @returns {string} returns.reason - Reason for prompting requirement
    */
   static safeValidateExportFormat(format, allowedFormats = null, options = {}) {
-    const { context = 'export format validation', detectEmpty = true } = options;
-
-    if (detectEmpty && (!format || typeof format !== 'string')) {
-      return {
-        valid: false,
-        requiresPrompt: true,
-        reason: 'format is missing or invalid',
-      };
-    }
-
-    try {
-      const validatedFormat = this.validateExportFormat(
-        format,
-        allowedFormats || ['txt', 'md', 'html'],
-        context
-      );
-      return { valid: true, data: validatedFormat };
-    } catch (error) {
-      return { valid: false, error, message: error.message };
-    }
+    return this.safeValidate(
+      this.validateExportFormat.bind(this),
+      format,
+      { ...options, emptyReason: 'format is missing or invalid' },
+      allowedFormats || ['txt', 'md', 'html'],
+      options.context || 'export format validation'
+    );
   }
 
   /**

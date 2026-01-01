@@ -7,7 +7,7 @@
 const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
-const chalk = require('chalk');
+const { StatisticsUtils } = require('../StatisticsUtils');
 const { VERSION } = require('../../config/constants');
 
 /**
@@ -145,66 +145,12 @@ class UpcycleService extends BaseCommandService {
   }
 
   /**
-   * Calculate selection bin status (extracted from CLI lines 622-656)
+   * Calculate selection bin status using centralized StatisticsUtils
    * @param {BinManager} bm - Bin manager instance
    * @returns {Object} Bin status information
    */
   async calculateSelectionBinStatus(bm) {
-    const chatsByDumpster = bm.getActiveBinChatsByDumpster();
-    const allChats = Object.values(chatsByDumpster).flat();
-    const totalCount = allChats.length;
-
-    if (totalCount === 0) {
-      return {
-        hasContent: false,
-        totalCount: 0,
-        totalMessages: 0,
-        dumpsterCount: 0,
-        chatsByDumpster: {},
-      };
-    }
-
-    const totalMessages = allChats.reduce(
-      (sum, chat) => sum + (chat.metadata?.messageCount || 0),
-      0
-    );
-    const dumpsterCount = Object.keys(chatsByDumpster).length;
-
-    return {
-      hasContent: true,
-      totalCount,
-      totalMessages,
-      dumpsterCount,
-      chatsByDumpster,
-    };
-  }
-
-  /**
-   * Display selection bin status (extracted from CLI lines 632-655)
-   * @param {Object} binStatus - Bin status information
-   */
-  displaySelectionBinStatus(binStatus) {
-    console.log(chalk.blue(`\n📋 Selection Bin Status:`));
-    console.log(`   ${binStatus.totalCount} chats selected`);
-
-    if (binStatus.totalMessages > 0) {
-      console.log(`   ${binStatus.totalMessages} total messages`);
-    }
-
-    if (binStatus.dumpsterCount > 0) {
-      console.log(
-        `   From ${binStatus.dumpsterCount} dumpster${binStatus.dumpsterCount !== 1 ? 's' : ''}`
-      );
-
-      // Show dumpsters with chat counts
-      Object.entries(binStatus.chatsByDumpster).forEach(([name, chats]) => {
-        console.log(
-          `   • ${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`
-        );
-      });
-    }
-
-    console.log();
+    return StatisticsUtils.calculateSelectionBinStatus(bm);
   }
 
   /**

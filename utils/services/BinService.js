@@ -7,6 +7,7 @@
 const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
+const { StatisticsUtils } = require('../StatisticsUtils');
 const chalk = require('chalk');
 const { VERSION } = require('../../config/constants');
 
@@ -284,61 +285,60 @@ class BinService extends BaseCommandService {
     }
   }
 
+  // /**
+  //  * Calculate bin statistics (extracted from CliPrompts)
+  //  * @param {BinManager} bm - Bin manager instance
+  //  * @returns {Object} Bin statistics
+  //  */
+  // calculateBinStatistics(bm) {
+  //   const bins = bm.listBins();
+
+  //   let totalChats = 0;
+  //   let totalMessages = 0;
+  //   let totalDumpsters = 0;
+  //   let activeCount = 0;
+
+  //   for (const bin of bins) {
+  //     const chatsByDumpster = bm.getBinChatsByDumpster(bin.name);
+  //     const binChatCount = Object.values(chatsByDumpster).flat().length;
+  //     totalChats += binChatCount;
+
+  //     if (binChatCount > 0) {
+  //       totalDumpsters += Object.keys(chatsByDumpster).length;
+  //       totalMessages += Object.values(chatsByDumpster).reduce(
+  //         (sum, chats) =>
+  //           sum +
+  //           chats.reduce(
+  //             (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
+  //             0
+  //           ),
+  //         0
+  //       );
+  //     }
+
+  //     if (bin.isActive) {
+  //       activeCount++;
+  //     }
+  //   }
+
+  //   return {
+  //     totalBins: bins.length,
+  //     totalChats,
+  //     totalMessages,
+  //     totalDumpsters,
+  //     activeCount,
+  //     averageChatsPerBin: bins.length > 0 ? Math.round(totalChats / bins.length) : 0,
+  //     hasContent: totalChats > 0,
+  //   };
+  // }
+
   /**
-   * Calculate bin statistics (extracted from CliPrompts)
+   * Calculate bin statistics using centralized StatisticsUtils
    * @param {BinManager} bm - Bin manager instance
    * @returns {Object} Bin statistics
    */
   calculateBinStatistics(bm) {
-    const bins = bm.listBins();
-
-    let totalChats = 0;
-    let totalMessages = 0;
-    let totalDumpsters = 0;
-    let activeCount = 0;
-
-    for (const bin of bins) {
-      const chatsByDumpster = bm.getBinChatsByDumpster(bin.name);
-      const binChatCount = Object.values(chatsByDumpster).flat().length;
-      totalChats += binChatCount;
-
-      if (binChatCount > 0) {
-        totalDumpsters += Object.keys(chatsByDumpster).length;
-        totalMessages += Object.values(chatsByDumpster).reduce(
-          (sum, chats) =>
-            sum +
-            chats.reduce(
-              (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
-              0
-            ),
-          0
-        );
-      }
-
-      if (bin.isActive) {
-        activeCount++;
-      }
-    }
-
-    return {
-      totalBins: bins.length,
-      totalChats,
-      totalMessages,
-      totalDumpsters,
-      activeCount,
-      averageChatsPerBin: bins.length > 0 ? Math.round(totalChats / bins.length) : 0,
-      hasContent: totalChats > 0,
-    };
-  }
-
-  /**
-   * Get bins with content for selection
-   * @param {BinManager} bm - Bin manager instance
-   * @returns {Array} Array of bins that have content
-   */
-  getBinsWithContent(bm) {
-    const bins = bm.listBins();
-    return bins.filter(bin => bin.chatCount > 0);
+    return StatisticsUtils.calculateBinStatistics(bm);
   }
 
   /**
