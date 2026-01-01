@@ -1,6 +1,7 @@
 # Data Dumpster Diver
 
 ![ddd logo](./ddd-logo.png)
+
 [![version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
 
 A wizard-guided CLI tool for processing and exploring exported ChatGPT conversation data. Transform ZIP exports into organized, searchable collections with extracted media assets.
