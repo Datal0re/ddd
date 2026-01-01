@@ -134,7 +134,7 @@ program
     .option('-v, --verbose', 'Verbose output')
     .action(async (subcommand, name) => {
       try {
-        const BinService = require('./utils/services/BinService');
+        const { BinService } = require('./utils/services/BinService');
 
         // Initialize service layer
         const initService = new CommandInitService(__dirname);
@@ -143,10 +143,11 @@ program
         // Execute bin subcommand through service
         const result = await binService.executeBinCommand(subcommand, name, managers);
         if (!result.success) {
-          ErrorHandler.handleErrorAndExit(
-            result.error || new Error(result.message),
-            'bin command'
-          );
+          const error =
+            result.error instanceof Error
+              ? result.error
+              : new Error(result.message || 'Unknown error occurred');
+          ErrorHandler.handleErrorAndExit(error, 'bin command');
         }
       } catch (error) {
         ErrorHandler.handleErrorAndExit(error, 'bin command');

@@ -283,6 +283,65 @@ class BinService extends BaseCommandService {
       ],
     };
   }
+
+  /**
+   * Execute bin command with subcommand routing
+   * @param {string} subcommand - The subcommand to execute (create, burn, list, rename)
+   * @param {string} name - Optional bin name for create/rename operations
+   * @param {Object} managers - Manager instances from CommandInitService
+   * @returns {Promise<Object>} Result object with success status
+   */
+  async executeBinCommand(subcommand, name, managers) {
+    if (!subcommand) {
+      return this.createResult(
+        false,
+        null,
+        'No subcommand provided. Use create, burn, list, or rename.',
+        'missing_subcommand'
+      );
+    }
+
+    const { bin } = managers;
+    if (!bin) {
+      return this.createResult(
+        false,
+        null,
+        'Bin manager not available',
+        'missing_manager'
+      );
+    }
+
+    try {
+      switch (subcommand.toLowerCase()) {
+        case 'create':
+          return await this.createBin(bin, name);
+
+        case 'burn':
+          return await this.burnBin(bin, name);
+
+        case 'list':
+          return await this.listBins(bin);
+
+        case 'rename':
+          return await this.renameBin(bin, name);
+
+        default:
+          return this.createResult(
+            false,
+            null,
+            `Unknown subcommand: ${subcommand}. Use create, burn, list, or rename.`,
+            'unknown_subcommand'
+          );
+      }
+    } catch (error) {
+      return this.createResult(
+        false,
+        error,
+        `Failed to execute bin command "${subcommand}": ${error.message}`,
+        'execution_error'
+      );
+    }
+  }
 }
 
 module.exports = {
