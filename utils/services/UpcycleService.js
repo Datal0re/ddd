@@ -15,6 +15,10 @@ const { VERSION } = require('../../config/constants');
  * Extracted from CLI upcycle command handler
  */
 class UpcycleService extends BaseCommandService {
+  constructor(baseDir) {
+    super(baseDir);
+  }
+
   /**
    * Perform upcycle export operation
    * @param {string} format - Export format (may be undefined, will prompt)
@@ -34,6 +38,11 @@ class UpcycleService extends BaseCommandService {
         options,
         managers
       );
+
+      // Prompt for format if not provided
+      if (validatedInputs.requiresFormatPrompt) {
+        validatedInputs.format = await CliPrompts.selectExportFormat();
+      }
 
       // Determine export source
       const exportSource = await this.determineExportSource(
@@ -89,14 +98,11 @@ class UpcycleService extends BaseCommandService {
    * @param {Object} managers - Required managers
    * @returns {Promise<Object>} Validated inputs
    */
-  async validateAndPrepareInputs(format, dumpsterName, options, _managers) {
+  async validateAndPrepareInputs(format, dumpsterName, options, managers) {
     const validatedInputs = {};
 
     // Check and display selection bin status first
-    const binStatus = await this.calculateSelectionBinStatus(_managers.bin);
-    // const selectedSource =
-    //   binStatus.hasContent && !dumpsterName ? 'selection' : 'dumpster';
-    // validatedInputs.binStatus = binStatus;
+    const binStatus = this.calculateSelectionBinStatus(managers.bin);
 
     if (binStatus.hasContent && !dumpsterName) {
       this.displaySelectionBinStatus(binStatus);
@@ -106,7 +112,7 @@ class UpcycleService extends BaseCommandService {
     if (!format) {
       validatedInputs.requiresFormatPrompt = true;
     } else {
-      const formatValidation = SchemaValidator.validateExportFormat(
+      const formatValidation = SchemaValidator.safeValidateExportFormat(
         format,
         ['txt', 'md', 'html'],
         'upcycle command'
@@ -119,8 +125,18 @@ class UpcycleService extends BaseCommandService {
       validatedInputs.format = formatValidation.format;
     }
 
-    // Validate options
-    validatedInputs.options = this.validateUpcycleOptions(options);
+    // Validate options using SchemaValidator
+    const optionsValidation = SchemaValidator.validateUpcycleCommand(
+      validatedInputs.format,
+      null, // dumpster name not needed for options validation
+      options
+    );
+
+    if (!optionsValidation.valid) {
+      throw new Error(optionsValidation.message);
+    }
+
+    validatedInputs.options = optionsValidation.validatedInputs.options;
 
     // Store dumpster name for later use
     validatedInputs.dumpsterName = dumpsterName;
@@ -195,9 +211,10 @@ class UpcycleService extends BaseCommandService {
    * Determine export source (dumpster vs selection)
    * @param {string} dumpsterName - Provided dumpster name
    * @param {BinManager} binManager - Bin manager instance
+   * @param {string} format - Export format (may be undefined)
    * @returns {Promise<Object>} Export source information
    */
-  async determineExportSource(dumpsterName, binManager) {
+  async determineExportSource(dumpsterName, binManager, format) {
     // If dumpster name provided, use it
     if (dumpsterName) {
       return {
@@ -213,11 +230,13 @@ class UpcycleService extends BaseCommandService {
       return {
         source: 'dumpster',
         requiresPrompt: true,
+        format: format, // Pass through format if already provided
       };
     }
 
     return {
       source: 'selection',
+      format: format, // Pass through format if already provided
     };
   }
 
@@ -242,23 +261,6 @@ class UpcycleService extends BaseCommandService {
       dumpsters,
       'Select a dumpster to upcycle:'
     );
-  }
-
-  /**
-   * Validate upcycle command options
-   * @param {Object} options - Options object
-   * @returns {Object} Validated options
-   */
-  validateUpcycleOptions(options) {
-    const schema = {
-      output: { type: 'string', required: false },
-      includeMedia: { type: 'boolean', required: false, default: true },
-      selfContained: { type: 'boolean', required: false, default: false },
-      verbose: { type: 'boolean', required: false, default: false },
-    };
-
-    return SchemaValidator.validateCommandOptions(options, schema, 'upcycle command')
-      .options;
   }
 
   /**

@@ -7,7 +7,6 @@
 const path = require('path');
 const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../SchemaValidator');
-const { CommandValidator } = require('../validators/CommandValidator');
 const { CliPrompts } = require('../CliPrompts');
 const { VERSION } = require('../../config/constants');
 
@@ -18,7 +17,6 @@ const { VERSION } = require('../../config/constants');
 class DumpService extends BaseCommandService {
   constructor(baseDir) {
     super(baseDir);
-    this.validator = new CommandValidator();
   }
 
   /**
@@ -90,7 +88,7 @@ class DumpService extends BaseCommandService {
     }
 
     // Validate provided file
-    const validation = this.validator.validateRequiredParameters(
+    const validation = SchemaValidator.safeValidateRequired(
       [{ name: 'file', value: file }],
       context
     );
