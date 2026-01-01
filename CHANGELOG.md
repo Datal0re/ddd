@@ -1,5 +1,139 @@
 # CHANGELOG
 
+## v0.1.0 - 2026-01-01 🎉 MAJOR RELEASE
+
+### 🧙‍♂️ Wizard-Based CLI System - Revolutionary UX Enhancement
+
+**Complete CLI Transformation**: Replaced complex nested workflows with intuitive wizard-based guided experiences
+
+- **Progressive Disclosure**: Users see only relevant options at each step, reducing cognitive load
+- **Step Indicators**: Clear `[1/9] Step Name` progress tracking throughout workflows
+- **Conditional Logic**: Smart step skipping based on user choices and context
+- **Declarative Configuration**: Simple step arrays instead of complex nested decision trees
+- **State Management**: Maintains context across wizard steps for seamless experience
+
+**Enhanced Rummage Command**: Complete redesign from 130+ line complex loop to clean wizard flow:
+
+1. Select dumpster (conditional - only if not provided)
+2. Choose action: Search, Browse, or Manage selection bin
+3. Search query (conditional - only for search action)
+4. Search scope (conditional - only if search query provided)
+5. Case sensitivity (conditional - only if search query provided)
+6. Chat limit (conditional - only for browse action)
+7. Chat selection (dynamic choices based on previous steps)
+8. Action on selected chats (conditional - only if chats selected)
+9. Handle empty selection (conditional - only if no chats selected)
+
+### 📊 Unified Output Management - Complete Console Consistency
+
+**OutputManager Implementation**: Unified all console output patterns across entire CLI
+
+- **Single Source of Truth**: Centralized output formatting eliminates 15+ inconsistent patterns
+- **Standardized Emoji Usage**: Semantic emoji system with consistent visual language
+- **Context-Aware Messaging**: All messages include operation context for better debugging
+- **Enhanced Error Recovery**: Actionable suggestions with every error message
+- **Professional Polish**: Structured reports, lists, and step indicators
+
+**Message Type Standards**:
+
+- ✅ **Success**: `✅ context: message` (Green)
+- ❌ **Error**: `❌ Error: context: message` (Red)
+- ⚠️ **Warning**: `⚠️ context: message` (Yellow)
+- ℹ️ **Info**: `ℹ️ context: message` (Blue)
+- 🏃 **Progress**: `⏳ context: message` (Blue)
+- 📍 **Steps**: `📍 Step 1/3: description`
+- 🧙‍♂️ **Wizard**: `🧙‍♂️ context: message`
+
+### 🏗️ Service Layer Architecture - Complete Codebase Refactoring
+
+**BaseCommandService Foundation**: Established inheritance hierarchy for all business logic
+
+- **6 New Service Classes**: DumpService, HoardService, BurnService, UpcycleService, RummageService, BinService
+- **Consistent Error Handling**: Standardized result objects and error patterns
+- **Dependency Injection**: Clean manager separation and testing support
+- **Result Standardization**: All services return `{ success, data, message, error, timestamp }` objects
+
+**SchemaValidator Enhancement**: Comprehensive validation with safe patterns
+
+- **Safe Validation Methods**: Non-throwing alternatives for all validation functions
+- **Prompt Detection**: Smart detection of when user input is required vs. validation errors
+- **Context-Aware Errors**: Validation errors include operational context
+- **Type Safety**: Comprehensive parameter validation across all inputs
+
+### 🎯 Selection Bin System - Persistent Chat Management
+
+**New Workflow Integration**: Seamlessly connect rummage selection with upcycle export
+
+- **Persistent Selection**: Selected chats remain available across multiple rummage sessions
+- **Bin Management**: Create, rename, empty, and delete selection bins
+- **Export Integration**: Upcycle command can export from selection bin or entire dumpster
+- **Multi-Select Interface**: Checkbox-based chat selection with visual feedback
+
+### 🔧 Code Quality & Maintainability Improvements
+
+**DRY Violations Eliminated**: Major reduction in code duplication
+
+- **Output Consistency**: Eliminated 15+ different console output patterns
+- **Validation Consolidation**: Centralized validation logic across all services
+- **Error Handling**: Unified error patterns with consistent recovery suggestions
+- **Business Logic Separation**: Clear separation between CLI interface and business operations
+
+**Enhanced Testing Infrastructure**:
+
+- **New Test Suites**: `rummage-integration-test.sh`, `test-empty-bin.sh`, `test-output-consistency.sh`
+- **Real CLI Testing**: Shell-based tests validate actual user workflows
+- **Consistent Test Data**: Synthetic data generation for reproducible testing
+- **Comprehensive Coverage**: Tests for wizard flows, service methods, and error scenarios
+
+### 📦 Architecture Summary
+
+**Before v0.1.0**:
+
+- Complex nested command loops
+- Inconsistent console output patterns
+- Mixed error handling approaches
+- Limited user guidance and recovery
+
+**After v0.1.0**:
+
+- Wizard-based guided workflows
+- Unified OutputManager system
+- Service layer with BaseCommandService
+- Enhanced error recovery with suggestions
+- Selection bin system for persistent workflow
+
+### 🛡️ Security & Reliability
+
+- **Input Validation**: Comprehensive parameter validation throughout CLI
+- **Error Recovery**: Graceful failure handling with actionable suggestions
+- **Path Safety**: Maintained robust path traversal protection
+- **ZIP Security**: Preserved zip bomb and malicious file protection
+
+### 📈 Impact Metrics
+
+**User Experience**:
+
+- ✅ **Cognitive Load Reduced**: Progressive disclosure eliminates option overwhelm
+- ✅ **Consistency Achieved**: Unified visual language across entire CLI
+- ✅ **Error Recovery Enhanced**: Actionable suggestions for every failure
+- ✅ **Workflow Efficiency**: Persistent selection bins save time
+
+**Developer Experience**:
+
+- ✅ **Maintainability Improved**: Centralized output and validation logic
+- ✅ **Testing Enhanced**: Shell-based tests validate real CLI behavior
+- ✅ **Architecture Clean**: Clear separation between CLI and business logic
+- ✅ **Consistency Enforced**: Service layer establishes coding patterns
+
+**Code Quality**:
+
+- ✅ **DRY Violations**: Eliminated major sources of duplication
+- ✅ **Standards**: Established patterns for future development
+- ✅ **Documentation**: Comprehensive JSDoc and inline documentation
+- ✅ **Testing**: Realistic CLI testing scenarios
+
+---
+
 ## v0.0.5 - 2024-12-29
 
 ### Bug Fixes and Critical Improvements

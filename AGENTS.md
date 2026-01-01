@@ -1,39 +1,53 @@
 # Development Guidelines
 
-## Project Architecture
+## 🏗️ v0.1.0 Architecture Overview
 
-### CLI Tool for ChatGPT Data Processing
+### Wizard-Based CLI Tool for ChatGPT Data Processing
 
-This is a focused CLI tool for processing ChatGPT conversation data with an interactive, user-friendly interface:
+This is a modern CLI tool with wizard-guided workflows and a clean service layer architecture:
 
 ```text
 ┌─────────────┐    ZIP    ┌──────────────┐      ┌─────────────┐
 │  CLI User   │ ◄───────► │  Processing  │ ◄──► │  Dumpsters  │
 │  Interface  │           │  Engine      │      │   Storage   │
 └─────────────┘           └──────────────┘      └─────────────┘
-       │                          │
-       ▼                          ▼
+        │                          │
+        ▼                          ▼
 ┌─────────────┐           ┌──────────────┐
-│ Interactive │           │  Export      │
-│   Prompts   │           │  Formats     │
+│  🧙‍♂️Wizard │           │  📊Unified   │
+│  Workflows  │           │  OutputMgr   │
 └─────────────┘           └──────────────┘
 ```
 
-### Detailed Architecture
+### Modern Architecture Layers
 
 The codebase follows a clean, modular architecture with clear separation of concerns:
 
 ```text
 CLI Layer (cli.js)
 ├── Commands: dump, hoard, rummage, burn, upcycle
-├── Interactive Prompts (@inquirer/prompts)
+├── Wizard Utils (@inquirer/prompts + WizardUtils.js)
 ├── Progress Display (ProgressManager.js)
 └── Error Handling & Validation (ErrorHandler.js, SchemaValidator.js)
 
-Business Logic Layer
+🏗️ Service Layer (utils/services/)
+├── BaseCommandService.js - Common service foundation
+├── DumpService.js - Business logic for dump operations
+├── HoardService.js - Business logic for hoard operations
+├── RummageService.js - Business logic for rummage operations
+├── BurnService.js - Business logic for burn operations
+├── UpcycleService.js - Business logic for upcycle operations
+├── BinService.js - Business logic for selection bin operations
+└── CommandInitService.js - Service initialization and dependency injection
+
+Business Logic Layer (utils/)
 ├── DumpsterManager.js - Core dumpster lifecycle management
 ├── DumpsterProcessor.js - Main processing orchestration
+├── BinManager.js - Selection bin lifecycle and operations
+├── SearchManager.js - Advanced search functionality
+├── StatisticsUtils.js - Centralized statistics calculations
 ├── AssetExtractor.js - Asset extraction and organization
+├── OutputManager.js - Unified console output management
 └── FileUtils.js - File operations and validation
 
 Export Layer
@@ -45,42 +59,57 @@ Export Layer
     ├── MDFormatter.js - Markdown export formatting
     └── TXTFormatter.js - Plain text export
 
-Utility Layer (utils/)
-├── ProgressManager.js - Progress tracking and user feedback
-├── ErrorHandler.js - Centralized error handling and logging
-├── SchemaValidator.js - Input validation and data integrity
+Wizard & UX Layer (utils/)
+├── WizardUtils.js - Progressive disclosure workflow engine
 ├── CliPrompts.js - Interactive command-line prompts
-├── CommonUtils.js - Shared utility functions
-├── assetUtils.js - Asset handling utilities
-├── upcycleHelpers.js - Export helper functions
-├── zipProcessor.js - ZIP processing and security
-└── ChatDumper.js - Chat data processing and dumping
+└── ProgressManager.js - Progress tracking and user feedback
 
 Configuration Layer
 └── config/constants.js - Configuration constants and limits
 ```
 
-## Core Components
+## 🎯 Core Components (v0.1.0)
 
-- **cli.js**: Command-line interface with Commander.js and @inquirer/prompts
-- **utils/DumpsterManager.js**: Core dumpster lifecycle management
-- **utils/DumpsterProcessor.js**: Main processing orchestration for ZIP files
-- **utils/AssetExtractor.js**: Asset extraction and organization
-- **utils/FileUtils.js**: File operations and validation
-- **utils/ChatUpcycler.js**: Chat message processing and export functionality
-- **utils/UpcycleManager.js**: Export format management and coordination
-- **utils/ProgressManager.js**: Progress tracking and user feedback
-- **utils/ErrorHandler.js**: Centralized error handling and logging
-- **utils/SchemaValidator.js**: Input validation and data integrity
-- **utils/CliPrompts.js**: Interactive command-line prompts
-- **utils/formatters/**: Export format implementations (HTML, MD, TXT)
+### Service Layer Architecture
 
-## Development Commands
+- **BaseCommandService**: Foundation class providing common patterns for all services
+- **DumpService**: Business logic for ChatGPT export processing
+- **HoardService**: Business logic for dumpster listing and management
+- **RummageService**: Business logic for search, selection, and wizard workflows
+- **BurnService**: Business logic for safe dumpster deletion with confirmations
+- **UpcycleService**: Business logic for export format handling and options
+- **BinService**: Business logic for persistent selection bin management
+- **CommandInitService**: Service initialization with dependency injection
+
+### Wizard System
+
+- **WizardUtils.js**: Progressive disclosure workflow engine
+- **Step Indicators**: `[1/9] Step Name` progress tracking
+- **Conditional Logic**: Smart step skipping based on user choices
+- **State Management**: Maintains context across wizard steps
+- **Declarative Configuration**: Simple step arrays instead of complex nested logic
+
+### Unified Output Management
+
+- **OutputManager.js**: Centralized console formatting and messaging
+- **Consistent Formatting**: Standardized emoji usage and color schemes
+- **Context-Aware Messages**: All messages include operational context
+- **Error Recovery**: Actionable suggestions with every error
+- **Specialized Loggers**: Context-specific loggers for different operations
+
+### Enhanced Validation System
+
+- **SchemaValidator.js**: Comprehensive input validation with safe patterns
+- **Safe Validation Methods**: Non-throwing alternatives for all validation functions
+- **Prompt Detection**: Smart detection of user input requirements vs. validation errors
+- **Type Safety**: Comprehensive parameter validation across all inputs
+
+## 🚀 Development Commands
 
 ### Development Workflow
 
 ```bash
-# Development
+# Code Quality
 npm run lint             # Run ESLint
 npm run lint:fix         # Run ESLint with auto-fix
 npm run format           # Format code with Prettier
@@ -98,137 +127,238 @@ npm run test:cleanup     # Clean up test artifacts
 ### CLI Commands (using ddd binary)
 
 ```bash
-ddd dump                 # Process ChatGPT export ZIP (interactive)
-ddd hoard                # List all dumpsters
-ddd rummage              # Explore chats in a dumpster (interactive)
-ddd burn                 # Delete a dumpster (interactive with safety)
-ddd upcycle              # Export dumpsters to various formats (interactive)
+ddd dump                 # Process ChatGPT export ZIP (wizard-guided)
+ddd hoard                # List all dumpsters with unified formatting
+ddd rummage              # Advanced wizard-guided search and selection
+ddd burn                 # Delete dumpster safely (wizard-guided confirmation)
+ddd upcycle              # Export with wizard-guided format selection
 ```
 
-## Code Style
+## 🎨 Code Style & Patterns
+
+### Modern JavaScript Standards
 
 - **CommonJS modules** (project uses "type": "commonjs")
 - **ES6+ features** (async/await, destructuring, arrow functions)
 - **Consistent naming**: camelCase for functions, PascalCase for classes
-- **Error handling**: Try-catch with meaningful error messages
+- **Error handling**: Try-catch with meaningful error messages and recovery suggestions
 - **JSDoc**: Comprehensive documentation for all functions
-- **Interactive Design**: All commands use @inquirer/prompts for better UX
+- **Wizard Design**: All complex workflows use progressive disclosure
 
-## Adding New Commands
+### Service Layer Patterns
 
-1. Add command to `cli.js` using Commander.js:
+- **Inheritance**: All services extend BaseCommandService
+- **Dependency Injection**: Services receive managers through CommandInitService
+- **Result Objects**: Standardized `{ success, data, message, error, timestamp }` returns
+- **Error Handling**: Consistent error patterns with OutputManager integration
+- **Logging**: Specialized loggers via `OutputManager.createLogger(context)`
 
-   ```javascript
-   program
-     .command('mycommand')
-     .description('Description of command')
-     .argument('[arg]', 'Optional argument')
-     .option('-v, --verbose', 'Verbose output')
-     .action(async (arg, options) => {
-       // Command implementation
-     });
-   ```
+### OutputManager Usage
 
-2. Add corresponding method to `utils/DumpsterManager.js` if needed
-3. Add tests for the new command in the `tests/` directory
-4. Update documentation (README.md and this file)
-5. Test CLI functionality manually
+```javascript
+// Create specialized logger for consistent context
+this.output = OutputManager.createLogger('operation context');
 
-## File Structure
+// Standard message types
+this.output.success(message, suggestion);
+this.output.error(message, suggestion);
+this.output.warning(message);
+this.output.info(message);
+this.output.progress(message);
+
+// Specialized formatting
+this.output.action('burn', 'Starting operation...');
+this.output.report(data, 'Statistics');
+this.output.list(items, 'Available Items');
+this.output.step('Processing...', 1, 3);
+```
+
+## 🔧 Adding New Commands
+
+### 1. Create Service Class
+
+Create service class in `utils/services/` extending BaseCommandService:
+
+```javascript
+class MyCommandService extends BaseCommandService {
+  constructor(baseDir) {
+    super(baseDir);
+    this.output = OutputManager.createLogger('mycommand operation');
+  }
+
+  async executeMyCommand(param, options, managers) {
+    try {
+      // Business logic implementation
+      return this.createResult(true, data, 'Success message');
+    } catch (error) {
+      const errorMessage = `Failed to execute: ${error.message}`;
+      this.output.error(errorMessage, 'recovery suggestion');
+      return this.createResult(false, null, errorMessage, error);
+    }
+  }
+}
+```
+
+### 2. Add Command to CLI
+
+Add command to `cli.js` using Commander.js:
+
+```javascript
+const { MyCommandService } = require('./utils/services/MyCommandService');
+
+program
+  .command('mycommand')
+  .description('Description of command')
+  .argument('[arg]', 'Optional argument')
+  .option('-v, --verbose', 'Verbose output')
+  .action(async (arg, options, command) => {
+    const initService = new CommandInitService();
+    const managers = await initService.initializeManagers(options.verbose);
+    const service = new MyCommandService(process.cwd());
+
+    await service.executeMyCommand(arg, options, managers);
+  });
+```
+
+### 3. Add Wizard Steps (for complex workflows)
+
+```javascript
+const steps = [
+  {
+    name: 'selectItem',
+    type: 'select',
+    message: 'Select an item:',
+    choices: async ctx => generateChoices(ctx),
+    when: ctx => ctx.needsSelection,
+  },
+  {
+    name: 'confirmAction',
+    type: 'confirm',
+    message: ctx => `Confirm action on ${ctx.selectedItem}?`,
+    default: false,
+  },
+];
+
+const result = await WizardUtils.executeWizard(steps, initialContext);
+```
+
+### 4. Add Tests
+
+Add tests for new command in `tests/` directory using shell scripts for realistic CLI testing.
+
+### 5. Update Documentation
+
+Update README.md and this AGENTS.md file with new command information.
+
+## 📂 File Structure (v0.1.0)
 
 ```text
 data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point (binary: ddd)
-├── package.json              # Dependencies and scripts (v0.0.5)
+├── package.json              # Dependencies and scripts (v0.1.0)
 ├── eslint.config.js         # ESLint configuration
 ├── .prettierrc.json         # Prettier configuration
 ├── .prettierignore          # Prettier ignore rules
 ├── config/
 │   └── constants.js          # Configuration constants and limits
 ├── utils/
-│   ├── AssetExtractor.js     # Asset extraction and organization
-│   ├── ChatDumper.js         # Chat data processing and dumping
-│   ├── ChatUpcycler.js       # Chat message processing & export
-│   ├── CliPrompts.js         # Interactive command-line prompts
-│   ├── CommonUtils.js        # Common utility functions
-│   ├── DumpsterManager.js    # Core dumpster management
-│   ├── DumpsterProcessor.js  # Main processing orchestration
-│   ├── ErrorHandler.js       # Centralized error handling and logging
-│   ├── FileUtils.js          # File operations and validation
-│   ├── ProgressManager.js    # Progress tracking and user feedback
-│   ├── SchemaValidator.js    # Input validation and data integrity
-│   ├── UpcycleManager.js     # Export format management and coordination
-│   ├── assetUtils.js         # Asset handling utilities
-│   ├── upcycleHelpers.js     # Export helper functions
-│   ├── zipProcessor.js       # ZIP processing and security
-│   └── formatters/          # Export formatters
-│       ├── BaseFormatter.js  # Base formatter class
+│   ├── services/            # 🏗️ Service Layer (NEW)
+│   │   ├── BaseCommandService.js  # Foundation for all services
+│   │   ├── BinService.js          # Selection bin operations
+│   │   ├── BurnService.js         # Dumpster deletion logic
+│   │   ├── CommandInitService.js  # Service initialization
+│   │   ├── DumpService.js         # Export processing logic
+│   │   ├── HoardService.js        # Dumpster listing logic
+│   │   ├── RummageService.js     # Search/selection logic
+│   │   └── UpcycleService.js     # Export format logic
+│   ├── WizardUtils.js       # 🧙‍♂️ Wizard workflow engine (NEW)
+│   ├── OutputManager.js     # 📊 Unified output system (NEW)
+│   ├── BinManager.js        # 📋 Selection bin management (NEW)
+│   ├── SearchManager.js     # 🔍 Advanced search functionality (NEW)
+│   ├── StatisticsUtils.js   # 📈 Centralized statistics (NEW)
+│   ├── SchemaValidator.js   # ✅ Enhanced validation system
+│   ├── ErrorHandler.js      # 🚨 Centralized error handling
+│   ├── CliPrompts.js       # 📝 Interactive prompts
+│   ├── CommonUtils.js       # 🔧 Shared utility functions
+│   ├── AssetExtractor.js    # 📁 Asset extraction and organization
+│   ├── ChatDumper.js       # 💬 Chat data processing
+│   ├── ChatUpcycler.js     # ♻️ Chat message processing & export
+│   ├── DumpsterManager.js   # 🗑️ Core dumpster management
+│   ├── DumpsterProcessor.js # 🏭 Main processing orchestration
+│   ├── FileUtils.js        # 📄 File operations and validation
+│   ├── ProgressManager.js   # 📊 Progress tracking
+│   ├── UpcycleManager.js   # ♻️ Export format coordination
+│   ├── assetUtils.js       # 🎨 Asset handling utilities
+│   ├── upcycleHelpers.js   # 🛠️ Export helper functions
+│   ├── zipProcessor.js     # 📦 ZIP processing and security
+│   └── formatters/         # 📋 Export formatters
+│       ├── BaseFormatter.js  # Abstract base class
 │       ├── HTMLFormatter.js  # HTML export formatter
 │       ├── MDFormatter.js    # Markdown export formatter
 │       └── TXTFormatter.js   # Plain text export formatter
-├── tests/                  # Shell-based test suite
-│   ├── README.md            # Test documentation
-│   ├── generate-test-data.js # Synthetic test data generator
+├── tests/                  # 🧪 Test suite
 │   ├── minimal-test.sh      # Basic functionality tests
 │   ├── minimal-workflow-test.sh # End-to-end workflow tests
+│   ├── rummage-integration-test.sh # Wizard workflow tests
+│   ├── test-empty-bin.sh   # Selection bin tests
+│   ├── test-output-consistency.sh # Output formatting tests
 │   ├── simple-test.sh       # Quick validation tests
-│   └── test-basic-synthetic/ # Synthetic test data
-│       ├── conversations.json
-│       ├── user.json
-│       ├── message_feedback.json
-│       └── chat.html
+│   └── generate-test-data.js # Synthetic test data generator
 ├── AGENTS.md               # Development guidelines (this file)
 ├── CHANGELOG.md            # Version history
 ├── LICENSE                 # MIT License
 └── README.md               # User-facing documentation
 ```
 
-## CLI Commands Overview (Developer Reference)
+## 🎯 CLI Commands Overview (Developer Reference)
 
-All commands use interactive prompts when arguments are omitted, making the CLI user-friendly:
+All commands use wizard-guided workflows when arguments are omitted, providing step-by-step guidance:
 
 ### `dump [file]`
 
-- **Purpose**: Process ChatGPT export ZIP files
+- **Purpose**: Process ChatGPT export ZIP files with wizard guidance
 - **Options**: `-n/--name <name>`, `-v/--verbose`
-- **Interactive**: Prompts for file path and dumpster name if not provided
-- **Backend**: Uses `DumpsterProcessor.js` for main processing
+- **Wizard Flow**: File selection → name confirmation → processing options
+- **Backend**: Uses `DumpService.js` for business logic
 
 ### `hoard`
 
-- **Purpose**: List all processed dumpsters
+- **Purpose**: List all processed dumpsters with rich formatting
 - **Options**: `-v/--verbose` for detailed information
-- **Backend**: Uses `DumpsterManager.js.listDumpsters()`
+- **Backend**: Uses `HoardService.js` for business logic
 
-### `rummage`
+### `rummage [dumpster-name]`
 
-- **Purpose**: Search and select chats from dumpsters for export
+- **Purpose**: Advanced wizard-guided search, selection, and management
 - **Options**: `-v/--verbose` for verbose output
-- **Interactive Workflow**:
-  1. Select dumpster to search
-  2. Enter search query (optional - shows all if empty)
-  3. Configure search options (scope, case sensitivity)
-  4. View search results with multi-select checkboxes
-  5. Action menu for selected chats (add to selection bin, upcycle, new search, etc.)
-- **Backend**: Uses `SearchManager.js`, `SelectionManager.js`, and enhanced `DumpsterManager.js.searchChats()`
+- **Wizard Flow**: 8-step progressive disclosure workflow
+- **Backend**: Uses `RummageService.js`, `WizardUtils.js`, `SearchManager.js`, `BinManager.js`
+- **Features**: Relevance scoring, persistent selection bins, multi-select interface
 
 ### `burn [dumpster-name]`
 
-- **Purpose**: Safely delete dumpsters
-- **Options**: `-f/--force`, `--dry-run`
-- **Safety**: Requires confirmation and text verification unless forced
-- **Backend**: Uses `DumpsterManager.js.deleteDumpster()`
+- **Purpose**: Safely delete dumpsters with multi-step confirmation
+- **Options**: `-f/--force` (skip confirmation), `--dry-run` (preview)
+- **Wizard Flow**: Dumpster selection → statistics review → confirmation → text verification
+- **Backend**: Uses `BurnService.js` for business logic
 
 ### `upcycle [format] [dumpster-name]`
 
-- **Purpose**: Export dumpsters or selection bin to various formats
+- **Purpose**: Export dumpsters or selection bin with wizard guidance
 - **Options**: `-o/--output <path>`, `--include-media`, `--self-contained`, `-v/--verbose`
-- **Interactive**: Prompts for format selection and export source (entire dumpster vs selection bin)
-- **Backend**: Uses `UpcycleManager.js`, `SelectionManager.js`, and formatter system
-- **New in v0.0.5**: Selection bin support - can export selected chats from `rummage` command
-- **Note**: Fixed in v0.0.5 - `--output` parameter now properly maps to output directory
+- **Wizard Flow**: Format selection → export source → options → export execution
+- **Backend**: Uses `UpcycleService.js`, `BinManager.js`, and formatter system
+- **Features**: Selection bin export, format preview, rich media handling
 
-## Export Formatters
+### `bin [subcommand] [name]` (NEW in v0.1.0)
+
+- **Purpose**: Manage persistent selection bins for chat organization
+- **Subcommands**: `create`, `list`, `rename`, `empty`, `burn` (delete)
+- **Wizard Flow**: Conditional prompting based on subcommand
+- **Backend**: Uses `BinService.js` for business logic
+- **Features**: Persistent chat selections, bin management, integration with rummage
+
+## 📋 Export Formatters (Enhanced)
 
 The project uses a modular formatter system with a base class and format-specific implementations:
 
@@ -241,33 +371,19 @@ Abstract base class that defines the interface for all formatters:
 - `getFileExtension()` - Get file extension for the format
 - `getMimeType()` - Get MIME type for the format
 
-### HTMLFormatter
+### Enhanced Formatters
 
-- **Features**: Full HTML export with CSS styling
-- **Media Support**: Embedded or linked assets
-- **Self-contained**: Option to include all assets inline
-- **Rich Content**: Preserves formatting, links, and structure
+- **HTMLFormatter**: Full HTML export with CSS styling, media support, self-contained option
+- **MDFormatter**: Clean Markdown with proper headers, code blocks with syntax hints
+- **TXTFormatter**: Plain text with minimal formatting for maximum compatibility
 
-### MDFormatter
-
-- **Format**: Clean Markdown with proper headers
-- **Code Blocks**: Preserves code formatting with syntax highlighting hints
-- **Links**: Maintains clickable links and references
-- **Compatibility**: Works with all Markdown viewers
-
-### TXTFormatter
-
-- **Simplicity**: Plain text with minimal formatting
-- **Readability**: Clean, accessible format
-- **Compatibility**: Works with any text editor
-- **Size**: Most compact export option
-
-## Configuration
+## ⚙️ Configuration
 
 Configuration is handled through `config/constants.js`:
 
 ```javascript
 {
+  VERSION: '0.1.0',  // Centralized version management
   LIMITS: {
     MAX_UPLOAD_SIZE: 500 * 1024 * 1024,      // 500MB
     MAX_EXTRACTED_SIZE: 2 * 1024 * 1024 * 1024, // 2GB
@@ -283,7 +399,7 @@ Configuration is handled through `config/constants.js`:
 }
 ```
 
-## Testing
+## 🧪 Testing
 
 The project includes comprehensive test coverage using shell-based CLI testing:
 
@@ -301,33 +417,21 @@ npm run test:setup        # Generate synthetic test data and ZIP file
 npm run test:cleanup      # Clean up test artifacts
 ```
 
-### Manual Testing
-
-```bash
-ddd --help                # Test CLI help
-ddd dump --help           # Test command help
-ddd hoard                 # Test dumpster listing
-ddd upcycle --help        # Test export functionality
-
-# Test with real data (when available)
-ddd dump path/to/chatgpt-export.zip --name "test"
-ddd rummage test
-ddd upcycle txt test --output ./tests/upcycle-bin
-```
-
-### Test Structure
+### Test Structure (Enhanced in v0.1.0)
 
 - **Shell Script Tests**: Real CLI command testing with actual scenarios
-- **Synthetic Test Data**: Consistent, reproducible ChatGPT export structure in `test-basic-synthetic/`
+- **Wizard Workflow Tests**: Tests for multi-step wizard flows
+- **Service Layer Tests**: Tests for business logic separation
+- **Output Consistency Tests**: Tests for unified console formatting
+- **Selection Bin Tests**: Tests for persistent selection functionality
+- **Synthetic Test Data**: Consistent, reproducible ChatGPT export structure
 - **Workflow Testing**: End-to-end validation of complete user workflows
-- **Quick Validation**: Fast tests for basic functionality verification
-- **Test Data Management**: Automated setup and cleanup of test artifacts
 
-## Dependency Management
+## 📦 Dependency Management
 
 ### Core Dependencies
 
-- **@inquirer/prompts**: Interactive command-line prompts for better user experience
+- **@inquirer/prompts**: Interactive command-line prompts for wizard workflows
 - **chalk**: Terminal string styling for colorful output
 - **cli-progress**: Flexible progress bars for command-line applications
 - **commander**: Complete solution for Node.js command-line interfaces
@@ -344,46 +448,61 @@ ddd upcycle txt test --output ./tests/upcycle-bin
 - **nodemon**: CLI auto-restart utility (for development convenience)
 - **prettier**: Opinionated code formatter for consistent style
 
-### Dependency Guidelines
-
-- Keep dependencies minimal and focused
-- Only add packages that solve specific problems
-- Prefer built-in Node.js modules when possible
-- Use `npm audit` regularly for security
-- Core dependencies include @inquirer/prompts for interactive UX
-
-## Code Quality
+## 🎨 Code Quality Standards
 
 - **ESLint**: Configured for consistent code style with modern JavaScript support
 - **Prettier**: Automatic code formatting for consistent style
 - **CommonJS**: Module system for maximum compatibility
 - **JSDoc**: Comprehensive documentation for all functions
-- **Interactive Design**: All commands use @inquirer/prompts for better UX
+- **Wizard Design**: All complex workflows use progressive disclosure
+- **Service Layer**: Business logic separated from CLI concerns
+- **OutputManager**: Unified console formatting across all operations
 
-## Future Enhancements
+## 🚀 Future Development Guidelines
 
-**Completed in v0.0.5**:
+### Pattern Consistency
 
-- ✅ **Enhanced Rummage Command**: Complete redesign with search, selection, and integration
-- ✅ **Search Functionality**: Full-text search within chat titles and content with relevance scoring
-- ✅ **Selection Bin System**: Persistent chat selection for export via `upcycle` command
-- ✅ **Interactive Multi-Select**: Checkbox interface for selecting multiple chats
-- ✅ **Selection-Based Upcycling**: Export selected chats instead of entire dumpsters
+- **Service Layer**: Always extend BaseCommandService and return standardized result objects
+- **OutputManager**: Use OutputManager.createLogger() for consistent formatting
+- **Wizard Workflows**: Use WizardUtils.executeWizard() for complex multi-step flows
+- **Validation**: Use SchemaValidator.safeValidate\* methods for input validation
+- **Error Handling**: Provide actionable suggestions with every error message
 
-Planned improvements include:
+### Adding New Features
 
-- **Additional CLI Commands**: `inspect` for detailed analysis, `stats` for statistics
-- **Enhanced Search**: Full-text search across all dumpsters simultaneously
-- **Service Layer**: Better abstraction for business logic
-- **User Configuration**: Configurable settings and preferences
-- **Additional Export Formats**: PDF, JSON, CSV export options
-- **Enhanced Burn Command**: Batch deletion and recycling bin functionality
-- **Performance Improvements**: Optimized processing for large chat histories
-- **Integration Features**: Import from other chat export formats
+1. **Create Service**: Business logic in appropriate service class
+2. **Add Wizard Steps**: For complex workflows, add to WizardUtils.executeWizard()
+3. **Use OutputManager**: Consistent messaging and formatting
+4. **Add Tests**: Shell-based tests for realistic CLI validation
+5. **Update Documentation**: README.md and AGENTS.md
 
-## Security Considerations
+## 🛡️ Security Considerations
 
 - **Path Traversal Protection**: Comprehensive validation against directory traversal attacks
 - **ZIP Bomb Protection**: Robust validation against malicious ZIP files
 - **Input Validation**: Schema-based validation for all user inputs
 - **Safety Features**: Text verification required for destructive operations
+- **Output Sanitization**: Proper handling of user input in console output
+
+## 🎉 v0.1.0 Architecture Benefits
+
+### User Experience
+
+- **Progressive Disclosure**: Users see only relevant options at each step
+- **Wizard Guidance**: Step-by-step workflows eliminate confusion
+- **Consistent Interface**: Unified visual language and behavior
+- **Error Recovery**: Actionable suggestions for every failure
+
+### Developer Experience
+
+- **Service Layer**: Clean separation of concerns and business logic
+- **Wizard Framework**: Reusable patterns for complex workflows
+- **OutputManager**: Centralized formatting and error handling
+- **Test Infrastructure**: Realistic shell-based CLI testing
+
+### Code Quality
+
+- **DRY Elimination**: Removed major sources of code duplication
+- **Standardization**: Consistent patterns across entire codebase
+- **Maintainability**: Clear architecture and documentation
+- **Extensibility**: Easy to add new commands and features

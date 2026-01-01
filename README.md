@@ -2,18 +2,20 @@
 
 A Node.js CLI tool to process and explore exported ChatGPT conversation data. Transform ZIP exports into organized, searchable dumpsters with extracted media assets.
 
-[![version](https://img.shields.io/badge/version-0.0.5-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
+[![version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
 
 ## 🗑️ What It Does
 
-- **Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters (interactive)
-- **Hoard**: View your collection of processed dumpsters
-- **Rummage**: Search and select chats from dumpsters for export (interactive with multi-select)
-- **Burn**: Safely delete dumpsters with confirmation prompts and text verification
-- **Upcycle**: Export dumpsters or selection bin to various formats (HTML, Markdown, Text)
-- **Organize**: Automatically extract and organize media assets (images, files, audio)
-- **Secure**: Validate ZIP files against path traversal and zip bomb attacks
-- **Interactive**: User-friendly prompts when arguments are omitted
+- **🧙‍♂️ Wizard-Based CLI**: Progressive disclosure workflows guide users through complex operations step-by-step
+- **📦 Service Layer Architecture**: Clean separation of business logic with consistent error handling
+- **🎯 Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters (wizard-guided)
+- **💎 Hoard**: View your collection of processed dumpsters with rich formatting
+- **🔍 Rummage**: Search and select chats with intelligent wizard workflow and persistent selection bin
+- **🔥 Burn**: Safely delete dumpsters with multi-step confirmation and text verification
+- **♻️ Upcycle**: Export dumpsters or selection bin to various formats (wizard-guided format selection)
+- **📊 Unified Output**: Consistent console formatting with contextual error recovery suggestions
+- **🛡️ Secure**: Comprehensive validation against path traversal, zip bomb, and injection attacks
+- **✨ Interactive**: Intuitive prompts when arguments omitted - every command works interactively
 
 ## 🚀 Quick Start
 
@@ -44,9 +46,9 @@ ddd dump  # Will prompt for file path and name
 ddd hoard
 ddd hoard --verbose  # Detailed view with creation dates
 
-# Search and select chats from dumpsters (interactive workflow)
+# Search and select chats with wizard-guided workflow
 ddd rummage
-# Will prompt for dumpster, search query, and selection options
+# Progressive disclosure: dumpster → action → search → selection → export options
 
 # Burn (delete) a dumpster safely (with confirmation and text verification)
 ddd burn my-chats
@@ -88,14 +90,25 @@ ddd hoard [options]
 
 ### `rummage [dumpster-name]`
 
-Rummage through chats in a specific dumpster.
+Advanced wizard-guided search and selection workflow.
 
 ```bash
 ddd rummage <dumpster-name> [options]
-ddd rummage  # Interactive mode
+ddd rummage  # Full wizard experience
 ```
 
-**Options**: `-l, --limit <number>` for chat count
+**Wizard Flow**:
+
+1. 🗑️ Select dumpster (conditional)
+2. 🎯 Choose action: 🔍 Search, 📋 Browse, 📦 Manage selection bin
+3. 🔍 Search query (conditional for search action)
+4. 🌐 Search scope (conditional for search action)
+5. 🔄 Case sensitivity (conditional for search action)
+6. 📊 Chat limit (conditional for browse action)
+7. ☑️ Multi-select chat interface
+8. 🎬 Action menu for selected chats
+
+**Features**: Persistent selection bin, relevance scoring, context-aware options
 
 ### `burn [dumpster-name]`
 
@@ -110,14 +123,20 @@ ddd burn  # Interactive mode
 
 ### `upcycle [format] [dumpster-name]`
 
-Export dumpsters to various formats.
+Export dumpsters or selection bin with wizard-guided format selection.
 
 ```bash
 ddd upcycle <format> <dumpster-name> [options]
-ddd upcycle  # Fully interactive mode
+ddd upcycle  # Full wizard: format → source → options → export
 ```
 
-**Formats**: `txt`, `md`, `html`
+**Export Sources**:
+
+- 📦 Entire dumpster with all chats
+- 📋 Selection bin (persistent chat selections from rummage)
+- 🔍 Individual chat selections
+
+**Formats**: `txt`, `md`, `html` with rich media support
 **Options**: `-o, --output <path>`, `--include-media`, `--self-contained`, `-v, --verbose`
 
 ## 🗂️ Data Organization
@@ -197,4 +216,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Version**: 0.0.5 | **Last Updated**: 2025-12-29
+**Version**: 0.1.0 | **Last Updated**: 2026-01-01 | **Major Release**: Wizard-Based CLI 🎉
