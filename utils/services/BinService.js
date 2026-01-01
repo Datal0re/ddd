@@ -18,6 +18,8 @@ const { VERSION } = require('../../config/constants');
 class BinService extends BaseCommandService {
   constructor(baseDir) {
     super(baseDir);
+    // Create specialized logger for consistent context handling
+    this.output = OutputManager.createLogger('bin operation');
   }
 
   /**
@@ -112,7 +114,7 @@ class BinService extends BaseCommandService {
       const nameValidation = this.validateAndPrepareBinName(name, 'create');
       if (!nameValidation.valid) {
         const errorMessage = `Cannot create bin: ${nameValidation.message || nameValidation.error.message}`;
-        OutputManager.error(errorMessage, 'create bin');
+        this.output.error(errorMessage);
         return this.createResult(false, null, errorMessage, nameValidation.context);
       }
 
@@ -124,7 +126,7 @@ class BinService extends BaseCommandService {
       const existenceValidation = this.validateBinExistence(bm, binName, 'create');
       if (!existenceValidation.valid) {
         const errorMessage = `Cannot create bin "${binName}": ${existenceValidation.error}`;
-        OutputManager.error(errorMessage, 'create bin');
+        this.output.error(errorMessage);
         return this.createResult(
           false,
           null,
@@ -136,12 +138,12 @@ class BinService extends BaseCommandService {
       await bm.createBin(binName);
 
       const successMessage = this.formatSuccessMessage('Created bin', binName);
-      OutputManager.success(successMessage, 'create bin');
+      this.output.success(successMessage);
 
       return this.createResult(true, { binName }, successMessage);
     } catch (error) {
       const errorMessage = `Failed to create bin: ${error.message}`;
-      OutputManager.error(errorMessage, 'create bin');
+      this.output.error(errorMessage, 'Check bin name and permissions');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -157,7 +159,7 @@ class BinService extends BaseCommandService {
       // Check if any bins exist
       const bins = bm.listBins();
       if (bins.length === 0) {
-        OutputManager.warning('No bins to burn', 'bin operation');
+        this.output.warning('No bins to burn');
         return this.createResult(true, null, 'No bins available');
       }
 
@@ -167,7 +169,7 @@ class BinService extends BaseCommandService {
         const nameValidation = this.validateAndPrepareBinName(name, 'burn');
         if (!nameValidation.valid) {
           const errorMessage = `Cannot burn bin: ${nameValidation.message || nameValidation.error.message}`;
-          OutputManager.error(errorMessage, 'burn bin');
+          this.output.error(errorMessage);
           return this.createResult(false, null, errorMessage, nameValidation.context);
         }
         binName = nameValidation.validatedInputs.binName;
@@ -176,7 +178,7 @@ class BinService extends BaseCommandService {
         const existenceValidation = this.validateBinExistence(bm, binName, 'delete');
         if (!existenceValidation.valid) {
           const errorMessage = `Cannot burn bin "${binName}": ${existenceValidation.error}`;
-          OutputManager.error(errorMessage, 'delete bin');
+          this.output.error(errorMessage);
           return this.createResult(
             false,
             null,
@@ -196,12 +198,10 @@ class BinService extends BaseCommandService {
       if (confirmed) {
         await bm.deleteBin(binName);
         const successMessage = `Burned bin "${binName}" to ashes`;
-        // console.log(chalk.green(`🔥 ${successMessage}`));
-        OutputManager.success(`🔥 ${successMessage}`);
+        this.output.action('burn', successMessage);
         return this.createResult(true, { binName, action: 'burned' }, successMessage);
       } else {
-        // console.log(chalk.yellow('💨 Bin burning cancelled.'));
-        OutputManager.warning('💨 Bin burning cancelled.');
+        this.output.warning('Bin burning cancelled', 'Bin was not deleted');
         return this.createResult(
           true,
           { binName, action: 'cancelled' },
@@ -210,8 +210,7 @@ class BinService extends BaseCommandService {
       }
     } catch (error) {
       const errorMessage = `Failed to burn bin${name ? ` "${name}"` : ''}: ${error.message}`;
-      // console.error(chalk.red(`❌ ${errorMessage}`));
-      OutputManager.error(errorMessage)
+      this.output.error(errorMessage, 'Check bin name and permissions');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -226,11 +225,8 @@ class BinService extends BaseCommandService {
       const bins = bm.listBins();
 
       if (bins.length === 0) {
-        OutputManager.list([], 'Available bins', 'No bins found', 'bin operation');
-        OutputManager.info(
-          'Use "ddd bin create <name>" to create your first bin',
-          'bin operation'
-        );
+        this.output.list([], 'Available bins', 'No bins found');
+        this.output.info('Use "ddd bin create <name>" to create your first bin');
         return this.createResult(true, [], 'No bins found');
       }
 
@@ -241,16 +237,16 @@ class BinService extends BaseCommandService {
           : 'Inactive selection bin',
       }));
 
-      OutputManager.list(formattedBins, 'Available bins', null, 'bin operation');
+      this.output.list(formattedBins, 'Available bins');
 
       // Show current bin info
       const currentSummary = bm.getActiveBinSummary();
-      OutputManager.info(currentSummary, 'bin operation');
+      this.output.info(currentSummary);
 
       return this.createResult(true, bins, `Found ${bins.length} bins`);
     } catch (error) {
       const errorMessage = `Failed to list bins: ${error.message}`;
-      OutputManager.error(errorMessage, 'list bins');
+      this.output.error(errorMessage, 'Check bin manager availability');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -266,8 +262,7 @@ class BinService extends BaseCommandService {
       const bins = bm.listBins();
 
       if (bins.length === 0) {
-        // console.log(chalk.yellow('📋 No bins to rename.'));
-        OutputManager.warning('📋 No bins to rename.');
+        this.output.warning('No bins to rename');
         return this.createResult(true, null, 'No bins available');
       }
 
@@ -276,18 +271,18 @@ class BinService extends BaseCommandService {
       const newName = await CliPrompts.promptForBinName('new');
 
       if (oldName === newName) {
-        // console.log(chalk.yellow('📋 Bin name is the same.'));
+        this.output.warning('Bin name is the same', 'Choose a different name');
         return this.createResult(true, { oldName, newName }, 'Name unchanged');
       }
 
       await bm.renameBin(oldName, newName);
       const successMessage = `Renamed bin "${oldName}" to "${newName}"`;
-      // console.log(chalk.green(`✅ ${successMessage}`));
+      this.output.success(successMessage);
 
       return this.createResult(true, { oldName, newName }, successMessage);
     } catch (error) {
       const errorMessage = `Failed to rename bin: ${error.message}`;
-      // console.error(chalk.red(`❌ ${errorMessage}`));
+      this.output.error(errorMessage, 'Check bin permissions and names');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -366,26 +361,26 @@ class BinService extends BaseCommandService {
    */
   async executeBinCommand(subcommand, name, managers) {
     if (!subcommand) {
-      return this.createResult(
-        false,
-        null,
-        'No subcommand provided. Use: ddd bin <create|burn|list|rename> [name]',
-        'missing_subcommand'
+      const errorMessage =
+        'No subcommand provided. Use: ddd bin <create|burn|list|rename> [name]';
+      this.output.error(
+        errorMessage,
+        'Available subcommands: create, burn, list, rename'
       );
+      return this.createResult(false, null, errorMessage, 'missing_subcommand');
     }
 
     const { bin } = managers;
     if (!bin) {
-      return this.createResult(
-        false,
-        null,
-        'Bin manager not available. This should not happen - please report this issue.',
-        'missing_manager'
-      );
+      const errorMessage =
+        'Bin manager not available. This should not happen - please report this issue.';
+      this.output.error(errorMessage, 'Please report this as a bug');
+      return this.createResult(false, null, errorMessage, 'missing_manager');
     }
 
     try {
       const operation = subcommand.toLowerCase();
+      const errorMessage = `Unknown subcommand "${subcommand}". Valid subcommands are: create, burn, list, rename`;
 
       switch (operation) {
         case 'create':
@@ -401,15 +396,12 @@ class BinService extends BaseCommandService {
           return await this.renameBin(bin, name);
 
         default:
-          return this.createResult(
-            false,
-            null,
-            `Unknown subcommand "${subcommand}". Valid subcommands are: create, burn, list, rename`,
-            'unknown_subcommand'
-          );
+          this.output.error(errorMessage, 'Use one of the valid subcommands');
+          return this.createResult(false, null, errorMessage, 'unknown_subcommand');
       }
     } catch (error) {
       const errorMessage = `Failed to execute bin command "${subcommand}"${name ? ` with name "${name}"` : ''}: ${error.message}`;
+      this.output.error(errorMessage, 'Check command syntax and bin availability');
       return this.createResult(false, error, errorMessage, 'execution_error');
     }
   }
