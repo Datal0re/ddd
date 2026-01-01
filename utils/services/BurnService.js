@@ -25,6 +25,11 @@ class BurnService extends BaseCommandService {
    */
   async burnDumpster(dumpsterName, options = {}, managers) {
     try {
+      // Handle interactive prompting if no dumpster name provided
+      if (!dumpsterName) {
+        dumpsterName = await this.promptForDumpsterSelection(managers.dumpster);
+      }
+
       // Validate and prepare inputs
       const validatedInputs = await this.validateAndPromptInputs(dumpsterName, options);
 
@@ -101,6 +106,25 @@ class BurnService extends BaseCommandService {
   }
 
   /**
+   * Prompt user to select a dumpster from available dumpsters
+   * @param {DumpsterManager} dumpsterManager - Dumpster manager instance
+   * @returns {Promise<string>} Selected dumpster name
+   * @throws {Error} If no dumpsters are available
+   */
+  async promptForDumpsterSelection(dumpsterManager) {
+    const dumpsters = await dumpsterManager.listDumpsters();
+
+    if (dumpsters.length === 0) {
+      throw new Error('No dumpsters available to burn');
+    }
+
+    return await CliPrompts.selectFromDumpsters(
+      dumpsters,
+      'Select a dumpster to burn:'
+    );
+  }
+
+  /**
    * Validate and prompt for inputs if needed
    * @param {string} dumpsterName - Provided dumpster name
    * @param {Object} options - Command options
@@ -109,12 +133,12 @@ class BurnService extends BaseCommandService {
   async validateAndPromptInputs(dumpsterName, options) {
     const validatedInputs = {};
 
-    // Validate dumpster name
+    // Validate dumpster name (should always be provided at this point)
     if (!dumpsterName) {
-      validatedInputs.requiresPrompt = true;
-    } else {
-      validatedInputs.dumpsterName = dumpsterName;
+      throw new Error('Dumpster name is required for burn operation');
     }
+
+    validatedInputs.dumpsterName = dumpsterName;
 
     // Validate boolean options
     validatedInputs.options = this.validateCommandOptions(options, {
