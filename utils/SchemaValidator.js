@@ -114,6 +114,69 @@ class SchemaValidator {
   }
 
   /**
+   * Validate bin name against allowed characters and patterns
+   * @param {string} name - Bin name to validate
+   * @param {Object} options - Validation options
+   * @param {number} options.minLength - Minimum length (default: 2)
+   * @param {number} options.maxLength - Maximum length (default: 50)
+   * @param {string} options.context - Context for error messages
+   * @returns {string} Validated bin name
+   * @throws {Error} If name is invalid
+   */
+  static validateBinName(name, options = {}) {
+    const { minLength = 2, maxLength = 50, context = 'bin name validation' } = options;
+
+    this.validateNonEmptyString(name, 'name', context);
+
+    if (name.length < minLength) {
+      throw new Error(`${context}: Bin name must be at least ${minLength} characters`);
+    }
+
+    if (name.length > maxLength) {
+      throw new Error(`${context}: Bin name cannot exceed ${maxLength} characters`);
+    }
+
+    // Check for invalid characters (only alphanumeric, underscore, hyphen allowed)
+    const validPattern = /^[a-zA-Z0-9_-]+$/;
+    if (!validPattern.test(name)) {
+      throw new Error(
+        `${context}: Bin name can only contain letters, numbers, underscores, and hyphens`
+      );
+    }
+
+    return name;
+  }
+
+  /**
+   * Safe validation version of validateBinName - returns result object instead of throwing
+   * @param {string} name - Bin name to validate
+   * @param {Object} options - Validation options
+   * @param {string} options.context - Context for error messages
+   * @param {boolean} options.detectEmpty - Whether to detect empty strings and return requiresPrompt
+   * @returns {Object} Validation result object
+   * @returns {boolean} returns.valid - Whether validation passed
+   * @returns {string} returns.data - Validated bin name (if valid)
+   * @returns {Error} returns.error - Error object (if invalid)
+   * @returns {string} returns.message - Error message (if invalid)
+   * @returns {boolean} returns.requiresPrompt - Whether prompting is required (if empty detection enabled)
+   * @returns {string} returns.reason - Reason for prompting requirement
+   */
+  static safeValidateBinName(name, options = {}) {
+    const { context = 'validation', detectEmpty = true } = options;
+
+    if (detectEmpty && (!name || name.trim() === '')) {
+      return { valid: false, requiresPrompt: true, reason: 'name is empty' };
+    }
+
+    try {
+      const validatedName = this.validateBinName(name, { context });
+      return { valid: true, data: validatedName };
+    } catch (error) {
+      return { valid: false, error, message: error.message };
+    }
+  }
+
+  /**
    * Validate dumpster name against allowed characters and patterns
    * @param {string} name - Dumpster name to validate
    * @param {Object} options - Validation options

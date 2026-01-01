@@ -20,30 +20,46 @@ class BinService extends BaseCommandService {
   }
 
   /**
-   * Validate and prepare bin operation inputs
+   * Validate and prepare bin operation inputs using SchemaValidator pattern
    * @param {string} name - Bin name to validate
    * @param {string} operation - Operation context for error messages
-   * @returns {Object} Validation result
+   * @returns {Object} Validation result following SchemaValidator pattern
    */
   validateAndPrepareBinName(name, operation = 'operation') {
-    const validatedInputs = {};
+    // Use SchemaValidator's safe validation pattern with custom bin rules
+    const nameValidation = this.safeValidateBinName(name, { context: operation });
 
-    // Validate bin name if provided
-    if (name) {
-      const nameValidation = this.validateBinName(name, operation);
-      if (!nameValidation.valid) {
+    if (!nameValidation.valid) {
+      if (nameValidation.requiresPrompt) {
         return {
-          valid: false,
-          error: nameValidation.error,
-          context: `${operation} name validation`,
+          valid: true,
+          validatedInputs: { requiresNamePrompt: true },
         };
       }
-      validatedInputs.binName = nameValidation.name;
-    } else {
-      validatedInputs.requiresNamePrompt = true;
+      return {
+        valid: false,
+        error: nameValidation.error,
+        message: nameValidation.message,
+        context: `${operation} name validation`,
+      };
     }
 
-    return { valid: true, validatedInputs };
+    return {
+      valid: true,
+      validatedInputs: { binName: nameValidation.data },
+    };
+  }
+
+  /**
+   * Safe validation version of validateBinName - delegates to SchemaValidator
+   * @param {string} name - Bin name to validate
+   * @param {Object} options - Validation options
+   * @param {string} options.context - Context for error messages
+   * @param {boolean} options.detectEmpty - Whether to detect empty strings and return requiresPrompt
+   * @returns {Object} Validation result object from SchemaValidator
+   */
+  safeValidateBinName(name, options = {}) {
+    return SchemaValidator.safeValidateBinName(name, options);
   }
 
   /**
@@ -91,10 +107,10 @@ class BinService extends BaseCommandService {
    */
   async createBin(bm, name = null) {
     try {
-      // Validate and prepare inputs
+      // Validate and prepare inputs using SchemaValidator pattern
       const nameValidation = this.validateAndPrepareBinName(name, 'create');
       if (!nameValidation.valid) {
-        const errorMessage = `Cannot create bin: ${nameValidation.error}`;
+        const errorMessage = `Cannot create bin: ${nameValidation.message || nameValidation.error.message}`;
         console.error(`❌ ${errorMessage}`);
         return this.createResult(false, null, errorMessage, nameValidation.context);
       }
@@ -144,12 +160,12 @@ class BinService extends BaseCommandService {
         return this.createResult(true, null, 'No bins available');
       }
 
-      // Validate and prepare bin name
+      // Validate and prepare bin name using SchemaValidator pattern
       let binName;
       if (name) {
         const nameValidation = this.validateAndPrepareBinName(name, 'burn');
         if (!nameValidation.valid) {
-          const errorMessage = `Cannot burn bin: ${nameValidation.error}`;
+          const errorMessage = `Cannot burn bin: ${nameValidation.message || nameValidation.error.message}`;
           console.error(`❌ ${errorMessage}`);
           return this.createResult(false, null, errorMessage, nameValidation.context);
         }
@@ -347,32 +363,18 @@ class BinService extends BaseCommandService {
   }
 
   /**
-   * Validate bin name
+   * Validate bin name using SchemaValidator
    * @param {string} name - Bin name to validate
    * @param {string} context - Context for validation
    * @returns {Object} Validation result
    */
-  validateBinName(name, _context = 'validation') {
-    if (!name || name.trim() === '') {
-      return { valid: false, error: 'Bin name cannot be empty' };
+  validateBinName(name, context = 'validation') {
+    try {
+      const validatedName = SchemaValidator.validateBinName(name, { context });
+      return { valid: true, name: validatedName };
+    } catch (error) {
+      return { valid: false, error: error.message };
     }
-
-    if (name.length < 2) {
-      return { valid: false, error: 'Bin name must be at least 2 characters' };
-    }
-
-    if (name.length > 50) {
-      return { valid: false, error: 'Bin name cannot exceed 50 characters' };
-    }
-
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      return {
-        valid: false,
-        error: 'Bin name can only contain letters, numbers, underscores, and hyphens',
-      };
-    }
-
-    return { valid: true, name };
   }
 
   /**
