@@ -21,7 +21,7 @@ A wizard-guided CLI tool for processing and exploring exported ChatGPT conversat
 
 > Before using ddd, make sure to grab a ChatGPT data export!
 
-*Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours.*
+_Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours._
 
 ### Installation
 

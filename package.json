@@ -1,5 +1,5 @@
 {
-  "name": "data-dumpster-diver",
+  "name": "@datal0re/ddd",
   "version": "0.1.0",
   "description": "A CLI tool to process and explore exported ChatGPT conversation data.",
   "license": "MIT",
@@ -9,6 +9,40 @@
   "bin": {
     "ddd": "./cli.js"
   },
+  "files": [
+    "cli.js",
+    "config/",
+    "utils/",
+    "logo.js",
+    "README.md",
+    "LICENSE",
+    "AGENTS.md"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Datal0re/ddd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Datal0re/ddd/issues"
+  },
+  "homepage": "https://github.com/Datal0re/ddd#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "cli",
+    "chatgpt",
+    "data-processing",
+    "export",
+    "wizard",
+    "interactive",
+    "data-export",
+    "chat-analysis",
+    "command-line"
+  ],
   "scripts": {
     "start": "node cli.js",
     "lint": "eslint . --ext .js",
@@ -21,7 +55,10 @@
     "test:integration": "bash tests/rummage-integration-test.sh",
     "test:with-logs": "LOG_TESTS=true bash tests/simple-test.sh",
     "test:setup": "node tests/generate-test-data.js && cd tests && zip -r test-basic-synthetic.zip test-basic-synthetic",
-    "test:cleanup": "rm -f tests/test-basic-synthetic.zip && rm -rf tests/test-basic-synthetic && rm -rf tests/upcycle-bin/*"
+    "test:cleanup": "rm -f tests/test-basic-synthetic.zip && rm -rf tests/test-basic-synthetic && rm -rf tests/upcycle-bin/*",
+    "prepublishOnly": "npm run lint && npm run format:check && npm run test:basic",
+    "version": "npm run test:basic && npm run test:workflows",
+    "postversion": "git push && git push --tags"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.1.0",
