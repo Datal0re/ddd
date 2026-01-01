@@ -5,6 +5,7 @@
  */
 
 const { BaseCommandService } = require('./BaseCommandService');
+const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
 const chalk = require('chalk');
 const { VERSION } = require('../../config/constants');
@@ -14,10 +15,72 @@ const { VERSION } = require('../../config/constants');
  * Extracted from CLI bin command handler and CliPrompts business logic
  */
 class BinService extends BaseCommandService {
-  constructor() {
-    super();
-    // Note: BinService doesn't need baseDir for all operations
-    this.baseDir = null;
+  constructor(baseDir) {
+    super(baseDir);
+  }
+
+  /**
+   * Validate and prepare bin operation inputs
+   * @param {string} name - Bin name to validate
+   * @param {string} operation - Operation context for error messages
+   * @returns {Object} Validation result
+   */
+  validateAndPrepareBinName(name, operation = 'operation') {
+    const validatedInputs = {};
+
+    // Validate bin name if provided
+    if (name) {
+      const nameValidation = this.validateBinName(name, operation);
+      if (!nameValidation.valid) {
+        return {
+          valid: false,
+          error: nameValidation.error,
+          context: `${operation} name validation`,
+        };
+      }
+      validatedInputs.binName = nameValidation.name;
+    } else {
+      validatedInputs.requiresNamePrompt = true;
+    }
+
+    return { valid: true, validatedInputs };
+  }
+
+  /**
+   * Validate bin existence and availability
+   * @param {BinManager} bm - Bin manager instance
+   * @param {string} binName - Bin name to check
+   * @param {string} operation - Operation context
+   * @returns {Object} Validation result
+   */
+  validateBinExistence(bm, binName, operation = 'operation') {
+    const bins = bm.listBins();
+    const binExists = bins.some(bin => bin.name === binName);
+
+    switch (operation) {
+      case 'create':
+        if (binExists) {
+          return {
+            valid: false,
+            error: `Bin "${binName}" already exists. Choose a different name or use 'rename' to modify existing bin.`,
+            context: 'bin creation validation',
+          };
+        }
+        break;
+      case 'delete':
+      case 'rename':
+      case 'add_chats':
+        if (!binExists) {
+          return {
+            valid: false,
+            error: `Bin "${binName}" not found. Available bins: ${bins.map(b => b.name).join(', ')}`,
+            context: 'bin existence validation',
+          };
+        }
+        break;
+    }
+
+    return { valid: true };
   }
 
   /**
@@ -28,7 +91,30 @@ class BinService extends BaseCommandService {
    */
   async createBin(bm, name = null) {
     try {
-      const binName = name || (await CliPrompts.promptForBinName());
+      // Validate and prepare inputs
+      const nameValidation = this.validateAndPrepareBinName(name, 'create');
+      if (!nameValidation.valid) {
+        const errorMessage = `Cannot create bin: ${nameValidation.error}`;
+        console.error(`❌ ${errorMessage}`);
+        return this.createResult(false, null, errorMessage, nameValidation.context);
+      }
+
+      // Get bin name (prompt if not provided)
+      const binName =
+        nameValidation.validatedInputs.binName || (await CliPrompts.promptForBinName());
+
+      // Validate bin doesn't already exist
+      const existenceValidation = this.validateBinExistence(bm, binName, 'create');
+      if (!existenceValidation.valid) {
+        const errorMessage = `Cannot create bin "${binName}": ${existenceValidation.error}`;
+        console.error(`❌ ${errorMessage}`);
+        return this.createResult(
+          false,
+          null,
+          errorMessage,
+          existenceValidation.context
+        );
+      }
 
       await bm.createBin(binName);
 
@@ -51,16 +137,41 @@ class BinService extends BaseCommandService {
    */
   async burnBin(bm, name = null) {
     try {
+      // Check if any bins exist
       const bins = bm.listBins();
-
       if (bins.length === 0) {
         console.log(chalk.yellow('📋 No bins to burn.'));
         return this.createResult(true, null, 'No bins available');
       }
 
-      const binName =
-        name || (await CliPrompts.selectFromBins(bins, 'Select a bin to burn:'));
+      // Validate and prepare bin name
+      let binName;
+      if (name) {
+        const nameValidation = this.validateAndPrepareBinName(name, 'burn');
+        if (!nameValidation.valid) {
+          const errorMessage = `Cannot burn bin: ${nameValidation.error}`;
+          console.error(`❌ ${errorMessage}`);
+          return this.createResult(false, null, errorMessage, nameValidation.context);
+        }
+        binName = nameValidation.validatedInputs.binName;
 
+        // Validate bin exists
+        const existenceValidation = this.validateBinExistence(bm, binName, 'delete');
+        if (!existenceValidation.valid) {
+          const errorMessage = `Cannot burn bin "${binName}": ${existenceValidation.error}`;
+          console.error(`❌ ${errorMessage}`);
+          return this.createResult(
+            false,
+            null,
+            errorMessage,
+            existenceValidation.context
+          );
+        }
+      } else {
+        binName = await CliPrompts.selectFromBins(bins, 'Select a bin to burn:');
+      }
+
+      // Confirm deletion
       const confirmed = await CliPrompts.confirmAction(
         `Burn bin "${binName}"? This will permanently delete all selected chats.`
       );
@@ -79,7 +190,7 @@ class BinService extends BaseCommandService {
         );
       }
     } catch (error) {
-      const errorMessage = `Failed to burn bin: ${error.message}`;
+      const errorMessage = `Failed to burn bin${name ? ` "${name}"` : ''}: ${error.message}`;
       console.error(chalk.red(`❌ ${errorMessage}`));
       return this.createResult(false, null, errorMessage, error);
     }
@@ -296,7 +407,7 @@ class BinService extends BaseCommandService {
       return this.createResult(
         false,
         null,
-        'No subcommand provided. Use create, burn, list, or rename.',
+        'No subcommand provided. Use: ddd bin <create|burn|list|rename> [name]',
         'missing_subcommand'
       );
     }
@@ -306,13 +417,15 @@ class BinService extends BaseCommandService {
       return this.createResult(
         false,
         null,
-        'Bin manager not available',
+        'Bin manager not available. This should not happen - please report this issue.',
         'missing_manager'
       );
     }
 
     try {
-      switch (subcommand.toLowerCase()) {
+      const operation = subcommand.toLowerCase();
+
+      switch (operation) {
         case 'create':
           return await this.createBin(bin, name);
 
@@ -329,17 +442,13 @@ class BinService extends BaseCommandService {
           return this.createResult(
             false,
             null,
-            `Unknown subcommand: ${subcommand}. Use create, burn, list, or rename.`,
+            `Unknown subcommand "${subcommand}". Valid subcommands are: create, burn, list, rename`,
             'unknown_subcommand'
           );
       }
     } catch (error) {
-      return this.createResult(
-        false,
-        error,
-        `Failed to execute bin command "${subcommand}": ${error.message}`,
-        'execution_error'
-      );
+      const errorMessage = `Failed to execute bin command "${subcommand}"${name ? ` with name "${name}"` : ''}: ${error.message}`;
+      return this.createResult(false, error, errorMessage, 'execution_error');
     }
   }
 }
