@@ -3,7 +3,7 @@
  * Leverages Commander.js and Node.js for consistent error handling
  */
 
-const chalk = require('chalk');
+const { OutputManager } = require('./OutputManager');
 
 /**
  * Custom error classes for better error categorization
@@ -58,12 +58,13 @@ class ErrorHandler {
    * Handle final error with proper exit code
    * @param {Error} error - Error to handle
    * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion for recovery
    */
-  static handleErrorAndExit(error, context = null) {
+  static handleErrorAndExit(error, context = null, suggestion = null) {
     const exitCode = this.getExitCode(error);
-    const errorMessage = context ? `${context}: ${error.message}` : error.message;
 
-    this.logError(errorMessage);
+    // Use OutputManager for consistent formatting
+    OutputManager.error(error.message, context, suggestion);
 
     if (process.env.NODE_ENV === 'development') {
       console.error(error.stack);
@@ -73,28 +74,61 @@ class ErrorHandler {
   }
 
   /**
-   * Log success messages with consistent formatting
-   * @param {string} message - Success message
+   * Handle error without exiting, providing recovery suggestions
+   * @param {Error} error - Error to handle
    * @param {string} context - Optional context
+   * @param {Array<string>} suggestions - Array of recovery suggestions
    */
-  static logSuccess(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.log(chalk.green(`✅ ${fullMessage}`));
+  static handleErrorAndSuggest(error, context = null, suggestions = []) {
+    const suggestion = suggestions.length > 0 ? suggestions.join('\n') : null;
+    OutputManager.error(error.message, context, suggestion);
   }
 
   /**
-   * Log error messages with consistent formatting (reduced to just ❌)
-   * @param {string} message - Error message
+   * Log success messages with consistent formatting
+   * @param {string} message - Success message
    * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion
    */
-  static logError(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.error(chalk.red(`❌ Error: ${fullMessage}`));
+  static logSuccess(message, context = null, suggestion = null) {
+    OutputManager.success(message, context, suggestion);
   }
 
+  /**
+   * Log error messages with consistent formatting
+   * @param {string} message - Error message
+   * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion for recovery
+   */
+  static logError(message, context = null, suggestion = null) {
+    OutputManager.error(message, context, suggestion);
+  }
+
+  /**
+   * Log info messages with consistent formatting
+   * @param {string} message - Info message
+   * @param {string} context - Optional context
+   */
   static logInfo(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.log(chalk.blue(`ℹ️ ${fullMessage}`));
+    OutputManager.info(message, context);
+  }
+
+  /**
+   * Log warning messages with consistent formatting
+   * @param {string} message - Warning message
+   * @param {string} context - Optional context
+   */
+  static logWarning(message, context = null) {
+    OutputManager.warning(message, context);
+  }
+
+  /**
+   * Log progress messages with consistent formatting
+   * @param {string} message - Progress message
+   * @param {string} context - Optional context
+   */
+  static logProgress(message, context = null) {
+    OutputManager.progress(message, context);
   }
 }
 

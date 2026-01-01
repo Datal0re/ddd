@@ -8,7 +8,7 @@ const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
 const { StatisticsUtils } = require('../StatisticsUtils');
-const chalk = require('chalk');
+const { OutputManager } = require('../OutputManager');
 const { VERSION } = require('../../config/constants');
 
 /**
@@ -112,7 +112,7 @@ class BinService extends BaseCommandService {
       const nameValidation = this.validateAndPrepareBinName(name, 'create');
       if (!nameValidation.valid) {
         const errorMessage = `Cannot create bin: ${nameValidation.message || nameValidation.error.message}`;
-        console.error(`❌ ${errorMessage}`);
+        OutputManager.error(errorMessage, 'create bin');
         return this.createResult(false, null, errorMessage, nameValidation.context);
       }
 
@@ -124,7 +124,7 @@ class BinService extends BaseCommandService {
       const existenceValidation = this.validateBinExistence(bm, binName, 'create');
       if (!existenceValidation.valid) {
         const errorMessage = `Cannot create bin "${binName}": ${existenceValidation.error}`;
-        console.error(`❌ ${errorMessage}`);
+        OutputManager.error(errorMessage, 'create bin');
         return this.createResult(
           false,
           null,
@@ -136,12 +136,12 @@ class BinService extends BaseCommandService {
       await bm.createBin(binName);
 
       const successMessage = this.formatSuccessMessage('Created bin', binName);
-      console.log(`✅ ${successMessage}`);
+      OutputManager.success(successMessage, 'create bin');
 
       return this.createResult(true, { binName }, successMessage);
     } catch (error) {
       const errorMessage = `Failed to create bin: ${error.message}`;
-      console.error(`❌ ${errorMessage}`);
+      OutputManager.error(errorMessage, 'create bin');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -157,7 +157,7 @@ class BinService extends BaseCommandService {
       // Check if any bins exist
       const bins = bm.listBins();
       if (bins.length === 0) {
-        console.log(chalk.yellow('📋 No bins to burn.'));
+        OutputManager.warning('No bins to burn', 'bin operation');
         return this.createResult(true, null, 'No bins available');
       }
 
@@ -167,7 +167,7 @@ class BinService extends BaseCommandService {
         const nameValidation = this.validateAndPrepareBinName(name, 'burn');
         if (!nameValidation.valid) {
           const errorMessage = `Cannot burn bin: ${nameValidation.message || nameValidation.error.message}`;
-          console.error(`❌ ${errorMessage}`);
+          OutputManager.error(errorMessage, 'burn bin');
           return this.createResult(false, null, errorMessage, nameValidation.context);
         }
         binName = nameValidation.validatedInputs.binName;
@@ -176,7 +176,7 @@ class BinService extends BaseCommandService {
         const existenceValidation = this.validateBinExistence(bm, binName, 'delete');
         if (!existenceValidation.valid) {
           const errorMessage = `Cannot burn bin "${binName}": ${existenceValidation.error}`;
-          console.error(`❌ ${errorMessage}`);
+          OutputManager.error(errorMessage, 'delete bin');
           return this.createResult(
             false,
             null,
@@ -196,10 +196,12 @@ class BinService extends BaseCommandService {
       if (confirmed) {
         await bm.deleteBin(binName);
         const successMessage = `Burned bin "${binName}" to ashes`;
-        console.log(chalk.green(`🔥 ${successMessage}`));
+        // console.log(chalk.green(`🔥 ${successMessage}`));
+        OutputManager.success(`🔥 ${successMessage}`);
         return this.createResult(true, { binName, action: 'burned' }, successMessage);
       } else {
-        console.log(chalk.yellow('💨 Bin burning cancelled.'));
+        // console.log(chalk.yellow('💨 Bin burning cancelled.'));
+        OutputManager.warning('💨 Bin burning cancelled.');
         return this.createResult(
           true,
           { binName, action: 'cancelled' },
@@ -208,7 +210,8 @@ class BinService extends BaseCommandService {
       }
     } catch (error) {
       const errorMessage = `Failed to burn bin${name ? ` "${name}"` : ''}: ${error.message}`;
-      console.error(chalk.red(`❌ ${errorMessage}`));
+      // console.error(chalk.red(`❌ ${errorMessage}`));
+      OutputManager.error(errorMessage)
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -223,28 +226,31 @@ class BinService extends BaseCommandService {
       const bins = bm.listBins();
 
       if (bins.length === 0) {
-        console.log(chalk.yellow('📋 No bins found.'));
-        console.log(
-          chalk.dim('   💡 Tip: Use "ddd bin create <name>" to create your first bin.')
+        OutputManager.list([], 'Available bins', 'No bins found', 'bin operation');
+        OutputManager.info(
+          'Use "ddd bin create <name>" to create your first bin',
+          'bin operation'
         );
         return this.createResult(true, [], 'No bins found');
       }
 
-      console.log(chalk.blue('📋 Available bins:'));
+      const formattedBins = bins.map(bin => ({
+        name: `${bin.name} (${bin.chatCount} chats)${bin.isActive ? ' (active)' : ''}`,
+        description: bin.isActive
+          ? 'Currently active selection bin'
+          : 'Inactive selection bin',
+      }));
 
-      bins.forEach(bin => {
-        const status = bin.isActive ? chalk.green('(active)') : '';
-        console.log(`  🗑️ ${chalk.cyan(bin.name)} (${bin.chatCount} chats) ${status}`);
-      });
+      OutputManager.list(formattedBins, 'Available bins', null, 'bin operation');
 
       // Show current bin info
       const currentSummary = bm.getActiveBinSummary();
-      console.log(`\n${chalk.dim(currentSummary)}`);
+      OutputManager.info(currentSummary, 'bin operation');
 
       return this.createResult(true, bins, `Found ${bins.length} bins`);
     } catch (error) {
       const errorMessage = `Failed to list bins: ${error.message}`;
-      console.error(chalk.red(`❌ ${errorMessage}`));
+      OutputManager.error(errorMessage, 'list bins');
       return this.createResult(false, null, errorMessage, error);
     }
   }
@@ -260,7 +266,8 @@ class BinService extends BaseCommandService {
       const bins = bm.listBins();
 
       if (bins.length === 0) {
-        console.log(chalk.yellow('📋 No bins to rename.'));
+        // console.log(chalk.yellow('📋 No bins to rename.'));
+        OutputManager.warning('📋 No bins to rename.');
         return this.createResult(true, null, 'No bins available');
       }
 
@@ -269,68 +276,21 @@ class BinService extends BaseCommandService {
       const newName = await CliPrompts.promptForBinName('new');
 
       if (oldName === newName) {
-        console.log(chalk.yellow('📋 Bin name is the same.'));
+        // console.log(chalk.yellow('📋 Bin name is the same.'));
         return this.createResult(true, { oldName, newName }, 'Name unchanged');
       }
 
       await bm.renameBin(oldName, newName);
       const successMessage = `Renamed bin "${oldName}" to "${newName}"`;
-      console.log(chalk.green(`✅ ${successMessage}`));
+      // console.log(chalk.green(`✅ ${successMessage}`));
 
       return this.createResult(true, { oldName, newName }, successMessage);
     } catch (error) {
       const errorMessage = `Failed to rename bin: ${error.message}`;
-      console.error(chalk.red(`❌ ${errorMessage}`));
+      // console.error(chalk.red(`❌ ${errorMessage}`));
       return this.createResult(false, null, errorMessage, error);
     }
   }
-
-  // /**
-  //  * Calculate bin statistics (extracted from CliPrompts)
-  //  * @param {BinManager} bm - Bin manager instance
-  //  * @returns {Object} Bin statistics
-  //  */
-  // calculateBinStatistics(bm) {
-  //   const bins = bm.listBins();
-
-  //   let totalChats = 0;
-  //   let totalMessages = 0;
-  //   let totalDumpsters = 0;
-  //   let activeCount = 0;
-
-  //   for (const bin of bins) {
-  //     const chatsByDumpster = bm.getBinChatsByDumpster(bin.name);
-  //     const binChatCount = Object.values(chatsByDumpster).flat().length;
-  //     totalChats += binChatCount;
-
-  //     if (binChatCount > 0) {
-  //       totalDumpsters += Object.keys(chatsByDumpster).length;
-  //       totalMessages += Object.values(chatsByDumpster).reduce(
-  //         (sum, chats) =>
-  //           sum +
-  //           chats.reduce(
-  //             (msgSum, chat) => msgSum + (chat.metadata?.messageCount || 0),
-  //             0
-  //           ),
-  //         0
-  //       );
-  //     }
-
-  //     if (bin.isActive) {
-  //       activeCount++;
-  //     }
-  //   }
-
-  //   return {
-  //     totalBins: bins.length,
-  //     totalChats,
-  //     totalMessages,
-  //     totalDumpsters,
-  //     activeCount,
-  //     averageChatsPerBin: bins.length > 0 ? Math.round(totalChats / bins.length) : 0,
-  //     hasContent: totalChats > 0,
-  //   };
-  // }
 
   /**
    * Calculate bin statistics using centralized StatisticsUtils

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const chalk = require('chalk');
 const logo = require('./logo');
 const { VERSION } = require('./config/constants');
 
 const { ErrorHandler } = require('./utils/ErrorHandler');
+const { OutputManager } = require('./utils/OutputManager');
 
 // Service layer imports
 const { CommandInitService } = require('./utils/services/CommandInitService');
@@ -19,8 +19,8 @@ const program = new Command();
 
 // Process-level error handling for unexpected errors
 process.on('uncaughtException', error => {
-  ErrorHandler.logError('Uncaught Exception');
-  ErrorHandler.logError(error.message);
+  OutputManager.error('Uncaught Exception', 'system error');
+  OutputManager.error(error.message, 'system error');
 
   if (process.env.NODE_ENV === 'development') {
     console.error(error.stack);
@@ -42,15 +42,17 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Graceful shutdown handlers
 process.on('SIGINT', () => {
-  console.log(
-    chalk.yellow('\n👋 Received interrupt signal. Gracefully shutting down...')
+  OutputManager.warning(
+    'Received interrupt signal. Gracefully shutting down...',
+    'system shutdown'
   );
   process.exit(130); // Standard exit code for SIGINT
 });
 
 process.on('SIGTERM', () => {
-  console.log(
-    chalk.yellow('\n👋 Received termination signal. Gracefully shutting down...')
+  OutputManager.warning(
+    'Received termination signal. Gracefully shutting down...',
+    'system shutdown'
   );
   process.exit(143); // Standard exit code for SIGTERM
 });

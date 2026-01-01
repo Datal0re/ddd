@@ -8,7 +8,7 @@ const { BaseCommandService } = require('./BaseCommandService');
 const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
 const { FileNotFoundError } = require('../ErrorHandler');
-const chalk = require('chalk');
+const { OutputManager } = require('../OutputManager');
 const { VERSION } = require('../../config/constants');
 
 /**
@@ -51,8 +51,10 @@ class BurnService extends BaseCommandService {
 
       // Handle dry run
       if (validatedInputs.options.dryRun) {
-        console.log(
-          chalk.yellow('🔥 Dry run: Would have burned this dumpster to ashes')
+        OutputManager.warning(
+          'Would have burned this dumpster to ashes',
+          'dry run',
+          'This was a dry run - no files were deleted'
         );
         return this.createResult(
           true,
@@ -69,8 +71,10 @@ class BurnService extends BaseCommandService {
       );
 
       if (!confirmed) {
-        console.log(
-          chalk.yellow('💨 Fire extinguished - dumpster lives to see another day')
+        OutputManager.warning(
+          'Burn cancelled by user',
+          'burn operation',
+          'Dumpster lives to see another day'
         );
         return this.createResult(
           true,
@@ -80,7 +84,7 @@ class BurnService extends BaseCommandService {
       }
 
       // Execute burning
-      console.log(chalk.red('🔥 Lighting the match...'));
+      OutputManager.action('burn', 'Lighting the match...', 'burn operation');
       const success = await managers.dumpster.deleteDumpster(
         validatedInputs.dumpsterName
       );
@@ -190,10 +194,15 @@ class BurnService extends BaseCommandService {
    * @param {Object} stats - Dumpster statistics
    */
   displayBurnPreparation(dumpsterName, stats) {
-    console.log(chalk.yellow('🔥 Preparing to light a fire...'));
-    console.log(chalk.dim(`Dumpster: ${dumpsterName}`));
-    console.log(chalk.dim(`Chats to burn: ${stats.chatCount}`));
-    console.log(chalk.dim(`Data to destroy: ${stats.sizeInMB}MB`));
+    OutputManager.action('burn', 'Preparing to light a fire...', 'burn operation');
+
+    const burnData = {
+      Dumpster: dumpsterName,
+      'Chats to burn': stats.chatCount,
+      'Data to destroy': `${stats.sizeInMB}MB`,
+    };
+
+    OutputManager.report(burnData, 'Burn Statistics', 'burn operation');
   }
 
   /**
