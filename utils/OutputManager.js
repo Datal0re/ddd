@@ -192,7 +192,7 @@ class OutputManager {
     if (items.length === 0) {
       console.log(chalk.yellow(emptyMessage));
     } else {
-      items.forEach((item) => {
+      items.forEach(item => {
         if (typeof item === 'string') {
           console.log(`  ${chalk.cyan('•')} ${item}`);
         } else if (item && typeof item === 'object') {

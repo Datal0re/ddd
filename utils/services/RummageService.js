@@ -200,11 +200,7 @@ class RummageService extends BaseCommandService {
    */
   async handleAddToBin(bm, selectedChats, dumpsterName) {
     try {
-      const targetBin = await this.addChatsToSelection(
-        bm,
-        selectedChats,
-        dumpsterName
-      );
+      const targetBin = await this.addChatsToSelection(bm, selectedChats, dumpsterName);
 
       console.log(
         chalk.green(
@@ -300,10 +296,7 @@ class RummageService extends BaseCommandService {
     // If user wants to create a new bin
     if (selectedBinName === 'create-new') {
       const newBinName = await CliPrompts.promptNewBinName();
-      await bm.createBin(
-        newBinName,
-        `Created during rummage from ${dumpsterName}`
-      );
+      await bm.createBin(newBinName, `Created during rummage from ${dumpsterName}`);
       targetBinName = newBinName;
     }
 

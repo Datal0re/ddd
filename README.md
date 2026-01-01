@@ -1,75 +1,71 @@
 # Data Dumpster Diver
 
-A Node.js CLI tool to process and explore exported ChatGPT conversation data. Transform ZIP exports into organized, searchable dumpsters with extracted media assets.
-
+![ddd logo](./ddd-logo.png)
 [![version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
 
-## 🗑️ What It Does
+A wizard-guided CLI tool for processing and exploring exported ChatGPT conversation data. Transform ZIP exports into organized, searchable collections with extracted media assets.
 
-- **🧙‍♂️ Wizard-Based CLI**: Progressive disclosure workflows guide users through complex operations step-by-step
-- **📦 Service Layer Architecture**: Clean separation of business logic with consistent error handling
-- **🎯 Dump**: Unpack and process ChatGPT export ZIP files into structured dumpsters (wizard-guided)
-- **💎 Hoard**: View your collection of processed dumpsters with rich formatting
-- **🔍 Rummage**: Search and select chats with intelligent wizard workflow and persistent selection bin
-- **🔥 Burn**: Safely delete dumpsters with multi-step confirmation and text verification
-- **♻️ Upcycle**: Export dumpsters or selection bin to various formats (wizard-guided format selection)
-- **📊 Unified Output**: Consistent console formatting with contextual error recovery suggestions
-- **🛡️ Secure**: Comprehensive validation against path traversal, zip bomb, and injection attacks
-- **✨ Interactive**: Intuitive prompts when arguments omitted - every command works interactively
+## Why Use Data Dumpster Diver?
+
+**🔄 Account Migration**: Export conversations from one OpenAI account and feed them to another for context continuity.
+
+**📚 Knowledge Management**: Create Obsidian Vaults with your ChatGPT conversations for personal knowledge bases.
+
+**📝 Content Creation**: Export conversations as HTML for blog posts, documentation, or sharing.
+
+**💾 Data Backup**: Preserve conversations in an organized, searchable format outside the volatile AI ecosystem.
+
+**🔬 Research Processing**: Extract and organize chat data for model training, analysis, or research purposes.
 
 ## 🚀 Quick Start
+
+> Before using ddd, make sure to grab a ChatGPT data export!
+
+*Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours.*
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Datal0re/ddd.git
-cd ddd
-
-# Install dependencies
+git clone https://github.com/Datal0re/ddd.git && cd ddd
 npm install
-
-# Make CLI globally available (optional)
-npm link
+npm link  # Optional: make CLI globally available
 ```
 
 ### Basic Usage
 
-All commands are interactive - if you omit arguments, you'll be prompted for them:
+All commands are interactive - omit arguments and you'll be guided:
 
 ```bash
-# Process a ChatGPT export (interactive prompts if args omitted)
+# Process ChatGPT export
 ddd dump chatgpt-export.zip --name "my-chats"
-ddd dump  # Will prompt for file path and name
+ddd dump  # Interactive mode
 
-# View all dumpsters
+# View all processed dumpsters
 ddd hoard
-ddd hoard --verbose  # Detailed view with creation dates
+ddd hoard --verbose
 
-# Search and select chats with wizard-guided workflow
+# Search and select chats
 ddd rummage
-# Progressive disclosure: dumpster → action → search → selection → export options
+ddd rummage my-chats  # Skip dumpster selection
 
-# Burn (delete) a dumpster safely (with confirmation and text verification)
-ddd burn my-chats
-ddd burn --dry-run  # Preview without deletion
-ddd burn --force    # Skip confirmation
+# Export to various formats
+ddd upcycle html my-chats --include-media
+ddd upcycle txt  # Interactive: prompts for format & source
 
-# Export dumpsters to various formats (interactive prompts)
-ddd upcycle txt my-chats --output ./exports
-ddd upcycle html my-chats --include-media --self-contained
-ddd upcycle  # Will prompt for format and export source (dumpster vs selection bin)
+# Manage selection bins
+ddd bin create my-bin
+ddd bin list
 
-# Get help
-ddd --help
-ddd dump --help  # Command-specific help
+# Safely delete dumpsters
+ddd burn my-chats --dry-run  # Preview
+ddd burn --force             # Skip confirmation
 ```
 
-## 📋 Commands Overview
+## Commands Overview
 
 ### `dump [file]`
 
-Unpack and process a ChatGPT export ZIP file.
+Process ChatGPT export ZIP files into organized collections.
 
 ```bash
 ddd dump <path-to-zip> [options]
@@ -80,7 +76,7 @@ ddd dump  # Interactive mode
 
 ### `hoard`
 
-View your dumpster hoard - lists all processed dumpsters.
+View all processed dumpsters with statistics.
 
 ```bash
 ddd hoard [options]
@@ -90,29 +86,43 @@ ddd hoard [options]
 
 ### `rummage [dumpster-name]`
 
-Advanced wizard-guided search and selection workflow.
+Advanced 8-step wizard for searching and selecting chats.
 
 ```bash
 ddd rummage <dumpster-name> [options]
 ddd rummage  # Full wizard experience
 ```
 
-**Wizard Flow**:
+**Features**: Search by content/titles, relevance scoring, persistent selection bins, multi-select interface
 
-1. 🗑️ Select dumpster (conditional)
-2. 🎯 Choose action: 🔍 Search, 📋 Browse, 📦 Manage selection bin
-3. 🔍 Search query (conditional for search action)
-4. 🌐 Search scope (conditional for search action)
-5. 🔄 Case sensitivity (conditional for search action)
-6. 📊 Chat limit (conditional for browse action)
-7. ☑️ Multi-select chat interface
-8. 🎬 Action menu for selected chats
+### `upcycle [format] [dumpster-name]`
 
-**Features**: Persistent selection bin, relevance scoring, context-aware options
+Export collections to various formats.
+
+```bash
+ddd upcycle <format> <dumpster-name> [options]
+ddd upcycle  # Interactive: format → source → options
+```
+
+**Export Sources**: Entire dumpster, selection bin, or individual chats
+**Formats**: `txt`, `md`, `html`
+**Options**: `-o, --output <path>`, `--include-media`, `--self-contained`, `-v, --verbose`
+
+### `bin [subcommand] [name]`
+
+Manage persistent selection bins for organizing chat selections.
+
+```bash
+ddd bin create <name>    # Create new bin
+ddd bin list             # List all bins
+ddd bin rename <old> <new> # Rename bin
+ddd bin empty <name>     # Clear bin contents
+ddd bin burn <name>      # Delete bin permanently
+```
 
 ### `burn [dumpster-name]`
 
-Safely delete a dumpster with confirmation and text verification.
+Safely delete dumpsters with multi-step confirmation.
 
 ```bash
 ddd burn <dumpster-name> [options]
@@ -121,73 +131,46 @@ ddd burn  # Interactive mode
 
 **Options**: `-f, --force` (skip confirmation), `--dry-run` (preview)
 
-### `upcycle [format] [dumpster-name]`
+## Data Organization
 
-Export dumpsters or selection bin with wizard-guided format selection.
-
-```bash
-ddd upcycle <format> <dumpster-name> [options]
-ddd upcycle  # Full wizard: format → source → options → export
-```
-
-**Export Sources**:
-
-- 📦 Entire dumpster with all chats
-- 📋 Selection bin (persistent chat selections from rummage)
-- 🔍 Individual chat selections
-
-**Formats**: `txt`, `md`, `html` with rich media support
-**Options**: `-o, --output <path>`, `--include-media`, `--self-contained`, `-v, --verbose`
-
-## 🗂️ Data Organization
-
-Processed exports are organized as follows:
+Processed exports are stored in structured collections:
 
 ```text
 data/
-├── dumpsters/
-│   └── {dumpster-name}/
-│       ├── chats/                    # Processed chat data
-│       └── media/                    # Extracted media assets
-│           ├── file-attachments/
-│           ├── dalle-generations/
-│           └── audio/
-├── temp/               # Temporary processing files (auto-cleanup)
-├── upcycle-bin/        # Default export directory
-└── dumpsters.json      # Dumpster registry with metadata
+├── dumpsters/          # Processed chat collections
+│   └── {name}/
+│       ├── chats/      # Individual chat files
+│       └── media/     # Extracted assets
+├── bins.json          # Selection bin metadata
+├── dumpsters.json     # Collection registry
+└── temp/              # Temporary files (auto-cleaned)
 ```
 
-## 🛡️ Security Features
+## Security
 
-- **Path Traversal Protection**: Validates all file paths against directory traversal attacks
-- **ZIP Bomb Protection**: Validates compression ratios and file counts
-- **Size Limits**: Configurable limits for uploads and extracted content
-- **Input Validation**: Comprehensive parameter validation throughout
+- **Path Traversal Protection** against malicious file paths
+- **ZIP Bomb Protection** with compression ratio validation
+- **Size Limits** (500MB upload, 2GB extracted)
+- **Input Validation** throughout the application
+- **Multi-step Confirmations** for destructive operations
 
-## 🧪 Testing
+## Testing
 
-The project includes a comprehensive shell-based test suite for realistic CLI testing:
+Comprehensive shell-based test suite for realistic CLI validation:
 
 ```bash
-# Run the main test suite
-npm test
-
-# Run specific test categories
-npm run test:basic        # Basic functionality tests
-npm run test:workflows    # End-to-end workflow tests
-npm run test:with-logs    # Tests with detailed logging
+npm test                # Main test suite
+npm run test:basic      # Basic functionality
+npm run test:workflows  # End-to-end workflows
+npm run test:integration # Wizard workflow testing
+npm run test:with-logs  # Tests with detailed output
 
 # Test data management
-npm run test:setup        # Generate synthetic test data and ZIP file
-npm run test:cleanup      # Clean up test artifacts
+npm run test:setup      # Generate synthetic test data
+npm run test:cleanup    # Clean up test artifacts
 ```
 
-### Test Structure
-
-- **Shell Script Tests**: Real CLI command testing with actual scenarios
-- **Synthetic Test Data**: Consistent, reproducible ChatGPT export structure
-- **Workflow Testing**: End-to-end validation of complete user workflows
-- **Quick Validation**: Fast tests for basic functionality verification
+**Test Approach**: Shell scripts validate actual CLI behavior with synthetic ChatGPT export data for consistent testing.
 
 ## 📦 Requirements
 
@@ -197,7 +180,7 @@ npm run test:cleanup      # Clean up test artifacts
 
 ## 🤝 Contributing
 
-We welcome contributions! Please:
+Contributions are welcome! Please:
 
 1. Follow the development guidelines in [AGENTS.md](AGENTS.md)
 2. Maintain consistent code style (ESLint + Prettier)

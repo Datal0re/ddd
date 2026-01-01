@@ -59,11 +59,10 @@ class CommandInitService {
       this.managers.set(cacheKey, manager);
 
       if (options.verbose) {
-          ErrorHandler.logInfo(`Created ${type} manager`, 'CommandInitService');
-        }
+        ErrorHandler.logInfo(`Created ${type} manager`, 'CommandInitService');
+      }
 
       return manager;
-      
     } catch (error) {
       ErrorHandler.logError(
         `Failed to create ${type} manager: ${error.message}`,
@@ -157,10 +156,10 @@ class CommandInitService {
     }
 
     if (options.verbose) {
-        ErrorHandler.logInfo(
-          `Initialized ${commandType} command with managers: ${Object.keys(managers).join(', ')}`,
-          'CommandInitService'
-        );
+      ErrorHandler.logInfo(
+        `Initialized ${commandType} command with managers: ${Object.keys(managers).join(', ')}`,
+        'CommandInitService'
+      );
     }
     return managers;
   }
@@ -261,10 +260,7 @@ class CommandInitService {
     }
 
     this.managers.clear();
-    ErrorHandler.logInfo(
-      `Cleaned up ${managerCount} managers`,
-      'CommandInitService'
-    );
+    ErrorHandler.logInfo(`Cleaned up ${managerCount} managers`, 'CommandInitService');
   }
 }
 

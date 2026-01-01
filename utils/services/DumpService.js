@@ -127,12 +127,11 @@ class DumpService extends BaseCommandService {
    * @param {string} context - Context for validation
    */
   async validateFilePath(filePath, context) {
-      await SchemaValidator.validatePath(filePath, {
-        mustExist: true,
-        context: context,
-      });
-    }
-  
+    await SchemaValidator.validatePath(filePath, {
+      mustExist: true,
+      context: context,
+    });
+  }
 
   /**
    * Format dumpster creation statistics

@@ -409,9 +409,7 @@ class WizardUtils {
               const bins = bm.listBins();
               const activeBin = bins.find(bin => bin.isActive);
               if (activeBin) {
-                const chatsByDumpster = bm.getBinChatsByDumpster(
-                  activeBin.name
-                );
+                const chatsByDumpster = bm.getBinChatsByDumpster(activeBin.name);
                 const allChats = Object.values(chatsByDumpster).flat();
                 searchResults = allChats.map(chat => ({
                   chat,
