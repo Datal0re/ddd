@@ -6,8 +6,6 @@ const logo = require('./logo');
 const { VERSION } = require('./config/constants');
 
 const { ErrorHandler } = require('./utils/ErrorHandler');
-// const { CommandValidator } = require('./utils/validators/CommandValidator');
-// const { CliPrompts } = require('./utils/CliPrompts');
 
 // Service layer imports
 const { CommandInitService } = require('./utils/services/CommandInitService');
@@ -16,9 +14,6 @@ const { HoardService } = require('./utils/services/HoardService');
 const { BurnService } = require('./utils/services/BurnService');
 const { UpcycleService } = require('./utils/services/UpcycleService');
 const { RummageService } = require('./utils/services/RummageService');
-
-// Create validator instance for CLI validation (Need to examine if needed)
-// const validator = new CommandValidator();
 
 const program = new Command();
 
@@ -102,7 +97,7 @@ program
     }
   });
 
-program
+(program
   .command('hoard')
   .description('View your dumpster hoard')
   .option('-v, --verbose', 'show detailed information')
@@ -117,38 +112,46 @@ program
       const result = await hoardService.listHoard(managers, options);
 
       if (!result.success) {
-        ErrorHandler.handleErrorAndExit(result.error || new Error(result.message), 'hoard command');
+        ErrorHandler.handleErrorAndExit(
+          result.error || new Error(result.message),
+          'hoard command'
+        );
       }
 
+      // Display the hoard listing
+      if (result.message) {
+        console.log(result.message);
+      }
     } catch (error) {
       ErrorHandler.handleErrorAndExit(error, 'hoard command');
     }
-
   }),
+  program
+    .command('bin')
+    .description('Manage selection bins for organizing chat selections')
+    .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
+    .argument('[name]', 'Bin name for create/rename operations (optional)')
+    .option('-v, --verbose', 'Verbose output')
+    .action(async (subcommand, name) => {
+      try {
+        const BinService = require('./utils/services/BinService');
 
-program
-  .command('bin')
-  .description('Manage selection bins for organizing chat selections')
-  .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
-  .argument('[name]', 'Bin name for create/rename operations (optional)')
-  .option('-v, --verbose', 'Verbose output')
-  .action(async (subcommand, name) => {
-    try {
-      const BinService = require('./utils/services/BinService');
-
-      // Initialize service layer
-      const initService = new CommandInitService(__dirname);
-      const managers = await initService.initializeCommand('bin');
-      const binService = new BinService(__dirname);
-      // Execute bin subcommand through service
-      const result = await binService.executeBinCommand(subcommand, name, managers);
-      if (!result.success) {
-        ErrorHandler.handleErrorAndExit(result.error || new Error(result.message), 'bin command');
+        // Initialize service layer
+        const initService = new CommandInitService(__dirname);
+        const managers = await initService.initializeCommand('bin');
+        const binService = new BinService(__dirname);
+        // Execute bin subcommand through service
+        const result = await binService.executeBinCommand(subcommand, name, managers);
+        if (!result.success) {
+          ErrorHandler.handleErrorAndExit(
+            result.error || new Error(result.message),
+            'bin command'
+          );
+        }
+      } catch (error) {
+        ErrorHandler.handleErrorAndExit(error, 'bin command');
       }
-    } catch (error) {
-      ErrorHandler.handleErrorAndExit(error, 'bin command');
-    }
-  });
+    }));
 
 program
   .command('rummage')
@@ -168,12 +171,15 @@ program
       const rummageService = new RummageService(__dirname);
 
       // Use service for wizard rummaging
-      const result = await rummageService.performWizardRummage(dumpsterName, options, managers);
+      const result = await rummageService.performWizardRummage(
+        dumpsterName,
+        options,
+        managers
+      );
 
       if (!result.success && result.error) {
         ErrorHandler.handleErrorAndExit(result.error, 'rummage command');
       }
-
     } catch (error) {
       ErrorHandler.handleErrorAndExit(error, 'rummage command');
     }
@@ -199,9 +205,11 @@ program
       const result = await burnService.burnDumpster(dumpsterName, options, managers);
 
       if (!result.success) {
-        ErrorHandler.handleErrorAndExit(result.error || new Error(result.message), 'burn command');
+        ErrorHandler.handleErrorAndExit(
+          result.error || new Error(result.message),
+          'burn command'
+        );
       }
-
     } catch (error) {
       ErrorHandler.handleErrorAndExit(error, 'burn command');
     }
@@ -230,12 +238,19 @@ program
       const upcycleService = new UpcycleService(__dirname);
 
       // Use service for upcycle export
-      const result = await upcycleService.upcycleExport(format, dumpsterName, options, managers);
+      const result = await upcycleService.upcycleExport(
+        format,
+        dumpsterName,
+        options,
+        managers
+      );
 
       if (!result.success) {
-        ErrorHandler.handleErrorAndExit(result.error || new Error(result.message), 'upcycle command');
+        ErrorHandler.handleErrorAndExit(
+          result.error || new Error(result.message),
+          'upcycle command'
+        );
       }
-
     } catch (error) {
       ErrorHandler.handleErrorAndExit(error, 'upcycle command');
     }

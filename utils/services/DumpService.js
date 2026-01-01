@@ -6,7 +6,8 @@
 
 const path = require('path');
 const { BaseCommandService } = require('./BaseCommandService');
-const { SchemaValidator } = require('../validators/CommandValidator');
+const { SchemaValidator } = require('../SchemaValidator');
+const { CommandValidator } = require('../validators/CommandValidator');
 const { CliPrompts } = require('../CliPrompts');
 const { VERSION } = require('../../config/constants');
 
@@ -15,6 +16,11 @@ const { VERSION } = require('../../config/constants');
  * Extracted from CLI dump command handler
  */
 class DumpService extends BaseCommandService {
+  constructor(baseDir) {
+    super(baseDir);
+    this.validator = new CommandValidator();
+  }
+
   /**
    * Create a new dumpster from a ChatGPT export ZIP file
    * @param {string} file - Path to ZIP file (may be undefined, will prompt)
@@ -84,7 +90,7 @@ class DumpService extends BaseCommandService {
     }
 
     // Validate provided file
-    const validation = this.validateRequiredParameters(
+    const validation = this.validator.validateRequiredParameters(
       [{ name: 'file', value: file }],
       context
     );
@@ -123,15 +129,12 @@ class DumpService extends BaseCommandService {
    * @param {string} context - Context for validation
    */
   async validateFilePath(filePath, context) {
-    const validation = SchemaValidator.validatePath(filePath, {
-      mustExist: true,
-      context: context,
-    });
-
-    if (!validation.valid) {
-      throw new Error(validation.message);
+      await SchemaValidator.validatePath(filePath, {
+        mustExist: true,
+        context: context,
+      });
     }
-  }
+  
 
   /**
    * Format dumpster creation statistics

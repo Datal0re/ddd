@@ -5,7 +5,7 @@
  */
 
 const { BaseCommandService } = require('./BaseCommandService');
-const { CommonUtils } = require('../CommonUtils');
+const { CommonUtils, FormatUtils } = require('../CommonUtils');
 const chalk = require('chalk');
 const { VERSION } = require('../../config/constants');
 
@@ -101,11 +101,9 @@ class HoardService extends BaseCommandService {
       chats: dumpster.chatCount || 'unknown',
     }));
 
-    return CommonUtils.FormatUtils.formatTable(
-      tableData,
-      ['name', 'created', 'chats'],
-      { padding: 2 }
-    );
+    return FormatUtils.formatTable(tableData, ['name', 'created', 'chats'], {
+      padding: 2,
+    });
   }
 
   /**
@@ -175,11 +173,9 @@ class HoardService extends BaseCommandService {
       status: bin.isActive ? chalk.green('Active') : chalk.dim('Inactive'),
     }));
 
-    return CommonUtils.FormatUtils.formatTable(
-      tableData,
-      ['name', 'created', 'chats', 'status'],
-      { padding: 2 }
-    );
+    return FormatUtils.formatTable(tableData, ['name', 'created', 'chats', 'status'], {
+      padding: 2,
+    });
   }
 
   /**

@@ -5,7 +5,7 @@
  */
 
 const { BaseCommandService } = require('./BaseCommandService');
-const { SchemaValidator } = require('../validators/CommandValidator');
+const { SchemaValidator } = require('../SchemaValidator');
 const { CliPrompts } = require('../CliPrompts');
 const { FileNotFoundError } = require('../ErrorHandler');
 const chalk = require('chalk');
