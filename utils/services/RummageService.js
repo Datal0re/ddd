@@ -193,15 +193,15 @@ class RummageService extends BaseCommandService {
 
   /**
    * Handle adding chats to selection bin
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {Array} selectedChats - Selected chat objects
    * @param {string} dumpsterName - Source dumpster name
    * @returns {Promise<Object>} Result object
    */
-  async handleAddToBin(binManager, selectedChats, dumpsterName) {
+  async handleAddToBin(bm, selectedChats, dumpsterName) {
     try {
       const targetBin = await this.addChatsToSelection(
-        binManager,
+        bm,
         selectedChats,
         dumpsterName
       );
@@ -242,7 +242,7 @@ class RummageService extends BaseCommandService {
 
       console.log(chalk.blue('🔄 Starting upcycle with selected chats...'));
 
-      const UpcycleManager = require('./UpcycleManager');
+      const UpcycleManager = require('../UpcycleManager');
       const upcycleManager = new UpcycleManager(managers.dumpster, managers.progress);
 
       const format = await CliPrompts.selectExportFormat();
@@ -274,18 +274,18 @@ class RummageService extends BaseCommandService {
 
   /**
    * Add selected chats to selection bin
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {Array} selectedChats - Selected chat objects
    * @param {string} dumpsterName - Source dumpster name
    * @returns {Promise<string>} Target bin name
    */
-  async addChatsToSelection(binManager, selectedChats, dumpsterName) {
-    const availableBins = binManager.listBins();
+  async addChatsToSelection(bm, selectedChats, dumpsterName) {
+    const availableBins = bm.listBins();
 
     // If only one bin (default), use it directly
     if (availableBins.length === 1) {
       const chatData = this.prepareChatData(selectedChats, dumpsterName);
-      await binManager.addChatsToActiveBin(chatData, dumpsterName);
+      await bm.addChatsToActiveBin(chatData, dumpsterName);
       return availableBins[0].name;
     }
 
@@ -300,7 +300,7 @@ class RummageService extends BaseCommandService {
     // If user wants to create a new bin
     if (selectedBinName === 'create-new') {
       const newBinName = await CliPrompts.promptNewBinName();
-      await binManager.createBin(
+      await bm.createBin(
         newBinName,
         `Created during rummage from ${dumpsterName}`
       );
@@ -311,10 +311,10 @@ class RummageService extends BaseCommandService {
     const chatData = this.prepareChatData(selectedChats, dumpsterName);
 
     // Add to the selected bin
-    if (targetBinName === binManager.getActiveBinName()) {
-      await binManager.addChatsToActiveBin(chatData, dumpsterName);
+    if (targetBinName === bm.getActiveBinName()) {
+      await bm.addChatsToActiveBin(chatData, dumpsterName);
     } else {
-      await binManager.addChatsToBin(chatData, targetBinName, dumpsterName);
+      await bm.addChatsToBin(chatData, targetBinName, dumpsterName);
     }
 
     return targetBinName;

@@ -60,7 +60,7 @@ class UpcycleService extends BaseCommandService {
         );
       }
 
-      // Perform export
+      // Perform upcycle
       const result = await this.performUpcycle(
         exportSource.source,
         finalDumpsterName,
@@ -146,11 +146,11 @@ class UpcycleService extends BaseCommandService {
 
   /**
    * Calculate selection bin status (extracted from CLI lines 622-656)
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @returns {Object} Bin status information
    */
-  async calculateSelectionBinStatus(binManager) {
-    const chatsByDumpster = binManager.getActiveBinChatsByDumpster();
+  async calculateSelectionBinStatus(bm) {
+    const chatsByDumpster = bm.getActiveBinChatsByDumpster();
     const allChats = Object.values(chatsByDumpster).flat();
     const totalCount = allChats.length;
 
@@ -210,11 +210,11 @@ class UpcycleService extends BaseCommandService {
   /**
    * Determine export source (dumpster vs selection)
    * @param {string} dumpsterName - Provided dumpster name
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {string} format - Export format (may be undefined)
    * @returns {Promise<Object>} Export source information
    */
-  async determineExportSource(dumpsterName, binManager, format) {
+  async determineExportSource(dumpsterName, bm, format) {
     // If dumpster name provided, use it
     if (dumpsterName) {
       return {
@@ -224,7 +224,7 @@ class UpcycleService extends BaseCommandService {
     }
 
     // Prompt user for choice
-    const exportSource = await CliPrompts.promptUpcycleSource(null, binManager);
+    const exportSource = await CliPrompts.promptUpcycleSource(null, bm);
 
     if (exportSource === 'dumpster') {
       return {

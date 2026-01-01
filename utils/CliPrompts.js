@@ -276,10 +276,10 @@ class CliPrompts {
   /**
    * Prompt user to select export source (dumpster or bins)
    * @param {Object} selectionStats - Statistics for bins
-   * @param {BinManager} binManager - BinManager instance for getting bin statistics
+   * @param {BinManager} bm - BinManager instance for getting bin statistics
    * @returns {Promise<string>} Selected source ('dumpster' or 'bins')
    */
-  static async promptUpcycleSource(_selectionStats, binManager = null) {
+  static async promptUpcycleSource(_selectionStats, bm = null) {
     const choices = [
       {
         name: '📦 Export entire dumpster',
@@ -288,12 +288,12 @@ class CliPrompts {
     ];
 
     // Get actual chats by dumpster for accurate information
-    if (!binManager) {
+    if (!bm) {
       const { BinManager } = require('./BinManager');
-      binManager = new BinManager(process.cwd());
-      await binManager.initialize();
+      bm = new BinManager(process.cwd());
+      await bm.initialize();
     }
-    const bins = binManager.listBins();
+    const bins = bm.listBins();
 
     // Check if any bins have content
     let totalChats = 0;
@@ -301,7 +301,7 @@ class CliPrompts {
     let totalDumpsters = 0;
 
     for (const bin of bins) {
-      const chatsByDumpster = binManager.getBinChatsByDumpster(bin.name);
+      const chatsByDumpster = bm.getBinChatsByDumpster(bin.name);
       const binChatCount = Object.values(chatsByDumpster).flat().length;
       totalChats += binChatCount;
 

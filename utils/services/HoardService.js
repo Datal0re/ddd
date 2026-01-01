@@ -5,7 +5,7 @@
  */
 
 const { BaseCommandService } = require('./BaseCommandService');
-const { CommonUtils, FormatUtils } = require('../CommonUtils');
+const { FormatUtils } = require('../CommonUtils');
 const chalk = require('chalk');
 const { VERSION } = require('../../config/constants');
 
@@ -123,13 +123,13 @@ class HoardService extends BaseCommandService {
 
   /**
    * List bins with appropriate formatting
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {boolean} verbose - Whether to show detailed information
    * @returns {Promise<Object>} Formatted bin listing
    */
-  async listBinsWithFormatting(binManager, verbose) {
+  async listBinsWithFormatting(bm, verbose) {
     try {
-      const bins = binManager.listBins();
+      const bins = bm.listBins();
 
       if (bins.length === 0) {
         return {

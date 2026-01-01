@@ -22,15 +22,15 @@ class BinService extends BaseCommandService {
 
   /**
    * Create a new selection bin
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {string} name - Bin name (optional, will prompt if not provided)
    * @returns {Promise<Object>} Result object
    */
-  async createBin(binManager, name = null) {
+  async createBin(bm, name = null) {
     try {
       const binName = name || (await CliPrompts.promptForBinName());
 
-      await binManager.createBin(binName);
+      await bm.createBin(binName);
 
       const successMessage = this.formatSuccessMessage('Created bin', binName);
       console.log(`✅ ${successMessage}`);
@@ -45,13 +45,13 @@ class BinService extends BaseCommandService {
 
   /**
    * Delete (burn) a selection bin
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {string} name - Bin name (optional, will prompt if not provided)
    * @returns {Promise<Object>} Result object
    */
-  async burnBin(binManager, name = null) {
+  async burnBin(bm, name = null) {
     try {
-      const bins = binManager.listBins();
+      const bins = bm.listBins();
 
       if (bins.length === 0) {
         console.log(chalk.yellow('📋 No bins to burn.'));
@@ -66,7 +66,7 @@ class BinService extends BaseCommandService {
       );
 
       if (confirmed) {
-        await binManager.deleteBin(binName);
+        await bm.deleteBin(binName);
         const successMessage = `Burned bin "${binName}" to ashes`;
         console.log(chalk.green(`🔥 ${successMessage}`));
         return this.createResult(true, { binName, action: 'burned' }, successMessage);
@@ -87,12 +87,12 @@ class BinService extends BaseCommandService {
 
   /**
    * List all selection bins
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @returns {Promise<Object>} Result object
    */
-  async listBins(binManager) {
+  async listBins(bm) {
     try {
-      const bins = binManager.listBins();
+      const bins = bm.listBins();
 
       if (bins.length === 0) {
         console.log(chalk.yellow('📋 No bins found.'));
@@ -110,7 +110,7 @@ class BinService extends BaseCommandService {
       });
 
       // Show current bin info
-      const currentSummary = binManager.getActiveBinSummary();
+      const currentSummary = bm.getActiveBinSummary();
       console.log(`\n${chalk.dim(currentSummary)}`);
 
       return this.createResult(true, bins, `Found ${bins.length} bins`);
@@ -123,13 +123,13 @@ class BinService extends BaseCommandService {
 
   /**
    * Rename a selection bin
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @param {string} name - Current bin name (optional, will prompt if not provided)
    * @returns {Promise<Object>} Result object
    */
-  async renameBin(binManager, name = null) {
+  async renameBin(bm, name = null) {
     try {
-      const bins = binManager.listBins();
+      const bins = bm.listBins();
 
       if (bins.length === 0) {
         console.log(chalk.yellow('📋 No bins to rename.'));
@@ -145,7 +145,7 @@ class BinService extends BaseCommandService {
         return this.createResult(true, { oldName, newName }, 'Name unchanged');
       }
 
-      await binManager.renameBin(oldName, newName);
+      await bm.renameBin(oldName, newName);
       const successMessage = `Renamed bin "${oldName}" to "${newName}"`;
       console.log(chalk.green(`✅ ${successMessage}`));
 
@@ -159,11 +159,11 @@ class BinService extends BaseCommandService {
 
   /**
    * Calculate bin statistics (extracted from CliPrompts)
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @returns {Object} Bin statistics
    */
-  calculateBinStatistics(binManager) {
-    const bins = binManager.listBins();
+  calculateBinStatistics(bm) {
+    const bins = bm.listBins();
 
     let totalChats = 0;
     let totalMessages = 0;
@@ -171,7 +171,7 @@ class BinService extends BaseCommandService {
     let activeCount = 0;
 
     for (const bin of bins) {
-      const chatsByDumpster = binManager.getBinChatsByDumpster(bin.name);
+      const chatsByDumpster = bm.getBinChatsByDumpster(bin.name);
       const binChatCount = Object.values(chatsByDumpster).flat().length;
       totalChats += binChatCount;
 
@@ -206,11 +206,11 @@ class BinService extends BaseCommandService {
 
   /**
    * Get bins with content for selection
-   * @param {BinManager} binManager - Bin manager instance
+   * @param {BinManager} bm - Bin manager instance
    * @returns {Array} Array of bins that have content
    */
-  getBinsWithContent(binManager) {
-    const bins = binManager.listBins();
+  getBinsWithContent(bm) {
+    const bins = bm.listBins();
     return bins.filter(bin => bin.chatCount > 0);
   }
 

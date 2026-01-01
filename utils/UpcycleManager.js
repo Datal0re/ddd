@@ -20,7 +20,7 @@ class UpcycleManager {
   constructor(dumpsterManager, progressManager = null) {
     this.dumpsterManager = dumpsterManager;
     this.progressManager = progressManager;
-    this.binManager = new BinManager(dumpsterManager.baseDir);
+    this.bm = new BinManager(dumpsterManager.baseDir);
     this.formatters = {
       md: MDFormatter,
       txt: TXTFormatter,
@@ -33,7 +33,7 @@ class UpcycleManager {
    * @returns {Promise<void>}
    */
   async initializeBinManager() {
-    await this.binManager.initialize();
+    await this.bm.initialize();
   }
 
   /**
@@ -108,8 +108,8 @@ class UpcycleManager {
 
       // Get chats from specified bin or active bin
       const chatsByDumpster = binName
-        ? this.binManager.getBinChatsByDumpster(binName)
-        : this.binManager.getActiveBinChatsByDumpster();
+        ? this.bm.getBinChatsByDumpster(binName)
+        : this.bm.getActiveBinChatsByDumpster();
 
       if (Object.keys(chatsByDumpster).length === 0) {
         const binDisplayName = binName || 'active';
@@ -136,7 +136,7 @@ class UpcycleManager {
       }
 
       // Create output directory using bin name
-      const currentBinName = binName || this.binManager.getActiveBinName();
+      const currentBinName = binName || this.bm.getActiveBinName();
       const outputDir = FileUtils.joinPath(
         validatedOptions.outputDir,
         `${currentBinName}-${format}`
