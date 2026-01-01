@@ -3,6 +3,8 @@
  * Contains all configuration values used across the application
  */
 
+// Central Verion number location
+const VERSION = '0.1.0';
 // Security and performance constants
 const LIMITS = {
   MAX_UPLOAD_SIZE: 500 * 1024 * 1024, // 500MB limit
@@ -102,6 +104,15 @@ const SEARCH_CONFIG = {
   MAX_CACHE_SIZE: 1000, // For file search caching
 };
 
+// UI and interaction constants
+const UI_CONFIG = {
+  MAX_SEARCH_RESULTS: 100, // Maximum search results to return
+  MAX_CHAT_SELECTION: 100, // Maximum chats that can be selected at once
+  MESSAGE_PREVIEW_LENGTH: 100, // Maximum length of message previews
+  DEFAULT_MESSAGE_LIMIT: 100, // Default limit for messages to search within chats
+  CHECKBOX_PAGE_SIZE: 15, // Number of items to show in checkbox prompts at once
+};
+
 /**
  * Validate configuration values
  * @throws {Error} If configuration is invalid
@@ -144,6 +155,7 @@ function validateConfig() {
 validateConfig();
 
 module.exports = {
+  VERSION,
   LIMITS,
   FILE_EXTENSIONS,
   CONTENT_TYPES,
@@ -155,4 +167,5 @@ module.exports = {
   SANITIZATION_DEFAULTS,
   TEMP_CONFIG,
   SEARCH_CONFIG,
+  UI_CONFIG,
 };

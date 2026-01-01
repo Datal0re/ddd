@@ -200,12 +200,17 @@ All commands use interactive prompts when arguments are omitted, making the CLI 
 - **Options**: `-v/--verbose` for detailed information
 - **Backend**: Uses `DumpsterManager.js.listDumpsters()`
 
-### `rummage [dumpster-name]`
+### `rummage`
 
-- **Purpose**: Explore chats within a dumpster
-- **Options**: `-l/--limit <number>` for chat count
-- **Interactive**: Prompts for dumpster selection and limit
-- **Backend**: Uses `DumpsterManager.js.listChats()`
+- **Purpose**: Search and select chats from dumpsters for export
+- **Options**: `-v/--verbose` for verbose output
+- **Interactive Workflow**:
+  1. Select dumpster to search
+  2. Enter search query (optional - shows all if empty)
+  3. Configure search options (scope, case sensitivity)
+  4. View search results with multi-select checkboxes
+  5. Action menu for selected chats (add to selection bin, upcycle, new search, etc.)
+- **Backend**: Uses `SearchManager.js`, `SelectionManager.js`, and enhanced `DumpsterManager.js.searchChats()`
 
 ### `burn [dumpster-name]`
 
@@ -216,10 +221,11 @@ All commands use interactive prompts when arguments are omitted, making the CLI 
 
 ### `upcycle [format] [dumpster-name]`
 
-- **Purpose**: Export dumpsters to various formats
+- **Purpose**: Export dumpsters or selection bin to various formats
 - **Options**: `-o/--output <path>`, `--include-media`, `--self-contained`, `-v/--verbose`
-- **Interactive**: Prompts for format selection and dumpster choice
-- **Backend**: Uses `UpcycleManager.js` and formatter system
+- **Interactive**: Prompts for format selection and export source (entire dumpster vs selection bin)
+- **Backend**: Uses `UpcycleManager.js`, `SelectionManager.js`, and formatter system
+- **New in v0.0.5**: Selection bin support - can export selected chats from `rummage` command
 - **Note**: Fixed in v0.0.5 - `--output` parameter now properly maps to output directory
 
 ## Export Formatters
@@ -356,10 +362,18 @@ ddd upcycle txt test --output ./tests/upcycle-bin
 
 ## Future Enhancements
 
+**Completed in v0.0.5**:
+
+- ✅ **Enhanced Rummage Command**: Complete redesign with search, selection, and integration
+- ✅ **Search Functionality**: Full-text search within chat titles and content with relevance scoring
+- ✅ **Selection Bin System**: Persistent chat selection for export via `upcycle` command
+- ✅ **Interactive Multi-Select**: Checkbox interface for selecting multiple chats
+- ✅ **Selection-Based Upcycling**: Export selected chats instead of entire dumpsters
+
 Planned improvements include:
 
-- **Additional CLI Commands**: `inspect` for detailed analysis, `stats` for statistics, `search` for full-text search
-- **Enhanced Search Functionality**: Full-text search across all dumpsters
+- **Additional CLI Commands**: `inspect` for detailed analysis, `stats` for statistics
+- **Enhanced Search**: Full-text search across all dumpsters simultaneously
 - **Service Layer**: Better abstraction for business logic
 - **User Configuration**: Configurable settings and preferences
 - **Additional Export Formats**: PDF, JSON, CSV export options

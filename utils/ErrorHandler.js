@@ -1,138 +1,107 @@
 /*
- * ErrorHandler.js - Centralized error handling utilities
- * Provides consistent error handling patterns across the application
+ * ErrorHandler.js - Simplified centralized error handling utilities
+ * Leverages Commander.js and Node.js for consistent error handling
  */
 
-const chalk = require('chalk');
+const { OutputManager } = require('./OutputManager');
 
 /**
- * Centralized error handling class
+ * Custom error classes for better error categorization
+ */
+class ValidationError extends Error {
+  constructor(message, context) {
+    super(`${context}: ${message}`);
+    this.name = 'ValidationError';
+    this.exitCode = 4;
+  }
+}
+
+class FileNotFoundError extends Error {
+  constructor(filepath, context) {
+    super(`${context}: File not found: ${filepath}`);
+    this.name = 'FileNotFoundError';
+    this.exitCode = 2;
+  }
+}
+
+/**
+ * Simplified centralized error handling class
  */
 class ErrorHandler {
   /**
-   * Handle file operation errors with consistent messaging
-   * @param {Error} error - The error that occurred
-   * @param {string} context - Context description for the error
-   * @param {boolean} shouldThrow - Whether to re-throw the error (default: true)
-   * @param {Function} cleanupFn - Optional cleanup function to run
-   * @returns {Error|null} The error if not throwing, null if successful
+   * Get appropriate exit code for different error types
+   * @param {Error} error - Error to categorize
+   * @returns {number} Exit code
    */
-  static handleFileError(error, context, shouldThrow = true, cleanupFn = null) {
-    const message = this._formatFileError(error, context);
-
-    if (error.code === 'ENOENT') {
-      console.warn(chalk.yellow(`⚠️ File not found: ${context}`));
-    } else if (error.code === 'EACCES') {
-      console.error(chalk.red(`🚨 Permission denied: ${context}`));
-    } else if (error.code === 'EMFILE' || error.code === 'ENFILE') {
-      console.error(chalk.red(`🚨 Too many open files: ${context}`));
-    } else {
-      console.error(chalk.red(`❌ File operation failed: ${message}`));
+  static getExitCode(error) {
+    // User cancelled prompts - exit cleanly
+    if (error.name === 'ExitPromptError') {
+      return 0;
     }
 
-    if (cleanupFn) {
-      try {
-        cleanupFn();
-      } catch (cleanupError) {
-        console.warn(chalk.yellow(`⚠️ Cleanup failed: ${cleanupError.message}`));
-      }
-    }
+    // Custom error classes
+    if (error.exitCode) return error.exitCode;
 
-    if (shouldThrow) {
-      throw error;
-    }
-    return error;
+    // Node.js system errors
+    if (error.code === 'ENOENT') return 2; // File not found
+    if (error.code === 'EACCES') return 3; // Permission denied
+
+    // Error name patterns
+    if (error.name === 'ValidationError') return 4;
+    if (error.name === 'FileNotFoundError') return 2;
+    if (error.message && error.message.includes('not found')) return 5;
+
+    return 1; // Generic error
   }
 
   /**
-   * Handle validation errors with consistent formatting
-   * @param {string} message - Validation error message
-   * @param {string} context - Context where validation failed
-   * @param {boolean} shouldThrow - Whether to throw an Error (default: true)
-   * @returns {Error|null}
+   * Handle final error with proper exit code
+   * @param {Error} error - Error to handle
+   * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion for recovery
    */
-  static handleValidationError(message, context, shouldThrow = true) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.error(chalk.red(`🚨 Validation Error: ${fullMessage}`));
+  static handleErrorAndExit(error, context = null, suggestion = null) {
+    const exitCode = this.getExitCode(error);
 
-    if (shouldThrow) {
-      throw new Error(fullMessage);
+    // Use OutputManager for consistent formatting
+    OutputManager.error(error.message, context, suggestion);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.error(error.stack);
     }
-    return new Error(fullMessage);
+
+    process.exit(exitCode);
   }
 
   /**
-   * Handle async operation errors with cleanup support
-   * @param {Error} error - The error that occurred
-   * @param {string} context - Context description
-   * @param {Function} cleanupFn - Cleanup function to run
-   * @param {boolean} shouldThrow - Whether to re-throw (default: true)
-   * @returns {Error|null}
+   * Handle error without exiting, providing recovery suggestions
+   * @param {Error} error - Error to handle
+   * @param {string} context - Optional context
+   * @param {Array<string>} suggestions - Array of recovery suggestions
    */
-  static handleAsyncError(error, context, cleanupFn = null, shouldThrow = true) {
-    console.error(chalk.red(`❌ ${context}: ${error.message}`));
-
-    if (cleanupFn) {
-      try {
-        cleanupFn();
-      } catch (cleanupError) {
-        console.warn(
-          chalk.yellow(`⚠️ Cleanup failed during ${context}: ${cleanupError.message}`)
-        );
-      }
-    }
-
-    if (shouldThrow) {
-      throw error;
-    }
-    return error;
-  }
-
-  /**
-   * Create a cleanup handler that can be used with try-catch blocks
-   * @param {Function} cleanupFn - Cleanup function to execute
-   * @param {string} resource - Description of resource being cleaned up
-   * @returns {Function} Cleanup handler function
-   */
-  static createCleanupHandler(cleanupFn, resource = 'resource') {
-    return () => {
-      try {
-        if (cleanupFn) cleanupFn();
-      } catch (error) {
-        console.warn(
-          chalk.yellow(`⚠️ Failed to cleanup ${resource}: ${error.message}`)
-        );
-      }
-    };
-  }
-
-  /**
-   * Handle cleanup errors gracefully (log but don't throw)
-   * @param {Error} error - Cleanup error
-   * @param {string} resource - Description of what was being cleaned up
-   */
-  static handleCleanupError(error, resource = 'resource') {
-    console.warn(chalk.yellow(`⚠️ Failed to cleanup ${resource}: ${error.message}`));
+  static handleErrorAndSuggest(error, context = null, suggestions = []) {
+    const suggestion = suggestions.length > 0 ? suggestions.join('\n') : null;
+    OutputManager.error(error.message, context, suggestion);
   }
 
   /**
    * Log success messages with consistent formatting
    * @param {string} message - Success message
    * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion
    */
-  static logSuccess(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.log(chalk.green(`✅ ${fullMessage}`));
+  static logSuccess(message, context = null, suggestion = null) {
+    OutputManager.success(message, context, suggestion);
   }
 
   /**
-   * Log warning messages with consistent formatting
-   * @param {string} message - Warning message
+   * Log error messages with consistent formatting
+   * @param {string} message - Error message
    * @param {string} context - Optional context
+   * @param {string} suggestion - Optional suggestion for recovery
    */
-  static logWarning(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.warn(chalk.yellow(`⚠️ ${fullMessage}`));
+  static logError(message, context = null, suggestion = null) {
+    OutputManager.error(message, context, suggestion);
   }
 
   /**
@@ -141,80 +110,30 @@ class ErrorHandler {
    * @param {string} context - Optional context
    */
   static logInfo(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.log(chalk.blue(`ℹ️ ${fullMessage}`));
+    OutputManager.info(message, context);
   }
 
   /**
-   * Log error messages with consistent formatting
-   * @param {string} message - Error message
+   * Log warning messages with consistent formatting
+   * @param {string} message - Warning message
    * @param {string} context - Optional context
    */
-  static logError(message, context = null) {
-    const fullMessage = context ? `${context}: ${message}` : message;
-    console.error(chalk.red(`❌ Error: ${fullMessage}`));
+  static logWarning(message, context = null) {
+    OutputManager.warning(message, context);
   }
 
   /**
-   * Format file-specific error messages
-   * @private
+   * Log progress messages with consistent formatting
+   * @param {string} message - Progress message
+   * @param {string} context - Optional context
    */
-  static _formatFileError(error, context) {
-    switch (error.code) {
-      case 'ENOENT':
-        return `File not found: ${context}`;
-      case 'EACCES':
-        return `Permission denied: ${context}`;
-      case 'EISDIR':
-        return `Expected file but got directory: ${context}`;
-      case 'ENOTDIR':
-        return `Expected directory but got file: ${context}`;
-      case 'EMFILE':
-      case 'ENFILE':
-        return `System limit reached: ${context}`;
-      default:
-        return `${context}: ${error.message}`;
-    }
-  }
-
-  /**
-   * Handle multiple errors (e.g., from batch operations)
-   * @param {Array<Error>} errors - Array of errors
-   * @param {string} context - Context for the errors
-   * @param {boolean} shouldThrow - Whether to throw if errors exist
-   * @returns {Array<Error>} Array of errors
-   */
-  static handleMultipleErrors(errors, context = 'operation', shouldThrow = false) {
-    if (errors.length === 0) return [];
-
-    console.error(chalk.red(`🚨 ${context} completed with ${errors.length} errors:`));
-    errors.forEach((error, index) => {
-      console.error(chalk.red(`  ${index + 1}. ${error.message}`));
-    });
-
-    if (shouldThrow && errors.length > 0) {
-      throw new Error(`${context} failed with ${errors.length} errors`);
-    }
-
-    return errors;
-  }
-
-  /**
-   * Create a standardized error object with context
-   * @param {string} message - Error message
-   * @param {string} context - Error context
-   * @param {string} code - Error code (optional)
-   * @param {Object} details - Additional error details (optional)
-   * @returns {Error} Enhanced error object
-   */
-  static createContextualError(message, context, code = null, details = null) {
-    const error = new Error(`${context}: ${message}`);
-    if (code) error.code = code;
-    if (details) error.details = details;
-    return error;
+  static logProgress(message, context = null) {
+    OutputManager.progress(message, context);
   }
 }
 
 module.exports = {
   ErrorHandler,
+  ValidationError,
+  FileNotFoundError,
 };

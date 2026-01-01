@@ -1,6 +1,6 @@
 {
   "name": "data-dumpster-diver",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "description": "A CLI tool to process and explore exported ChatGPT conversation data.",
   "license": "MIT",
   "author": "Ethan Thomason",
@@ -18,6 +18,7 @@
     "test": "bash tests/simple-test.sh",
     "test:basic": "bash tests/minimal-test.sh",
     "test:workflows": "bash tests/minimal-workflow-test.sh",
+    "test:integration": "bash tests/rummage-integration-test.sh",
     "test:with-logs": "LOG_TESTS=true bash tests/simple-test.sh",
     "test:setup": "node tests/generate-test-data.js && cd tests && zip -r test-basic-synthetic.zip test-basic-synthetic",
     "test:cleanup": "rm -f tests/test-basic-synthetic.zip && rm -rf tests/test-basic-synthetic && rm -rf tests/upcycle-bin/*"

@@ -4,6 +4,7 @@
  * Replaces session-based architecture with user-accessible dumpsters
  */
 const FileUtils = require('./FileUtils');
+const { SearchManager } = require('./SearchManager');
 
 class DumpsterManager {
   constructor(baseDir) {
@@ -249,6 +250,98 @@ class DumpsterManager {
    */
   sanitizeExportName(name) {
     return FileUtils.sanitizeName(name, { type: 'export' });
+  }
+
+  /**
+   * Search chats within a dumpster
+   * @param {string} dumpsterName - Name of dumpster to search
+   * @param {string} query - Search query (empty string returns all chats)
+   * @param {Object} options - Search options
+   * @returns {Promise<Array>} Array of search results
+   */
+  async searchChats(dumpsterName, query = '', options = {}) {
+    const {
+      scope = 'all', // 'title', 'content', 'all'
+      caseSensitive = false,
+      messageLimit = 100, // TODO: Use UI_CONFIG.DEFAULT_MESSAGE_LIMIT when circular dependency is resolved
+      limit = null, // Maximum results to return (null = show all)
+    } = options;
+
+    await this.loadDumpsters();
+
+    if (!this.dumpsters.has(dumpsterName)) {
+      throw new Error(`Dumpster "${dumpsterName}" not found`);
+    }
+
+    const dumpsterDir = FileUtils.joinPath(this.dumpstersDir, dumpsterName);
+    const chatsDir = FileUtils.joinPath(dumpsterDir, 'chats');
+
+    try {
+      const files = await FileUtils.listDirectory(chatsDir);
+
+      // Filter for JSON files and sort by filename (which includes date)
+      const jsonFiles = files
+        .filter(file => file.endsWith('.json'))
+        .sort((a, b) => b.localeCompare(a)); // Reverse chronological order
+
+      const searchResults = [];
+      const maxFiles = limit ? Math.min(jsonFiles.length, limit) : jsonFiles.length;
+
+      for (let i = 0; i < maxFiles; i++) {
+        const file = jsonFiles[i];
+        try {
+          const filePath = FileUtils.joinPath(chatsDir, file);
+          const chat = await FileUtils.readJsonFile(filePath);
+
+          // Perform search
+          const searchResult = SearchManager.searchInChat(chat, query, {
+            scope,
+            caseSensitive,
+            messageLimit,
+          });
+
+          // Include all results if no query, or only matches if query provided
+          if (!query || query.trim() === '' || searchResult.matchCount > 0) {
+            searchResults.push({
+              chat: {
+                filename: file,
+                ...chat,
+              },
+              searchResult,
+              rank: i, // Original position for tie-breaking
+            });
+          }
+        } catch (error) {
+          console.warn(`Error reading chat file ${file}:`, error.message);
+        }
+      }
+
+      // Sort results by relevance if query provided
+      let finalResults = searchResults;
+      if (query && query.trim() !== '') {
+        finalResults = SearchManager.sortByRelevance(searchResults);
+      }
+
+      // Return results with metadata for summary generation
+      return {
+        results: finalResults,
+        totalChats: jsonFiles.length,
+        matchCount: finalResults.length,
+      };
+    } catch (error) {
+      console.error(`Error searching chats for dumpster ${dumpsterName}:`, error);
+      throw new Error('Error searching chats');
+    }
+  }
+
+  /**
+   * Get a specific chat with full content
+   * @param {string} dumpsterName - Name of dumpster
+   * @param {string} chatId - ID/filename of chat
+   * @returns {Promise<Object>} Chat object with full content
+   */
+  async getChatWithContent(dumpsterName, chatId) {
+    return await this.getChat(dumpsterName, chatId);
   }
 
   /**

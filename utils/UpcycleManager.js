@@ -9,7 +9,9 @@ const { ErrorHandler } = require('./ErrorHandler');
 const FileUtils = require('./FileUtils');
 const ChatUpcycler = require('./ChatUpcycler');
 const { createProgressManager } = require('./ProgressManager');
+const { BinManager } = require('./BinManager');
 const fs = require('fs').promises;
+const chalk = require('chalk');
 const MDFormatter = require('./formatters/MDFormatter');
 const TXTFormatter = require('./formatters/TXTFormatter');
 const HTMLFormatter = require('./formatters/HTMLFormatter');
@@ -18,11 +20,20 @@ class UpcycleManager {
   constructor(dumpsterManager, progressManager = null) {
     this.dumpsterManager = dumpsterManager;
     this.progressManager = progressManager;
+    this.bm = new BinManager(dumpsterManager.baseDir);
     this.formatters = {
       md: MDFormatter,
       txt: TXTFormatter,
       html: HTMLFormatter,
     };
+  }
+
+  /**
+   * Initialize bin manager (call after construction)
+   * @returns {Promise<void>}
+   */
+  async initializeBinManager() {
+    await this.bm.initialize();
   }
 
   /**
@@ -59,6 +70,271 @@ class UpcycleManager {
     };
 
     return { ...defaultOptions, ...options };
+  }
+
+  /**
+   * Upcycle selection bin to specified format
+   * @param {string} format - Export format
+   * @param {Object} options - Export options
+   * @returns {Promise<Object>} Upcycle result
+   */
+  async upcycleSelection(format, options = {}) {
+    return this.upcycleBin(format, null, options);
+  }
+
+  /**
+   * Upcycle a specific bin to specified format
+   * @param {string} format - Export format
+   * @param {string} binName - Name of bin to upcycle (null for active bin)
+   * @param {Object} options - Export options
+   * @returns {Promise<Object>} Upcycle result
+   */
+  async upcycleBin(format, binName, options = {}) {
+    const assetErrorTracker = new AssetErrorTracker();
+
+    try {
+      const validatedOptions = this.validateUpcycleOptions(format, options);
+      const formatter = this.formatters[format];
+      const chatUpcycler = new ChatUpcycler(this.dumpsterManager.baseDir);
+
+      // Use the passed progress manager if available, otherwise create one
+      const pm =
+        this.progressManager || createProgressManager(null, validatedOptions.verbose);
+
+      // Load selection and get chats grouped by dumpster
+      pm.start('loading', 'Loading selection bin...');
+
+      await this.initializeBinManager();
+
+      // Get chats from specified bin or active bin
+      const chatsByDumpster = binName
+        ? this.bm.getBinChatsByDumpster(binName)
+        : this.bm.getActiveBinChatsByDumpster();
+
+      if (Object.keys(chatsByDumpster).length === 0) {
+        const binDisplayName = binName || 'active';
+        throw new Error(`Bin "${binDisplayName}" is empty`);
+      }
+
+      if (validatedOptions.verbose) {
+        const dumpsterDetails = Object.entries(chatsByDumpster)
+          .map(
+            ([name, chats]) =>
+              `${name}: ${chats.length} chat${chats.length !== 1 ? 's' : ''}`
+          )
+          .join(', ');
+        console.log(chalk.dim(`📊 Selection bin distribution: ${dumpsterDetails}`));
+      }
+
+      pm.succeed(
+        `Found chats in ${Object.keys(chatsByDumpster).length} dumpster${Object.keys(chatsByDumpster).length !== 1 ? 's' : ''}`
+      );
+
+      // Switch to progress bar for chat processing
+      if (pm.spinner && pm.spinnerActive) {
+        pm.stop();
+      }
+
+      // Create output directory using bin name
+      const currentBinName = binName || this.bm.getActiveBinName();
+      const outputDir = FileUtils.joinPath(
+        validatedOptions.outputDir,
+        `${currentBinName}-${format}`
+      );
+      await FileUtils.ensureDirectory(outputDir);
+
+      let totalProcessed = 0;
+      let totalSkipped = 0;
+      const allResults = [];
+      const totalChats = Object.values(chatsByDumpster).reduce(
+        (sum, chats) => sum + chats.length,
+        0
+      );
+
+      pm.update('processing', 20, `Processing ${totalChats} selected chats...`);
+
+      // Create a progress bar for chat processing
+      const chatProgressBar = pm.createProgressBar(
+        totalChats,
+        'Processing selected chats'
+      );
+
+      // Collect all assets from all selected chats for deduplication
+      const globalAssetMap = new Map(); // Map<dumpsterName, Set<assetPointer>>
+      const processedChats = [];
+
+      // First pass: Load all chats and collect asset references
+      for (const [dumpsterName, selectedChats] of Object.entries(chatsByDumpster)) {
+        pm.update(
+          'processing',
+          20 + (totalProcessed / totalChats) * 30,
+          `Loading chats from ${dumpsterName}...`
+        );
+
+        // Initialize asset tracking for this dumpster
+        if (!globalAssetMap.has(dumpsterName)) {
+          globalAssetMap.set(dumpsterName, new Set());
+        }
+
+        // Load and process chats to collect asset references
+        for (let i = 0; i < selectedChats.length; i++) {
+          const selectedItem = selectedChats[i];
+
+          try {
+            // Load full chat data
+            const chat = await this.dumpsterManager.getChat(
+              dumpsterName,
+              selectedItem.filename
+            );
+
+            // Process chat content to identify assets (without copying yet)
+            const processOptions = {
+              ...validatedOptions,
+              dumpsterName,
+              assetErrorTracker,
+            };
+            const processedChat = await chatUpcycler.processChatForExport(
+              chat,
+              format,
+              processOptions
+            );
+
+            // Collect asset references for this chat
+            if (processedChat.assets && processedChat.assets.length > 0) {
+              processedChat.assets.forEach(asset => {
+                if (asset.pointer && !asset.error) {
+                  globalAssetMap.get(dumpsterName).add(asset.pointer);
+                }
+              });
+            }
+
+            processedChats.push({
+              dumpsterName,
+              chat,
+              processedChat,
+              selectedItem,
+            });
+
+            totalProcessed++;
+          } catch (error) {
+            assetErrorTracker.addError('chat_processing', error.message, {
+              chatTitle: selectedItem.title || 'Untitled',
+              chatId: selectedItem.filename,
+              dumpsterName,
+            });
+            totalSkipped++;
+          }
+
+          // Update progress bar
+          chatProgressBar.update(totalProcessed + totalSkipped, {
+            dumpster: dumpsterName,
+            processed: totalProcessed,
+            skipped: totalSkipped,
+          });
+        }
+      }
+
+      // Second pass: Copy all unique assets once
+      if (validatedOptions.includeMedia && globalAssetMap.size > 0) {
+        const totalUniqueAssets = Array.from(globalAssetMap.values()).reduce(
+          (sum, assets) => sum + assets.size,
+          0
+        );
+        pm.update(
+          'copying_assets',
+          60,
+          `Copying ${totalUniqueAssets} unique media assets...`
+        );
+
+        if (validatedOptions.verbose) {
+          const assetDetails = Array.from(globalAssetMap.entries())
+            .map(
+              ([name, assets]) =>
+                `${name}: ${assets.size} unique asset${assets.size !== 1 ? 's' : ''}`
+            )
+            .join(', ');
+          console.log(chalk.dim(`🎨 Asset deduplication: ${assetDetails}`));
+        }
+
+        for (const [dumpsterName, assetPointers] of globalAssetMap.entries()) {
+          if (assetPointers.size > 0) {
+            // Convert Set to array of asset objects
+            const uniqueAssets = Array.from(assetPointers).map(pointer => ({
+              pointer,
+            }));
+
+            await this.copyChatAssets(
+              uniqueAssets,
+              outputDir,
+              dumpsterName,
+              assetErrorTracker,
+              {
+                copyEntireMediaDir: false, // Never copy entire directory for selection
+              }
+            );
+          }
+        }
+      }
+
+      // Third pass: Generate formatted content and write files
+      pm.update('generating_files', 70, 'Generating export files...');
+
+      for (const { chat, processedChat } of processedChats) {
+        // Generate formatted content
+        const formattedContent = await formatter.formatChat(
+          processedChat,
+          validatedOptions
+        );
+
+        // Generate filename
+        const filename = this.generateFilename(chat, format);
+        const filepath = FileUtils.joinPath(outputDir, filename);
+
+        // Write file (assets are already copied)
+        await FileUtils.writeFile(filepath, formattedContent);
+
+        allResults.push({
+          filename,
+          chatTitle: chat.title || 'Untitled',
+          assetCount: processedChat.assets.length,
+          messageCount: processedChat.messages.length,
+          filepath,
+        });
+      }
+
+      pm.update('finalizing', 90, 'Finalizing upcycle...');
+
+      chatProgressBar.update(totalChats, {
+        total_processed: totalProcessed,
+        total_skipped: totalSkipped,
+      });
+
+      // Final progress completion
+      pm.update(
+        'completed',
+        100,
+        `Selection upcycle complete! Processed ${totalProcessed} chats.`
+      );
+
+      const assetErrorSummary = assetErrorTracker.getErrorSummary();
+
+      return {
+        success: true,
+        source: 'selection',
+        dumpsterCount: Object.keys(chatsByDumpster).length,
+        format,
+        outputDir,
+        total: totalChats,
+        processed: totalProcessed,
+        skipped: totalSkipped,
+        files: allResults.map(r => r.filename).filter(f => f),
+        options: validatedOptions,
+        assetErrors: assetErrorSummary,
+      };
+    } catch (error) {
+      ErrorHandler.logError('Selection upcycle failed');
+      throw error;
+    }
   }
 
   /**
@@ -382,32 +658,9 @@ class UpcycleManager {
         }
       }
     }
-
-    // Additionally, copy the entire media directory recursively to catch any files not in mapping
-    try {
-      const dumpsterMediaDir = FileUtils.joinPath(
-        this.dumpsterManager.baseDir,
-        'data/dumpsters',
-        dumpsterName,
-        'media'
-      );
-
-      if (await FileUtils.fileExists(dumpsterMediaDir)) {
-        await FileUtils.copyDirectory(dumpsterMediaDir, mediaDir);
-      }
-    } catch (error) {
-      if (assetErrorTracker) {
-        assetErrorTracker.addWarning(
-          'media_directory_copy_failed',
-          'Failed to recursively copy media directory',
-          {
-            dumpsterName,
-            error: error.message,
-          }
-        );
-      }
-    }
   }
 }
 
-module.exports = UpcycleManager;
+module.exports = {
+  UpcycleManager,
+};
