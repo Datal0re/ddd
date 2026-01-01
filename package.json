@@ -1,6 +1,6 @@
 {
   "name": "data-dumpster-diver",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "description": "A CLI tool to process and explore exported ChatGPT conversation data.",
   "license": "MIT",
   "author": "Ethan Thomason",

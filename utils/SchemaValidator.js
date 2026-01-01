@@ -578,7 +578,8 @@ class SchemaValidator {
    */
   static safeValidate(validationMethod, value, options = {}, ...additionalArgs) {
     const {
-      context = 'validation',
+      // eslint-disable-next-line no-unused-vars
+      context = 'validation', // TODO: investigate if this is needed
       detectEmpty = true,
       emptyReason = 'value is empty',
     } = options;

@@ -248,7 +248,7 @@ class BurnService extends BaseCommandService {
     const baseMessage = `Dumpster "${dumpsterName}" burned to ashes successfully!`;
     const details = `All ${stats.chatCount} chats and ${stats.sizeInMB}MB of data reduced to cinders`;
 
-    return `${baseMessage}\n${chalk.dim(details)}`;
+    return this.formatSuccessMessage(`${baseMessage}\n${details}`, 'burn operation');
   }
 
   /**

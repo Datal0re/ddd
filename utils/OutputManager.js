@@ -184,7 +184,7 @@ class OutputManager {
    * @param {string} emptyMessage - Message when list is empty
    * @param {string} context - Optional context
    */
-  static list(items, title = null, emptyMessage = 'No items found', context = null) {
+  static list(items, title = null, emptyMessage = 'No items found', _context = null) {
     if (title) {
       console.log(chalk.blue(`\n📋 ${title}`));
     }
@@ -192,7 +192,7 @@ class OutputManager {
     if (items.length === 0) {
       console.log(chalk.yellow(emptyMessage));
     } else {
-      items.forEach((item, index) => {
+      items.forEach((item) => {
         if (typeof item === 'string') {
           console.log(`  ${chalk.cyan('•')} ${item}`);
         } else if (item && typeof item === 'object') {
