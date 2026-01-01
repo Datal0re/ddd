@@ -7,7 +7,7 @@
   "main": "cli.js",
   "type": "commonjs",
   "bin": {
-    "ddd": "./cli.js"
+    "ddd": "cli.js"
   },
   "files": [
     "cli.js",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Datal0re/ddd.git"
+    "url": "git+https://github.com/Datal0re/ddd.git"
   },
   "bugs": {
     "url": "https://github.com/Datal0re/ddd/issues"
