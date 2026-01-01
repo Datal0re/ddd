@@ -10,6 +10,7 @@ const { CliPrompts } = require('../CliPrompts');
 const { StatisticsUtils } = require('../StatisticsUtils');
 const { OutputManager } = require('../OutputManager');
 const { VERSION } = require('../../config/constants');
+// const { BinManager } = require('../BinManager');
 
 /**
  * Service for handling bin management operations
@@ -86,9 +87,10 @@ class BinService extends BaseCommandService {
           };
         }
         break;
-      case 'delete':
+      case 'burn':
       case 'rename':
       case 'add_chats':
+      case 'empty':
         if (!binExists) {
           return {
             valid: false,
@@ -192,7 +194,7 @@ class BinService extends BaseCommandService {
 
       // Confirm deletion
       const confirmed = await CliPrompts.confirmAction(
-        `Burn bin "${binName}"? This will permanently delete all selected chats.`
+        `Burn bin "${binName}"? This will permanently delete the bin (chats remain unscathed).`
       );
 
       if (confirmed) {
@@ -201,7 +203,7 @@ class BinService extends BaseCommandService {
         this.output.action('burn', successMessage);
         return this.createResult(true, { binName, action: 'burned' }, successMessage);
       } else {
-        this.output.warning('Bin burning cancelled', 'Bin was not deleted');
+        this.output.warning('Bin burning cancelled', 'Bin was not burned');
         return this.createResult(
           true,
           { binName, action: 'cancelled' },
@@ -288,6 +290,101 @@ class BinService extends BaseCommandService {
   }
 
   /**
+   * Empty a bin (clear all chats)
+   * @param {BinManager} bm - Bin Manager instance
+   * @param {string} name - Name of bin to empty (optional, defaults to staging bin)
+   * @returns {Promise<Object>} Result object
+   */
+  async emptyBin(bm, name = null) {
+    try {
+      // Validate bin name using SchemaValidator pattern
+      const nameValidation = this.validateAndPrepareBinName(name, 'empty');
+      if (!nameValidation.valid) {
+        const errorMessage = `Cannot empty bin: ${nameValidation.message || nameValidation.error.message}`;
+        this.output.error(errorMessage);
+        return this.createResult(false, null, errorMessage, nameValidation.context);
+      }
+
+      // Get bin name (prompt if not provided)
+      let binName;
+      if (nameValidation.validatedInputs.requiresNamePrompt) {
+        // Show available bins for selection
+        const bins = bm.listBins();
+        if (bins.length === 0) {
+          this.output.warning('No bins to empty');
+          return this.createResult(true, null, 'No bins available');
+        }
+
+        binName = await CliPrompts.selectFromBins(bins, 'Select a bin to empty:');
+      } else {
+        binName = nameValidation.validatedInputs.binName;
+      }
+
+      // Validate bin exists
+      const existenceValidation = this.validateBinExistence(bm, binName, 'empty');
+      if (!existenceValidation.valid) {
+        const errorMessage = `Cannot empty bin "${binName}": ${existenceValidation.error}`;
+        this.output.error(errorMessage);
+        return this.createResult(
+          false,
+          null,
+          errorMessage,
+          existenceValidation.context
+        );
+      }
+
+      // Get current bin state to report on changes
+      const binToEmpty = bm.getBin(binName);
+      const currentChatCount =
+        binToEmpty && binToEmpty.items ? binToEmpty.items.length : 0;
+
+      // Check if bin is already empty
+      if (currentChatCount === 0) {
+        this.output.warning(`Bin "${binName}" is already empty`, 'empty bin');
+        return this.createResult(
+          true,
+          { binName, chatsEmptied: 0 },
+          'Bin was already empty'
+        );
+      }
+
+      // Confirm the operation
+      const confirmed = await CliPrompts.confirmAction(
+        `Empty bin "${binName}"? This will remove all ${currentChatCount} chat${currentChatCount !== 1 ? 's' : ''} from the bin.`
+      );
+
+      if (!confirmed) {
+        this.output.warning(
+          'Bin emptying cancelled',
+          'empty bin',
+          'Bin contents were not modified'
+        );
+        return this.createResult(
+          true,
+          { binName, chatsEmptied: 0, action: 'cancelled' },
+          'Bin emptying cancelled'
+        );
+      }
+
+      // Use BinManager's emptyBin method with the bin NAME (not the bin object)
+      const emptiedCount = await bm.emptyBin(binName);
+
+      const successMessage = `Emptied ${emptiedCount} chat${emptiedCount !== 1 ? 's' : ''} from bin "${binName}"`;
+      this.output.action('clear', successMessage);
+
+      return this.createResult(
+        true,
+        { binName, chatsEmptied: emptiedCount },
+        successMessage
+      );
+    } catch (error) {
+      const errorMessage = `Failed to empty bin${name ? ` "${name}"` : ''}: ${error.message}`;
+      this.output.error(errorMessage, 'empty bin', 'Check bin name and permissions');
+      return this.createResult(false, null, errorMessage, error);
+    }
+  }
+
+  /**
    * Calculate bin statistics using centralized StatisticsUtils
    * @param {BinManager} bm - Bin manager instance
    * @returns {Object} Bin statistics
@@ -346,6 +443,7 @@ class BinService extends BaseCommandService {
         'bin deletion',
         'bin listing',
         'bin renaming',
+        'bin emptying',
         'bin statistics',
         'content validation',
       ],
@@ -354,7 +452,7 @@ class BinService extends BaseCommandService {
 
   /**
    * Execute bin command with subcommand routing
-   * @param {string} subcommand - The subcommand to execute (create, burn, list, rename)
+   * @param {string} subcommand - The subcommand to execute (create, burn, list, rename, empty)
    * @param {string} name - Optional bin name for create/rename operations
    * @param {Object} managers - Manager instances from CommandInitService
    * @returns {Promise<Object>} Result object with success status
@@ -362,10 +460,10 @@ class BinService extends BaseCommandService {
   async executeBinCommand(subcommand, name, managers) {
     if (!subcommand) {
       const errorMessage =
-        'No subcommand provided. Use: ddd bin <create|burn|list|rename> [name]';
+        'No subcommand provided. Use: ddd bin <create|burn|list|rename|empty> [name]';
       this.output.error(
         errorMessage,
-        'Available subcommands: create, burn, list, rename'
+        'Available subcommands: create, burn, list, rename, empty'
       );
       return this.createResult(false, null, errorMessage, 'missing_subcommand');
     }
@@ -380,7 +478,7 @@ class BinService extends BaseCommandService {
 
     try {
       const operation = subcommand.toLowerCase();
-      const errorMessage = `Unknown subcommand "${subcommand}". Valid subcommands are: create, burn, list, rename`;
+      const errorMessage = `Unknown subcommand "${subcommand}". Valid subcommands are: create, burn, list, rename, empty`;
 
       switch (operation) {
         case 'create':
@@ -394,6 +492,9 @@ class BinService extends BaseCommandService {
 
         case 'rename':
           return await this.renameBin(bin, name);
+
+        case 'empty':
+          return await this.emptyBin(bin, name);
 
         default:
           this.output.error(errorMessage, 'Use one of the valid subcommands');

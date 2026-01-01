@@ -819,28 +819,29 @@ class BinManager {
   }
 
   /**
-   * Clear the staging bin
-   * @returns {Promise<number>} Number of chats cleared
+   * Empty a bin
+   * @param {string} binName - Bin to be emptied
+   * @returns {Promise<number>} Number of chats emptied from bin
    */
-  async clearStaging() {
-    const stagingBin = this.bins.get(this.stagingBinName);
+  async emptyBin(binName) {
+    const binToEmpty = this.bins.get(binName);
 
-    if (!stagingBin.items || stagingBin.items.length === 0) {
-      ErrorHandler.logInfo('Staging bin is already empty', 'BinManager');
+    if (!binToEmpty.items || binToEmpty.items.length === 0) {
+      ErrorHandler.logInfo('Bin is already empty', 'BinManager');
       return 0;
     }
 
-    const clearedCount = stagingBin.items.length;
-    stagingBin.items = [];
-    stagingBin.lastModified = new Date();
+    const emptiedCount = binToEmpty.items.length;
+    binToEmpty.items = [];
+    binToEmpty.lastModified = new Date();
 
     await this.saveBins();
     ErrorHandler.logSuccess(
-      `Cleared ${clearedCount} chat${clearedCount !== 1 ? 's' : ''} from staging bin`,
+      `Cleared ${emptiedCount} chat${emptiedCount !== 1 ? 's' : ''} from staging bin`,
       'BinManager'
     );
 
-    return clearedCount;
+    return emptiedCount;
   }
 
   /**

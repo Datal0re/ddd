@@ -131,8 +131,8 @@ program
   program
     .command('bin')
     .description('Manage selection bins for organizing chat selections')
-    .argument('[subcommand]', 'Subcommand: create, burn, list, rename')
-    .argument('[name]', 'Bin name for create/rename operations (optional)')
+    .argument('[subcommand]', 'Subcommand: create, burn, list, rename, empty')
+    .argument('[name]', 'Bin name for create/rename/empty operations (optional)')
     .option('-v, --verbose', 'Verbose output')
     .action(async (subcommand, name) => {
       try {
