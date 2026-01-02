@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write # Required for OIDC
-  contents: read # Required for checkout
+  contents: write # Required for creating releases and pushing docs updates
 
 jobs:
   release:
