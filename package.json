@@ -56,7 +56,6 @@
     "test:with-logs": "LOG_TESTS=true bash tests/simple-test.sh",
     "test:setup": "node tests/generate-test-data.js && cd tests && zip -r test-basic-synthetic.zip test-basic-synthetic",
     "test:cleanup": "rm -f tests/test-basic-synthetic.zip && rm -rf tests/test-basic-synthetic && rm -rf tests/upcycle-bin/*",
-    "prepublishOnly": "npm run lint && npm run format:check && npm run test:basic",
     "version": "npm run test:basic && npm run test:workflows",
     "postversion": "git push && git push --tags"
   },
