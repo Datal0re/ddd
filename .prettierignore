@@ -7,3 +7,7 @@ build/
 coverage/
 *.min.js
 docs/archive
+
+# Ignore release notes generated during CI/CD
+release_notes.md
+*.tgz
