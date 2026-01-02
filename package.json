@@ -51,12 +51,12 @@
     "format:check": "prettier --check .",
     "test": "bash tests/simple-test.sh",
     "test:basic": "bash tests/minimal-test.sh",
-    "test:workflows": "bash tests/minimal-workflow-test.sh",
-    "test:integration": "bash tests/rummage-integration-test.sh",
-    "test:with-logs": "LOG_TESTS=true bash tests/simple-test.sh",
-    "test:setup": "node tests/generate-test-data.js && cd tests && zip -r test-basic-synthetic.zip test-basic-synthetic",
-    "test:cleanup": "rm -f tests/test-basic-synthetic.zip && rm -rf tests/test-basic-synthetic && rm -rf tests/upcycle-bin/*",
-    "version": "npm run test:basic && npm run test:workflows",
+
+
+
+
+
+    "version": "npm run test:basic && npm run test:workflows"
     "postversion": "git push && git push --tags"
   },
   "dependencies": {
