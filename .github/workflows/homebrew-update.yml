@@ -12,22 +12,21 @@ on:
         required: false
         type: boolean
         default: false
-  
+
   # Auto-trigger after successful release
   workflow_run:
-    workflows: ["Release"]
+    workflows: ['Release']
     types: [completed]
     branches: [main]
 permissions:
-  contents: write  # For creating issues/discussions on failure
-  pull-requests: write  # For creating PR to homebrew-tap
+  contents: write # For creating issues/discussions on failure
+  pull-requests: write # For creating PR to homebrew-tap
 jobs:
   update-formula:
     if: |
       (github.event_name == 'workflow_dispatch') || 
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    
     steps:
       - name: Determine version
         id: version
@@ -51,12 +50,12 @@ jobs:
               head -n1)
             echo "Extracted version from release workflow: $VERSION"
           fi
-          
+
           if [ -z "$VERSION" ]; then
             echo "❌ Could not determine version"
             exit 1
           fi
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "✅ Version determined: $VERSION"
       - name: Validate version exists on npm
@@ -77,7 +76,7 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: Datal0re/homebrew-tap
           formula: ddd
-          tag: "v${{ steps.version.outputs.version }}"
+          tag: 'v${{ steps.version.outputs.version }}'
           force: ${{ github.event.inputs.force || false }}
           message: |
             🍺 Update ddd to version ${{ steps.version.outputs.version }}
@@ -89,7 +88,7 @@ jobs:
         if: failure()
         run: |
           echo "❌ Homebrew formula update failed"
-          
+
           # Create issue for manual intervention
           curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
