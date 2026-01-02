@@ -59,7 +59,7 @@ class UpcycleManager {
       );
     }
 
-    if (!this.formatters[format]) {
+    if (format && !this.formatters[format]) {
       throw new Error(
         `Unsupported format: ${format}. Available formats: ${this.getAvailableFormats().join(', ')}`
       );
