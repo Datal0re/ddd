@@ -71,7 +71,7 @@ jobs:
           fi
       - name: Create PR for Homebrew formula
         if: always() && steps.version.outcome == 'success'
-        uses: dawidd6/action-homebrew-bump-formula@v4
+        uses: dawidd6/action-homebrew-bump-formula@v7
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: Datal0re/homebrew-tap
