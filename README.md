@@ -31,6 +31,10 @@ Before using ddd, make sure to grab a ChatGPT data export!
 git clone https://github.com/Datal0re/ddd.git && cd ddd
 npm install
 npm link  # Optional: make CLI globally available
+
+# Package managers
+npm i -g @datal0re/ddd         # npm
+brew install datal0re/tap/ddd  # Homebrew (Mac/Linux)
 ```
 
 ### Basic Usage
