@@ -1,6 +1,6 @@
 # Development Guidelines
 
-## 🏗️ v0.1.0 Architecture Overview
+## 🏗️ LATEST Architecture Overview
 
 ### Wizard-Based CLI Tool for ChatGPT Data Processing
 
@@ -68,7 +68,7 @@ Configuration Layer
 └── config/constants.js - Configuration constants and limits
 ```
 
-## 🎯 Core Components (v0.1.0)
+## 🎯 Core Components (LATEST)
 
 ### Service Layer Architecture
 
@@ -250,7 +250,7 @@ Add tests for new command in `tests/` directory using shell scripts for realisti
 
 Update README.md and this AGENTS.md file with new command information.
 
-## 📂 File Structure (v0.1.0)
+## 📂 File Structure (LATEST)
 
 ```text
 data-dumpster-diver/
@@ -350,7 +350,7 @@ All commands use wizard-guided workflows when arguments are omitted, providing s
 - **Backend**: Uses `UpcycleService.js`, `BinManager.js`, and formatter system
 - **Features**: Selection bin export, format preview, rich media handling
 
-### `bin [subcommand] [name]` (NEW in v0.1.0)
+### `bin [subcommand] [name]` (NEW in LATEST)
 
 - **Purpose**: Manage persistent selection bins for chat organization
 - **Subcommands**: `create`, `list`, `rename`, `empty`, `burn` (delete)
@@ -417,7 +417,7 @@ npm run test:setup        # Generate synthetic test data and ZIP file
 npm run test:cleanup      # Clean up test artifacts
 ```
 
-### Test Structure (Enhanced in v0.1.0)
+### Test Structure (Enhanced in LATEST)
 
 - **Shell Script Tests**: Real CLI command testing with actual scenarios
 - **Wizard Workflow Tests**: Tests for multi-step wizard flows

@@ -73,6 +73,30 @@ jobs:
             echo "Release needed for version $VERSION"
           fi
 
+      - name: Update version references in documentation
+        if: steps.release-check.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Updating version references to v$VERSION"
+
+          # Update README.md version badge
+          sed -i.bak "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-$VERSION/g" README.md
+
+          # Update AGENTS.md version references  
+          sed -i.bak "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v$VERSION/g" AGENTS.md
+
+          # Clean up backup files
+          rm -f README.md.bak AGENTS.md.bak
+
+          # Check for changes
+          if git diff --quiet README.md AGENTS.md; then
+            git add README.md AGENTS.md
+            git commit -m "docs: update version references to v$VERSION"
+            echo "✅ Documentation updated to v$VERSION"
+          else
+            echo "ℹ️ No documentation changes needed"
+          fi
+
       - name: Create release notes
         id: notes
         if: steps.release-check.outputs.should_release == 'true'
@@ -136,50 +160,18 @@ jobs:
 
       - name: Update Homebrew formula
         if: steps.release-check.outputs.should_release == 'true'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Get package info
-          TARBALL_URL="https://registry.npmjs.org/@datal0re/ddd/-/ddd-$VERSION.tgz"
-          SHA256=$(curl -sL "$TARBALL_URL" | shasum -a 256 | cut -d' ' -f1)
-          DESCRIPTION="A CLI tool to process and explore exported ChatGPT conversation data"
-
-          # Create formula
-          cat > ddd.rb << EOF
-          class Ddd < Formula
-            desc "$DESCRIPTION"
-            homepage "https://github.com/Datal0re/ddd"
-            url "$TARBALL_URL"
-            sha256 "$SHA256"
-            license "MIT"
-            
-            depends_on "node"
-            
-            def install
-              ENV.deparallelize
-              system "npm", "install", *std_npm_args(prefix: false)
-              bin.install_symlink Dir["#{libexec}/bin/*"]
-            end
-            
-            test do
-              system bin/"ddd", "--version"
-            end
-          end
-          EOF
-
-          # Clone homebrew tap (you'd need HOMEBREW_TAP_TOKEN)
-          if [ -n "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
-            git clone https://github.com/Datal0re/homebrew-tap.git homebrew-tap
-            cd homebrew-tap
-            cp ../ddd.rb .
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git add ddd.rb
-            git commit -m "ddd: Update to version $VERSION"
-            git push origin main
-            echo "✅ Homebrew formula updated"
-          else
-            echo "⚠️ HOMEBREW_TAP_TOKEN not set, skipping Homebrew update"
-            echo "Formula content:"
-            cat ddd.rb
-          fi
+        # Use official Homebrew action to create PR with formula update
+        # This automatically: detects new version, calculates SHA256, updates URL, creates PR
+        uses: dawidd6/action-homebrew-bump-formula@v4
+        with:
+          # Personal access token with 'public_repo' scope for homebrew-tap access
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          # Your custom tap repository
+          tap: Datal0re/homebrew-tap
+          # Formula to update in your tap
+          formula: ddd
+          # Force update even if PR already exists (useful for re-releases)
+          force: false
+          # Optional: custom commit details
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'

@@ -3,8 +3,8 @@
  * Contains all configuration values used across the application
  */
 
-// Central Verion number location
-const VERSION = '0.1.1';
+// Central Version number location - single source of truth
+const VERSION = require('../package.json').version;
 // Security and performance constants
 const LIMITS = {
   MAX_UPLOAD_SIZE: 500 * 1024 * 1024, // 500MB limit
