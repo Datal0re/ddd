@@ -26,6 +26,9 @@ jobs:
           cache: 'npm'
           # Don't set registry-url to prevent auth token interference
 
+      - name: Ensure npm version supports OIDC
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm ci
 
@@ -49,28 +52,6 @@ jobs:
           echo "=== npm config (before cleanup) ==="
           npm config list
 
-      - name: Clean npm environment for OIDC
-        run: |
-          # Reset npm config to ensure clean OIDC environment
-          # IMPORTANT: Unset ALL possible auth tokens that interfere with OIDC
-          unset NODE_AUTH_TOKEN
-          unset NPM_AUTH_TOKEN
-
-          # Check if any npm config auth exists and remove it
-          if npm config get //registry.npmjs.org/:_authToken; then
-            npm config delete //registry.npmjs.org/:_authToken
-          fi
-
-          npm config set registry https://registry.npmjs.org/
-
-          echo "=== Environment cleanup ==="
-          echo "NODE_AUTH_TOKEN: ${NODE_AUTH_TOKEN:+unset}"
-          echo "NPM_AUTH_TOKEN: ${NPM_AUTH_TOKEN:+unset}"
-          echo "npm config auth token exists: $(npm config get //registry.npmjs.org/:_authToken 2>/dev/null || echo 'none')"
-
-          echo "=== npm config (after cleanup) ==="
-          npm config list
-
       - name: Get version info
         id: version
         run: |
@@ -79,7 +60,7 @@ jobs:
           echo "Current version: $VERSION"
 
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --provenance --access public
 
       - name: Create GitHub Release
         if: success() # Only run if npm publish succeeded
@@ -118,21 +99,10 @@ jobs:
             echo "readme_needs_update=false" >> $GITHUB_OUTPUT
           fi
 
-          # Check if AGENTS.md version references need updating  
-          if ! grep -q "v$VERSION" AGENTS.md; then
-            echo "agents_needs_update=true" >> $GITHUB_OUTPUT
-          else
-            echo "agents_needs_update=false" >> $GITHUB_OUTPUT
-          fi
-
-          echo "README needs update: ${{ steps.docs-check.outputs.readme_needs_update }}"
-          echo "AGENTS.md needs update: ${{ steps.docs-check.outputs.agents_needs_update }}"
-
       - name: Update documentation
         if: |
           success() && 
-          (steps.docs-check.outputs.readme_needs_update == 'true' || 
-           steps.docs-check.outputs.agents_needs_update == 'true')
+          (steps.docs-check.outputs.readme_needs_update == 'true')
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           echo "Updating version references to v$VERSION"
@@ -143,18 +113,12 @@ jobs:
             echo "✅ README.md updated to v$VERSION"
           fi
 
-          # Update AGENTS.md version references if needed
-          if [ "${{ steps.docs-check.outputs.agents_needs_update }}" == "true" ]; then
-            sed -i.bak "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v$VERSION/g" AGENTS.md
-            echo "✅ AGENTS.md updated to v$VERSION"
-          fi
-
           # Clean up backup files
-          rm -f README.md.bak AGENTS.md.bak
+          rm -f README.md.bak
 
           # Commit documentation updates if any changes were made
-          if [ "${{ steps.docs-check.outputs.readme_needs_update }}" == "true" ] || [ "${{ steps.docs-check.outputs.agents_needs_update }}" == "true" ]; then
-            git add README.md AGENTS.md
+          if [ "${{ steps.docs-check.outputs.readme_needs_update }}" == "true" ]; then
+            git add README.md
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
             git commit -m "docs: update version references to v$VERSION"

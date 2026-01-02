@@ -2,7 +2,7 @@
 
 ![ddd logo](./ddd-logo.png)
 
-[![version](https://img.shields.io/badge/version-LATEST-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
+[![version](https://img.shields.io/badge/version-0.1.6-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
 
 A wizard-guided CLI tool for processing and exploring exported ChatGPT conversation data. Transform ZIP exports into organized, searchable collections with extracted media assets.
 
@@ -20,9 +20,9 @@ A wizard-guided CLI tool for processing and exploring exported ChatGPT conversat
 
 ## 🚀 Quick Start
 
-> Before using ddd, make sure to grab a ChatGPT data export!
-
-_Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours._
+**NOTE** \
+Before using ddd, make sure to grab a ChatGPT data export!
+> _Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours._
 
 ### Installation
 
@@ -199,5 +199,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **[Issues](https://github.com/Datal0re/ddd/issues)** - Report bugs and request features
 
 ---
-
-**Version**: 0.1.0 | **Last Updated**: 2026-01-01 | **Major Release**: Wizard-Based CLI 🎉

@@ -1,6 +1,6 @@
 # Development Guidelines
 
-## 🏗️ LATEST Architecture Overview
+## 🏗️ Architecture Overview
 
 ### Wizard-Based CLI Tool for ChatGPT Data Processing
 
@@ -14,7 +14,7 @@ This is a modern CLI tool with wizard-guided workflows and a clean service layer
         │                          │
         ▼                          ▼
 ┌─────────────┐           ┌──────────────┐
-│  🧙‍♂️Wizard │           │  📊Unified   │
+│   Wizard    │           │   Unified    │
 │  Workflows  │           │  OutputMgr   │
 └─────────────┘           └──────────────┘
 ```
@@ -68,7 +68,7 @@ Configuration Layer
 └── config/constants.js - Configuration constants and limits
 ```
 
-## 🎯 Core Components (LATEST)
+## 🎯 Core Components
 
 ### Service Layer Architecture
 
@@ -250,53 +250,53 @@ Add tests for new command in `tests/` directory using shell scripts for realisti
 
 Update README.md and this AGENTS.md file with new command information.
 
-## 📂 File Structure (LATEST)
+## 📂 File Structure
 
 ```text
 data-dumpster-diver/
 ├── cli.js                    # Main CLI entry point (binary: ddd)
-├── package.json              # Dependencies and scripts (v0.1.0)
+├── package.json              # Dependencies and scripts
 ├── eslint.config.js         # ESLint configuration
 ├── .prettierrc.json         # Prettier configuration
 ├── .prettierignore          # Prettier ignore rules
 ├── config/
 │   └── constants.js          # Configuration constants and limits
 ├── utils/
-│   ├── services/            # 🏗️ Service Layer (NEW)
+│   ├── services/            # Service Layer
 │   │   ├── BaseCommandService.js  # Foundation for all services
 │   │   ├── BinService.js          # Selection bin operations
 │   │   ├── BurnService.js         # Dumpster deletion logic
 │   │   ├── CommandInitService.js  # Service initialization
 │   │   ├── DumpService.js         # Export processing logic
 │   │   ├── HoardService.js        # Dumpster listing logic
-│   │   ├── RummageService.js     # Search/selection logic
-│   │   └── UpcycleService.js     # Export format logic
-│   ├── WizardUtils.js       # 🧙‍♂️ Wizard workflow engine (NEW)
-│   ├── OutputManager.js     # 📊 Unified output system (NEW)
-│   ├── BinManager.js        # 📋 Selection bin management (NEW)
-│   ├── SearchManager.js     # 🔍 Advanced search functionality (NEW)
-│   ├── StatisticsUtils.js   # 📈 Centralized statistics (NEW)
-│   ├── SchemaValidator.js   # ✅ Enhanced validation system
-│   ├── ErrorHandler.js      # 🚨 Centralized error handling
-│   ├── CliPrompts.js       # 📝 Interactive prompts
-│   ├── CommonUtils.js       # 🔧 Shared utility functions
-│   ├── AssetExtractor.js    # 📁 Asset extraction and organization
-│   ├── ChatDumper.js       # 💬 Chat data processing
-│   ├── ChatUpcycler.js     # ♻️ Chat message processing & export
-│   ├── DumpsterManager.js   # 🗑️ Core dumpster management
-│   ├── DumpsterProcessor.js # 🏭 Main processing orchestration
-│   ├── FileUtils.js        # 📄 File operations and validation
-│   ├── ProgressManager.js   # 📊 Progress tracking
-│   ├── UpcycleManager.js   # ♻️ Export format coordination
-│   ├── assetUtils.js       # 🎨 Asset handling utilities
-│   ├── upcycleHelpers.js   # 🛠️ Export helper functions
-│   ├── zipProcessor.js     # 📦 ZIP processing and security
-│   └── formatters/         # 📋 Export formatters
+│   │   ├── RummageService.js      # Search/selection logic
+│   │   └── UpcycleService.js      # Export format logic
+│   ├── WizardUtils.js       # Wizard workflow engine (NEW)
+│   ├── OutputManager.js     # Unified output system (NEW)
+│   ├── BinManager.js        # Selection bin management (NEW)
+│   ├── SearchManager.js     # Advanced search functionality (NEW)
+│   ├── StatisticsUtils.js   # Centralized statistics (NEW)
+│   ├── SchemaValidator.js   # Enhanced validation system
+│   ├── ErrorHandler.js      # Centralized error handling
+│   ├── CliPrompts.js        # Interactive prompts
+│   ├── CommonUtils.js       # Shared utility functions
+│   ├── AssetExtractor.js    # Asset extraction and organization
+│   ├── ChatDumper.js        # Chat data processing
+│   ├── ChatUpcycler.js      # Chat message processing & export
+│   ├── DumpsterManager.js   # Core dumpster management
+│   ├── DumpsterProcessor.js # Main processing orchestration
+│   ├── FileUtils.js         # File operations and validation
+│   ├── ProgressManager.js   # Progress tracking
+│   ├── UpcycleManager.js    # Export format coordination
+│   ├── assetUtils.js        # Asset handling utilities
+│   ├── upcycleHelpers.js    # Export helper functions
+│   ├── zipProcessor.js      # ZIP processing and security
+│   └── formatters/          # Export formatters
 │       ├── BaseFormatter.js  # Abstract base class
 │       ├── HTMLFormatter.js  # HTML export formatter
 │       ├── MDFormatter.js    # Markdown export formatter
 │       └── TXTFormatter.js   # Plain text export formatter
-├── tests/                  # 🧪 Test suite
+├── tests/                  # Test suite
 │   ├── minimal-test.sh      # Basic functionality tests
 │   ├── minimal-workflow-test.sh # End-to-end workflow tests
 │   ├── rummage-integration-test.sh # Wizard workflow tests
@@ -350,7 +350,7 @@ All commands use wizard-guided workflows when arguments are omitted, providing s
 - **Backend**: Uses `UpcycleService.js`, `BinManager.js`, and formatter system
 - **Features**: Selection bin export, format preview, rich media handling
 
-### `bin [subcommand] [name]` (NEW in LATEST)
+### `bin [subcommand] [name]`
 
 - **Purpose**: Manage persistent selection bins for chat organization
 - **Subcommands**: `create`, `list`, `rename`, `empty`, `burn` (delete)
@@ -417,7 +417,7 @@ npm run test:setup        # Generate synthetic test data and ZIP file
 npm run test:cleanup      # Clean up test artifacts
 ```
 
-### Test Structure (Enhanced in LATEST)
+### Test Structure
 
 - **Shell Script Tests**: Real CLI command testing with actual scenarios
 - **Wizard Workflow Tests**: Tests for multi-step wizard flows
@@ -484,7 +484,7 @@ npm run test:cleanup      # Clean up test artifacts
 - **Safety Features**: Text verification required for destructive operations
 - **Output Sanitization**: Proper handling of user input in console output
 
-## 🎉 v0.1.0 Architecture Benefits
+## Architecture Benefits
 
 ### User Experience
 
