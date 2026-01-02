@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip release')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: |
+          npm run lint
+          npm run format:check
+          npm run test:basic
+          npm run test:workflows
+
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Check for changes since last release
+        id: changes
+        run: |
+          # Get last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ]; then
+            CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
+            echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+            echo "Commits since last release: $CHANGES"
+          else
+            echo "changes=1" >> $GITHUB_OUTPUT
+            echo "First release"
+          fi
+
+      - name: Check if release is needed
+        id: release-check
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANGES="${{ steps.changes.outputs.changes }}"
+
+          # Check if version already exists on npm
+          if npm view "@datal0re/ddd@$VERSION" > /dev/null 2>&1; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION already published"
+          elif [ "$CHANGES" -eq 0 ]; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "No changes since last release"
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "Release needed for version $VERSION"
+          fi
+
+      - name: Create release notes
+        id: notes
+        if: steps.release-check.outputs.should_release == 'true'
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ]; then
+            NOTES=$(git log $LAST_TAG..HEAD --pretty=format:"- %s" --no-merges)
+          else
+            NOTES=$(git log --pretty=format:"- %s" --no-merges)
+          fi
+
+          if [ -z "$NOTES" ]; then
+            NOTES="Initial release"
+          fi
+
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## 🎉 Release ${{ steps.version.outputs.version }}
+
+          ### 📋 Changes
+          $NOTES
+
+          ### 📦 Installation
+          \`bash
+          npm install -g @datal0re/ddd@${{ steps.version.outputs.version }}
+          \`
+
+          ### 🔗 Links
+          - [npm package](https://www.npmjs.com/package/@datal0re/ddd)
+          - [GitHub repository](https://github.com/Datal0re/ddd)
+          EOF
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Build package
+        if: steps.release-check.outputs.should_release == 'true'
+        run: npm pack
+
+      - name: Create GitHub Release
+        if: steps.release-check.outputs.should_release == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.notes }}
+          draft: false
+          prerelease: false
+
+      - name: Publish to npm
+        if: steps.release-check.outputs.should_release == 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Update Homebrew formula
+        if: steps.release-check.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Get package info
+          TARBALL_URL="https://registry.npmjs.org/@datal0re/ddd/-/ddd-$VERSION.tgz"
+          SHA256=$(curl -sL "$TARBALL_URL" | shasum -a 256 | cut -d' ' -f1)
+          DESCRIPTION="A CLI tool to process and explore exported ChatGPT conversation data"
+
+          # Create formula
+          cat > ddd.rb << EOF
+          class Ddd < Formula
+            desc "$DESCRIPTION"
+            homepage "https://github.com/Datal0re/ddd"
+            url "$TARBALL_URL"
+            sha256 "$SHA256"
+            license "MIT"
+            
+            depends_on "node"
+            
+            def install
+              ENV.deparallelize
+              system "npm", "install", *std_npm_args(prefix: false)
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+            end
+            
+            test do
+              system bin/"ddd", "--version"
+            end
+          end
+          EOF
+
+          # Clone homebrew tap (you'd need HOMEBREW_TAP_TOKEN)
+          if [ -n "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            git clone https://github.com/Datal0re/homebrew-tap.git homebrew-tap
+            cd homebrew-tap
+            cp ../ddd.rb .
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add ddd.rb
+            git commit -m "ddd: Update to version $VERSION"
+            git push origin main
+            echo "✅ Homebrew formula updated"
+          else
+            echo "⚠️ HOMEBREW_TAP_TOKEN not set, skipping Homebrew update"
+            echo "Formula content:"
+            cat ddd.rb
+          fi
