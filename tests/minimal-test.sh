@@ -62,13 +62,33 @@ test_output() {
     local expected="$3"
     
     echo -n "Testing $name... "
+    log "Full command: $command"
     
-    if eval "$command" 2>/dev/null | grep -q "$expected"; then
-        echo -e "${GREEN}✓${NC}"
-        PASSED=$((PASSED + 1))
-        return 0
+    # Capture output and exit code
+    local output
+    local exit_code
+    output=$(eval "$command" 2>&1)
+    exit_code=$?
+    
+    # Check if command succeeded
+    if [ $exit_code -eq 0 ]; then
+        # Check if expected text is in output
+        if echo "$output" | grep -q "$expected"; then
+            echo -e "${GREEN}✓${NC}"
+            log "Result: PASSED - Output contains '$expected'"
+            PASSED=$((PASSED + 1))
+            return 0
+        else
+            echo -e "${RED}✗${NC}"
+            log "Result: FAILED - Output doesn't contain '$expected'"
+            log "Actual output: $output"
+            FAILED=$((FAILED + 1))
+            return 1
+        fi
     else
         echo -e "${RED}✗${NC}"
+        log "Result: FAILED - Command exited with code $exit_code"
+        log "Output: $output"
         FAILED=$((FAILED + 1))
         return 1
     fi
