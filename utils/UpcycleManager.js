@@ -51,10 +51,13 @@ class UpcycleManager {
    * @returns {Object} Validated and normalized options
    */
   validateUpcycleOptions(format, options = {}) {
-    SchemaValidator.validateRequiredParams(
-      [{ name: 'format', value: format }],
-      'validateUpcycleOptions'
-    );
+    // Only validate format if it's provided (may be undefined for prompting)
+    if (format !== undefined && format !== null && format !== '') {
+      SchemaValidator.validateRequiredParams(
+        [{ name: 'format', value: format }],
+        'validateUpcycleOptions'
+      );
+    }
 
     if (!this.formatters[format]) {
       throw new Error(

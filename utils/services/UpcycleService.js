@@ -122,7 +122,12 @@ class UpcycleService extends BaseCommandService {
         throw new Error(formatValidation.message);
       }
 
-      validatedInputs.format = formatValidation.format;
+      // Ensure format is properly assigned
+      if (formatValidation.valid && formatValidation.data) {
+        validatedInputs.format = formatValidation.data;
+      } else {
+        validatedInputs.format = undefined;
+      }
     }
 
     // Validate options using SchemaValidator
@@ -166,6 +171,7 @@ class UpcycleService extends BaseCommandService {
       return {
         source: 'dumpster',
         dumpsterName: dumpsterName,
+        format: format, // Pass through format parameter
       };
     }
 

@@ -4,7 +4,7 @@
  */
 
 // Central Verion number location
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 // Security and performance constants
 const LIMITS = {
   MAX_UPLOAD_SIZE: 500 * 1024 * 1024, // 500MB limit
