@@ -25,6 +25,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          # Don't set registry-url to prevent auth token interference
 
       - name: Install dependencies
         run: npm ci
@@ -52,9 +53,17 @@ jobs:
       - name: Clean npm environment for OIDC
         run: |
           # Reset npm config to ensure clean OIDC environment
+          # IMPORTANT: Unset any existing auth tokens that interfere with OIDC
+          unset NODE_AUTH_TOKEN
+          unset NPM_AUTH_TOKEN
+
           npm config delete registry
           npm config delete //registry.npmjs.org/:_authToken
           npm config set registry https://registry.npmjs.org/
+
+          echo "=== Environment cleanup ==="
+          echo "NODE_AUTH_TOKEN unset: ${NODE_AUTH_TOKEN:+unset}"
+          echo "NPM_AUTH_TOKEN unset: ${NPM_AUTH_TOKEN:+unset}"
 
           echo "=== npm config (after cleanup) ==="
           npm config list
