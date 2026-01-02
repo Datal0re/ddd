@@ -51,6 +51,7 @@
     "format:check": "prettier --check .",
     "test": "bash tests/simple-test.sh",
     "test:basic": "bash tests/minimal-test.sh",
+    "test:workflows": "bash tests/minimal-workflow-test.sh"
 
 
 
