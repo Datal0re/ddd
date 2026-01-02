@@ -51,13 +51,8 @@
     "format:check": "prettier --check .",
     "test": "bash tests/simple-test.sh",
     "test:basic": "bash tests/minimal-test.sh",
-    "test:workflows": "bash tests/minimal-workflow-test.sh"
-
-
-
-
-
-    "version": "npm run test:basic && npm run test:workflows"
+    "test:workflows": "bash tests/minimal-workflow-test.sh",
+    "version": "npm run test:basic && npm run test:workflows",
     "postversion": "git push && git push --tags"
   },
   "dependencies": {
