@@ -128,7 +128,9 @@ jobs:
           fi
 
       - name: Update Homebrew formula
-        if: success() # Only run if npm publish succeeded
+        if: success() && github.event_name == 'push'
+        continue-on-error: true
+        # Only run if npm publish succeeded
         # Use official Homebrew action to create PR with formula update
         # This automatically: detects new version, calculates SHA256, updates URL, creates PR
         uses: dawidd6/action-homebrew-bump-formula@v4

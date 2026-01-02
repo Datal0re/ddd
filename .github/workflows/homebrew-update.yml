@@ -1,0 +1,108 @@
+name: Update Homebrew Formula
+on:
+  # Manual trigger with version input
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (e.g., 0.1.6)'
+        required: false
+        type: string
+      force:
+        description: 'Force update even if PR already exists'
+        required: false
+        type: boolean
+        default: false
+  
+  # Auto-trigger after successful release
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: write  # For creating issues/discussions on failure
+  pull-requests: write  # For creating PR to homebrew-tap
+jobs:
+  update-formula:
+    if: |
+      (github.event_name == 'workflow_dispatch') || 
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - use provided version or get latest from npm
+            if [ -n "${{ github.event.inputs.version }}" ]; then
+              VERSION="${{ github.event.inputs.version }}"
+              echo "Using manually provided version: $VERSION"
+            else
+              VERSION=$(npm view @datal0re/ddd version)
+              echo "Fetched latest version from npm: $VERSION"
+            fi
+          else
+            # Auto-trigger - get version from the release workflow run
+            # Extract version from the workflow run details
+            VERSION=$(curl -s \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs" | \
+              jq -r '.jobs[].steps[] | select(.name=="Get version info") | .outputs.version' | \
+              head -n1)
+            echo "Extracted version from release workflow: $VERSION"
+          fi
+          
+          if [ -z "$VERSION" ]; then
+            echo "❌ Could not determine version"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Version determined: $VERSION"
+      - name: Validate version exists on npm
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if npm view @datal0re/ddd@$VERSION >/dev/null 2>&1; then
+            echo "✅ Version $VERSION exists on npm"
+          else
+            echo "❌ Version $VERSION not found on npm"
+            echo "Available versions:"
+            npm view @datal0re/ddd versions --json | jq -r '.[]'
+            exit 1
+          fi
+      - name: Create PR for Homebrew formula
+        if: always() && steps.version.outcome == 'success'
+        uses: dawidd6/action-homebrew-bump-formula@v4
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: Datal0re/homebrew-tap
+          formula: ddd
+          tag: "v${{ steps.version.outputs.version }}"
+          force: ${{ github.event.inputs.force || false }}
+          message: |
+            🍺 Update ddd to version ${{ steps.version.outputs.version }}
+
+            Trigger: ${{ github.event_name == 'workflow_dispatch' && 'Manual' || 'Automatic after release' }}
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+      - name: Handle failure
+        if: failure()
+        run: |
+          echo "❌ Homebrew formula update failed"
+          
+          # Create issue for manual intervention
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues \
+            -d '{
+              "title": "🍺 Homebrew Formula Update Failed",
+              "body": "Version: ${{ steps.version.outputs.version }}\nTrigger: ${{ github.event_name }}\nWorkflow: [Run #${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})",
+              "labels": ["homebrew", "failed"]
+            }'
+      - name: Success notification
+        if: success()
+        run: |
+          echo "✅ Homebrew formula update completed successfully"
+          echo "📋 Version: ${{ steps.version.outputs.version }}"
+          echo "🔗 Check PR status: https://github.com/Datal0re/homebrew-tap/pulls"
