@@ -116,15 +116,17 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.release-check.outputs.should_release == 'true'
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          release_name: Release ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.notes.outputs.notes }}
           draft: false
           prerelease: false
+          generate_release_notes: false
+          fail_on_unmatched_files: false
 
       - name: Publish to npm
         if: steps.release-check.outputs.should_release == 'true'
