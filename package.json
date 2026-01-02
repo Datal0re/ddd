@@ -1,6 +1,6 @@
 {
   "name": "@datal0re/ddd",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CLI tool to process and explore exported ChatGPT conversation data.",
   "license": "MIT",
   "author": "Ethan Thomason",
