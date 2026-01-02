@@ -2,7 +2,6 @@ name: Release
 
 on:
   push:
-    branches: [main]
     tags:
       - 'v*'
 
@@ -13,7 +12,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'skip release')"
 
     steps:
       - name: Checkout
@@ -27,7 +25,6 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm ci
@@ -46,41 +43,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
 
-      - name: Check for changes since last release
-        id: changes
-        run: |
-          # Get last tag
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          if [ -n "$LAST_TAG" ]; then
-            CHANGES=$(git log $LAST_TAG..HEAD --oneline | wc -l)
-            echo "changes=$CHANGES" >> $GITHUB_OUTPUT
-            echo "Commits since last release: $CHANGES"
-          else
-            echo "changes=1" >> $GITHUB_OUTPUT
-            echo "First release"
-          fi
-
-      - name: Check if release is needed
-        id: release-check
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          CHANGES="${{ steps.changes.outputs.changes }}"
-
-          # Check if version already exists on npm
-          if npm view "@datal0re/ddd@$VERSION" > /dev/null 2>&1; then
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "Version $VERSION already published"
-          elif [ "$CHANGES" -eq 0 ]; then
-            echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "No changes since last release"
-          else
-            echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "Release needed for version $VERSION"
-          fi
-
       - name: Update version references in documentation
-        if: steps.release-check.outputs.should_release == 'true'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           echo "Updating version references to v$VERSION"
@@ -94,29 +57,31 @@ jobs:
           # Clean up backup files
           rm -f README.md.bak AGENTS.md.bak
 
-          # Check for changes
+          # Check for changes and commit if needed
           if git diff --quiet README.md AGENTS.md; then
+            echo "No documentation changes needed"
+          else
             git add README.md AGENTS.md
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
             git commit -m "docs: update version references to v$VERSION"
             echo "✅ Documentation updated to v$VERSION"
-          else
-            echo "ℹ️ No documentation changes needed"
           fi
 
       - name: Create release notes
         id: notes
-        if: steps.release-check.outputs.should_release == 'true'
         run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG=${{ github.ref_name }}
 
-          if [ -n "$LAST_TAG" ]; then
-            NOTES=$(git log $LAST_TAG..HEAD --pretty=format:"- %s" --no-merges)
+          if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "$CURRENT_TAG" ]; then
+            NOTES=$(git log $LAST_TAG..$CURRENT_TAG --pretty=format:"- %s" --no-merges)
           else
             NOTES=$(git log --pretty=format:"- %s" --no-merges)
           fi
 
           if [ -z "$NOTES" ]; then
-            NOTES="Initial release"
+            NOTES="Release version ${{ steps.version.outputs.version }}"
           fi
 
           # Create release notes
@@ -127,9 +92,9 @@ jobs:
           $NOTES
 
           ### 📦 Installation
-          \`bash
+          \`\`\`bash
           npm install -g @datal0re/ddd@${{ steps.version.outputs.version }}
-          \`
+          \`\`\`
 
           ### 🔗 Links
           - [npm package](https://www.npmjs.com/package/@datal0re/ddd)
@@ -141,16 +106,14 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build package
-        if: steps.release-check.outputs.should_release == 'true'
         run: npm pack
 
       - name: Create GitHub Release
-        if: steps.release-check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref_name }}
           name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.notes.outputs.notes }}
           draft: false
@@ -159,11 +122,9 @@ jobs:
           fail_on_unmatched_files: false
 
       - name: Publish to npm
-        if: steps.release-check.outputs.should_release == 'true'
         run: npm publish --access public
 
       - name: Update Homebrew formula
-        if: steps.release-check.outputs.should_release == 'true'
         # Use official Homebrew action to create PR with formula update
         # This automatically: detects new version, calculates SHA256, updates URL, creates PR
         uses: dawidd6/action-homebrew-bump-formula@v4
