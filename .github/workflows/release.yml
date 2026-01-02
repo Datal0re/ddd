@@ -36,6 +36,29 @@ jobs:
           npm run test:basic
           npm run test:workflows
 
+      - name: Debug environment
+        run: |
+          echo "=== Environment Debug Info ==="
+          echo "Node version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "OIDC token available: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Workflow: $GITHUB_WORKFLOW"
+          echo "Ref: $GITHUB_REF"
+
+          echo "=== npm config (before cleanup) ==="
+          npm config list
+
+      - name: Clean npm environment for OIDC
+        run: |
+          # Reset npm config to ensure clean OIDC environment
+          npm config delete registry
+          npm config delete //registry.npmjs.org/:_authToken
+          npm config set registry https://registry.npmjs.org/
+
+          echo "=== npm config (after cleanup) ==="
+          npm config list
+
       - name: Get version info
         id: version
         run: |
@@ -43,88 +66,93 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $VERSION"
 
-      - name: Update version references in documentation
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          echo "Updating version references to v$VERSION"
-
-          # Update README.md version badge
-          sed -i.bak "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-$VERSION/g" README.md
-
-          # Update AGENTS.md version references  
-          sed -i.bak "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v$VERSION/g" AGENTS.md
-
-          # Clean up backup files
-          rm -f README.md.bak AGENTS.md.bak
-
-          # Check for changes and commit if needed
-          if git diff --quiet README.md AGENTS.md; then
-            echo "No documentation changes needed"
-          else
-            git add README.md AGENTS.md
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            git commit -m "docs: update version references to v$VERSION"
-            echo "✅ Documentation updated to v$VERSION"
-          fi
-
-      - name: Create release notes
-        id: notes
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          CURRENT_TAG=${{ github.ref_name }}
-
-          if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "$CURRENT_TAG" ]; then
-            NOTES=$(git log $LAST_TAG..$CURRENT_TAG --pretty=format:"- %s" --no-merges)
-          else
-            NOTES=$(git log --pretty=format:"- %s" --no-merges)
-          fi
-
-          if [ -z "$NOTES" ]; then
-            NOTES="Release version ${{ steps.version.outputs.version }}"
-          fi
-
-          # Create release notes
-          cat > release_notes.md << EOF
-          ## 🎉 Release ${{ steps.version.outputs.version }}
-
-          ### 📋 Changes
-          $NOTES
-
-          ### 📦 Installation
-          \`\`\`bash
-          npm install -g @datal0re/ddd@${{ steps.version.outputs.version }}
-          \`\`\`
-
-          ### 🔗 Links
-          - [npm package](https://www.npmjs.com/package/@datal0re/ddd)
-          - [GitHub repository](https://github.com/Datal0re/ddd)
-          EOF
-
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Build package
-        run: npm pack
+      - name: Publish to npm
+        run: npm publish --access public
 
       - name: Create GitHub Release
+        if: success() # Only run if npm publish succeeded
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ steps.version.outputs.version }}
-          body: ${{ steps.notes.outputs.notes }}
+          body: |
+            ## 🎉 Release ${{ steps.version.outputs.version }}
+
+            ### 📦 Installation
+            ```bash
+            npm install -g @datal0re/ddd@${{ steps.version.outputs.version }}
+            ```
+
+            ### 🔗 Links
+            - [npm package](https://www.npmjs.com/package/@datal0re/ddd)
+            - [GitHub repository](https://github.com/Datal0re/ddd)
           draft: false
           prerelease: false
-          generate_release_notes: false
+          generate_release_notes: true # Let GitHub generate notes since last release
           fail_on_unmatched_files: false
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Check if documentation needs updates
+        id: docs-check
+        if: success() # Only check if npm publish succeeded
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Check if README.md version badge needs updating
+          if ! grep -q "version-$VERSION" README.md; then
+            echo "readme_needs_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "readme_needs_update=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if AGENTS.md version references need updating  
+          if ! grep -q "v$VERSION" AGENTS.md; then
+            echo "agents_needs_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "agents_needs_update=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "README needs update: ${{ steps.docs-check.outputs.readme_needs_update }}"
+          echo "AGENTS.md needs update: ${{ steps.docs-check.outputs.agents_needs_update }}"
+
+      - name: Update documentation
+        if: |
+          success() && 
+          (steps.docs-check.outputs.readme_needs_update == 'true' || 
+           steps.docs-check.outputs.agents_needs_update == 'true')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Updating version references to v$VERSION"
+
+          # Update README.md version badge if needed
+          if [ "${{ steps.docs-check.outputs.readme_needs_update }}" == "true" ]; then
+            sed -i.bak "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-$VERSION/g" README.md
+            echo "✅ README.md updated to v$VERSION"
+          fi
+
+          # Update AGENTS.md version references if needed
+          if [ "${{ steps.docs-check.outputs.agents_needs_update }}" == "true" ]; then
+            sed -i.bak "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v$VERSION/g" AGENTS.md
+            echo "✅ AGENTS.md updated to v$VERSION"
+          fi
+
+          # Clean up backup files
+          rm -f README.md.bak AGENTS.md.bak
+
+          # Commit documentation updates if any changes were made
+          if [ "${{ steps.docs-check.outputs.readme_needs_update }}" == "true" ] || [ "${{ steps.docs-check.outputs.agents_needs_update }}" == "true" ]; then
+            git add README.md AGENTS.md
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git commit -m "docs: update version references to v$VERSION"
+            echo "✅ Documentation updates committed"
+          else
+            echo "ℹ️ No documentation changes needed"
+          fi
 
       - name: Update Homebrew formula
+        if: success() # Only run if npm publish succeeded
         # Use official Homebrew action to create PR with formula update
         # This automatically: detects new version, calculates SHA256, updates URL, creates PR
         uses: dawidd6/action-homebrew-bump-formula@v4
