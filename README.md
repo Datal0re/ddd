@@ -12,7 +12,7 @@
   <a href="https://www.npmjs.com/package/@datal0re/ddd"><img src="https://img.shields.io/badge/npm-v0.1.6-brightgreen.svg" alt="npm"></a>
 </p>
 
------
+---
 
 Data Dumpster Diver (ddd) is your raccoon-powered[^1] solution for ChatGPT data exports—whether you want to dive deep or get it done fast.
 
@@ -22,7 +22,7 @@ Want to explore? Let the raccoons sort your data with `ddd dump`, then `rummage`
 
 No more UID nightmares, 50MB headers, or guessing which file is which. ddd handles the mess so you can focus on what matters—your data, your way. 🦝
 
-[^1]: *Actually powered by Nodejs. The raccoons are still taking typing lessons.*
+[^1]: _Actually powered by Nodejs. The raccoons are still taking typing lessons._
 
 ---
 
@@ -34,7 +34,7 @@ No more UID nightmares, 50MB headers, or guessing which file is which. ddd handl
 - **Data Backup:** Preserve your conversation history in an organized, searchable format outside the ephemeral ChatGPT ecosystem.
 - **Research Processing:** Easily extract and organize chat data for model training, analysis, or research purposes.
 
------
+---
 
 ## Getting Started
 
@@ -77,12 +77,13 @@ There are two ways to launch ddd:
 
 **Speedy One-Liner (For the Impatient):**  
 If you want to be super speedy, run something like this in one go:
-    
+
 ```bash
 ddd dump /path/to/chatgpt-export.zip -n "old-chats" && ddd upcycle md old-chats -o /path/to/obsidian-vault
 ```
-    
-This command:    
+
+This command:
+
 - Unpacks and organizes your ZIP export (`ddd dump`).
 - Immediately exports the sorted data as Markdown to an Obsidian vault (`ddd upcycle`).
 
@@ -92,7 +93,6 @@ This command:
 
 - **What it does:**
   Hand over your messy trash bag (the ZIP export) and let the raccoons do their magic. They decompress, parse, and sort your data into a neatly organized dumpster—a directory where each chat file is given a clear name, timestamp, and media mappings.
-  
 - **Usage:**
 
   ```bash
@@ -109,7 +109,6 @@ This command:
 
 - **What it does:**
   Peek at your collection of dumpsters (organized chats). This command lists all processed dungeons and any bins you have along with helpful statistics.
-  
 - **Usage:**
 
   ```bash
@@ -123,7 +122,6 @@ This command:
 
 - **What it does:**
   Once your dumpster is sorted, use this command to search through the data. Think of it as rummaging through a well-organized trash bag—filter by content or title and select conversations (which are then added to a temporary bin).
-  
 - **Usage:**
 
   ```bash
@@ -140,7 +138,6 @@ This command:
 
 - **What it does:**
   Transform your messy input into a clean export. Choose from formats like `txt`, `md`, or `html`. Whether you want to archive an entire dumpster or just the contents of a bin, upcycle gives you flexibility.
-  
 - **Usage:**
 
   ```bash
@@ -158,7 +155,6 @@ This command:
 
 - **What it does:**
   Manage your selection bins—temporary baskets where you can store chats that caught your eye during a rummage. Use bins to keep track of selected conversations for later export or further processing.
-  
 - **Usage:**
 
   ```bash
@@ -173,7 +169,6 @@ This command:
 
 - **What it does:**
   When you’re finished with a dumpster (or just want to reclaim space), burn it to safely delete your data. Note that burning a bin only clears the temporary selection—destroying an entire dumpster permanently deletes all its contents.
-  
 - **Usage:**
 
   ```bash
@@ -249,7 +244,7 @@ Contributions are welcome! Please follow these steps:
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
------
+---
 
 ## Links
 
