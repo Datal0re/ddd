@@ -1,206 +1,258 @@
-# Data Dumpster Diver
+<h1 align="center">Data Dumpster Diver</h1>
+<p align="center">
+  <a href="https://github.com/Datal0re/ddd">
+  <picture>
+    <img src="./ddd-logo.png" alt="ddd logo">
+  </picture>
+</p>
 
-![ddd logo](./ddd-logo.png)
+<p align="center">
+  <a href="https://github.com/Datal0re/ddd"><img src="https://img.shields.io/badge/version-0.1.6-blue.svg" alt="version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="license"></a>
+  <a href="https://www.npmjs.com/package/@datal0re/ddd"><img src="https://img.shields.io/badge/npm-v0.1.6-brightgreen.svg" alt="npm"></a>
+</p>
 
-[![version](https://img.shields.io/badge/version-0.1.6-blue.svg)](https://github.com/Datal0re/ddd) [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node.js](https://img.shields.io/badge/node-14%2B-brightgreen.svg)](https://nodejs.org/)
+-----
 
-A wizard-guided CLI tool for processing and exploring exported ChatGPT conversation data. Transform ZIP exports into organized, searchable collections with extracted media assets.
+Data Dumpster Diver (ddd) is your raccoon-powered[^1] solution for ChatGPT data exports—whether you want to dive deep or get it done fast.
+
+Need a quick fix? Run `ddd dump` and `ddd upcycle` to transform your messy ZIP into a clean export in seconds.
+
+Want to explore? Let the raccoons sort your data with `ddd dump`, then `rummage` through chats, drop finds into bins, and `upcycle` what you need. It’s a full dumpster-diving rabbit hole if you want it to be.
+
+No more UID nightmares, 50MB headers, or guessing which file is which. ddd handles the mess so you can focus on what matters—your data, your way. 🦝
+
+[^1]: *Actually powered by Nodejs. The raccoons are still taking typing lessons.*
+
+---
 
 ## Why Use Data Dumpster Diver?
 
-**🔄 Account Migration**: Export conversations from one OpenAI account and feed them to another for context continuity.
+- **Account Migration:** Seamlessly export conversations from one OpenAI account and import them into another while preserving context.
+- **Knowledge Management:** Create personal knowledge bases by upcycling your ChatGPT data into Markdown that integrates directly with tools like Obsidian (complete with YAML metadata).
+- **Content Creation:** Export your conversations as HTML or Markdown for blog posts, documentation, and sharing—with all assets correctly embedded.
+- **Data Backup:** Preserve your conversation history in an organized, searchable format outside the ephemeral ChatGPT ecosystem.
+- **Research Processing:** Easily extract and organize chat data for model training, analysis, or research purposes.
 
-**📚 Knowledge Management**: Create Obsidian Vaults with your ChatGPT conversations for personal knowledge bases.
+-----
 
-**📝 Content Creation**: Export conversations as HTML for blog posts, documentation, or sharing.
+## Getting Started
 
-**💾 Data Backup**: Preserve conversations in an organized, searchable format outside the volatile AI ecosystem.
+Before diving in, ensure you have your ChatGPT export on hand. If it isn’t already a ZIP file, grab one from [OpenAI’s help page](https://help.openai.com/en/articles/72-60999).
 
-**🔬 Research Processing**: Extract and organize chat data for model training, analysis, or research purposes.
+## Installation
 
-## 🚀 Quick Start
-
-**NOTE** \
-Before using ddd, make sure to grab a ChatGPT data export!
-
-> _Check out [OpenAI's help page](https://help.openai.com/en/articles/7260999-how-do-i-export-my-chatgpt-history-and-data) for details on how to get yours._
-
-### Installation
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/Datal0re/ddd.git && cd ddd
 npm install
-npm link  # Optional: make CLI globally available
-
-# Package managers
-npm i -g @datal0re/ddd         # npm
-brew install datal0re/tap/ddd  # Homebrew (Mac/Linux)
+npm link  # Optional: Make the CLI globally available
 ```
 
-### Basic Usage
-
-All commands are interactive - omit arguments and you'll be guided:
+For alternative package managers:
 
 ```bash
-# Process ChatGPT export
-ddd dump chatgpt-export.zip --name "my-chats"
-ddd dump  # Interactive mode
-
-# View all processed dumpsters
-ddd hoard
-ddd hoard --verbose
-
-# Search and select chats
-ddd rummage
-ddd rummage my-chats  # Skip dumpster selection
-
-# Export to various formats
-ddd upcycle html my-chats --include-media
-ddd upcycle txt  # Interactive: prompts for format & source
-
-# Manage selection bins
-ddd bin create my-bin
-ddd bin list
-
-# Safely delete dumpsters
-ddd burn my-chats --dry-run  # Preview
-ddd burn --force             # Skip confirmation
+npm install -g @datal0re/ddd         # via npm
+brew install datal0re/ddd            # via Homebrew (Mac/Linux)
 ```
 
-## Commands Overview
+## Quick Start
 
-### `dump [file]`
+There are two ways to launch ddd:
 
-Process ChatGPT export ZIP files into organized collections.
+1. **Interactive Mode (Wizard):**
+   Simply run the command without arguments and follow the prompts:
 
+   ```bash
+   ddd dump  # Launches the wizard: feed in your ZIP export file and follow steps.
+   ```
+
+2. **Non-Interactive Mode:**
+   Pass your ZIP file and options directly:
+
+   ```bash
+   ddd dump /path/to/chatgpt-export.zip --name "my-chats"
+   ```
+
+**Speedy One-Liner (For the Impatient):**  
+If you want to be super speedy, run something like this in one go:
+    
 ```bash
-ddd dump <path-to-zip> [options]
-ddd dump  # Interactive mode
+ddd dump /path/to/chatgpt-export.zip -n "old-chats" && ddd upcycle md old-chats -o /path/to/obsidian-vault
 ```
+    
+This command:    
+- Unpacks and organizes your ZIP export (`ddd dump`).
+- Immediately exports the sorted data as Markdown to an Obsidian vault (`ddd upcycle`).
 
-**Options**: `-n, --name <name>`, `-v, --verbose`
+## Command Overview
 
-### `hoard`
+### 1. `ddd dump`
 
-View all processed dumpsters with statistics.
+- **What it does:**
+  Hand over your messy trash bag (the ZIP export) and let the raccoons do their magic. They decompress, parse, and sort your data into a neatly organized dumpster—a directory where each chat file is given a clear name, timestamp, and media mappings.
+  
+- **Usage:**
 
-```bash
-ddd hoard [options]
-```
+  ```bash
+  ddd dump <path-to-zip> [options]
+  # or launch interactive mode:
+  ddd dump
+  ```
 
-**Options**: `-v, --verbose` for detailed information
+- **Options:**
+  `-n, --name <name>`: Assign a custom name for the dumpster.
+  `-v, --verbose`: Display detailed processing information.
 
-### `rummage [dumpster-name]`
+### 2. `ddd hoard`
 
-Advanced 8-step wizard for searching and selecting chats.
+- **What it does:**
+  Peek at your collection of dumpsters (organized chats). This command lists all processed dungeons and any bins you have along with helpful statistics.
+  
+- **Usage:**
 
-```bash
-ddd rummage <dumpster-name> [options]
-ddd rummage  # Full wizard experience
-```
+  ```bash
+  ddd hoard [options]
+  ```
 
-**Features**: Search by content/titles, relevance scoring, persistent selection bins, multi-select interface
+- **Options:**
+  `-v, --verbose`: Show detailed statistics.
 
-### `upcycle [format] [dumpster-name]`
+### 3. `ddd rummage`
 
-Export collections to various formats.
+- **What it does:**
+  Once your dumpster is sorted, use this command to search through the data. Think of it as rummaging through a well-organized trash bag—filter by content or title and select conversations (which are then added to a temporary bin).
+  
+- **Usage:**
 
-```bash
-ddd upcycle <format> <dumpster-name> [options]
-ddd upcycle  # Interactive: format → source → options
-```
+  ```bash
+  ddd rummage [dumpster-name] [options]
+  # or for the full wizard experience:
+  ddd rummage
+  ```
 
-**Export Sources**: Entire dumpster, selection bin, or individual chats
-**Formats**: `txt`, `md`, `html`
-**Options**: `-o, --output <path>`, `--include-media`, `--self-contained`, `-v, --verbose`
+- **Features:**
+  - Persistent selection bins for later export.
+  - Multi-select interface to build your “basket” of chats.
 
-### `bin [subcommand] [name]`
+### 4. `ddd upcycle`
 
-Manage persistent selection bins for organizing chat selections.
+- **What it does:**
+  Transform your messy input into a clean export. Choose from formats like `txt`, `md`, or `html`. Whether you want to archive an entire dumpster or just the contents of a bin, upcycle gives you flexibility.
+  
+- **Usage:**
 
-```bash
-ddd bin create <name>    # Create new bin
-ddd bin list             # List all bins
-ddd bin rename <old> <new> # Rename bin
-ddd bin empty <name>     # Clear bin contents
-ddd bin burn <name>      # Delete bin permanently
-```
+  ```bash
+  ddd upcycle <format> <dumpster-name> [options]
+  # or launch interactive mode:
+  ddd upcycle
+  ```
 
-### `burn [dumpster-name]`
+- **Options:**
+  `-o, --output <path>`: Specify the output location.
+  `--include-media`: Copy over corresponding media assets.
+  `--self-contained`: Generate a standalone export file.
 
-Safely delete dumpsters with multi-step confirmation.
+### 5. `ddd bin`
 
-```bash
-ddd burn <dumpster-name> [options]
-ddd burn  # Interactive mode
-```
+- **What it does:**
+  Manage your selection bins—temporary baskets where you can store chats that caught your eye during a rummage. Use bins to keep track of selected conversations for later export or further processing.
+  
+- **Usage:**
 
-**Options**: `-f, --force` (skip confirmation), `--dry-run` (preview)
+  ```bash
+  ddd bin create <name>       # Create a new bin.
+  ddd bin list                 # List all bins.
+  ddd bin rename <old> <new>   # Rename a bin.
+  ddd bin empty <name>         # Clear the contents of a bin.
+  ddd bin burn <name>          # Permanently delete a bin.
+  ```
+
+### 6. `ddd burn`
+
+- **What it does:**
+  When you’re finished with a dumpster (or just want to reclaim space), burn it to safely delete your data. Note that burning a bin only clears the temporary selection—destroying an entire dumpster permanently deletes all its contents.
+  
+- **Usage:**
+
+  ```bash
+  ddd burn <dumpster-name> [options]
+  # or launch interactive mode:
+  ddd burn
+  ```
+
+- **Options:**
+  `-f, --force`: Skip confirmation steps.
+  `--dry-run`: Preview what will be deleted.
+
+---
 
 ## Data Organization
 
-Processed exports are stored in structured collections:
+After processing, your data is stored in a clear, logical structure:
 
-```text
+```plaintext
 data/
-├── dumpsters/          # Processed chat collections
+├── dumpsters/          # Each dumpster is an organized collection
 │   └── {name}/
-│       ├── chats/      # Individual chat files
-│       └── media/     # Extracted assets
-├── bins.json          # Selection bin metadata
-├── dumpsters.json     # Collection registry
-└── temp/              # Temporary files (auto-cleaned)
+│       ├── chats/      # Individual conversation files with human-friendly names and timestamps
+│       └── media/      # Extracted assets (images, videos, audio) mapped from the original ZIP
+├── bins.json          # Metadata for your temporary selection bins
+├── dumpsters.json     # Registry of all processed dumpsters
+└── temp/              # Temporary files (auto-cleaned after processing)
 ```
 
 ## Security
 
-- **Path Traversal Protection** against malicious file paths
-- **ZIP Bomb Protection** with compression ratio validation
-- **Size Limits** (500MB upload, 2GB extracted)
-- **Input Validation** throughout the application
-- **Multi-step Confirmations** for destructive operations
+Data Dumpster Diver implements several security measures:
+
+- **Private:** Your data never leaves your local machine.
+- **Backup Protection:** The original ZIP file is not harmed during this process. As long as you keep your ZIP as a backup somewhere, you can use it to generate dumpsters forever!
+- **Path Traversal Protection:** Prevents malicious file paths from being processed.
+- **ZIP Bomb Protection:** Validates compression ratios and enforces size limits (500MB import, 2GB extracted).
+- **Multistep Confirmations:** Requires explicit confirmation for destructive operations.
+- **Input Validation:** Checks and sanitizes all user inputs.
 
 ## Testing
 
-Comprehensive shell-based test suite for realistic CLI validation:
+`ddd` uses a shell-based test suite to validate CLI behavior via synthetic ChatGPT export data:
 
 ```bash
-npm test                # Main test suite
-npm run test:basic      # Basic functionality
-npm run test:workflows  # End-to-end workflows
-npm run test:integration # Wizard workflow testing
-npm run test:with-logs  # Tests with detailed output
+npm test                # Main test suite.
+npm run test:basic      # Basic functionality checks.
+npm run test:workflows   # End-to-end workflow tests.
+npm run test:integration # Wizard workflow testing.
+npm run test:with-logs   # Tests with detailed output for debugging.
 
-# Test data management
-npm run test:setup      # Generate synthetic test data
-npm run test:cleanup    # Clean up test artifacts
+# Additional test utilities:
+npm run test:setup       # Generate synthetic test data.
+npm run test:cleanup     # Remove test artifacts after runs.
 ```
 
-**Test Approach**: Shell scripts validate actual CLI behavior with synthetic ChatGPT export data for consistent testing.
+## Requirements
 
-## 📦 Requirements
+- **Node.js:** Version 14.0.0 or higher.
+- **Key Dependencies:** @inquirer/prompts, commander, decompress, chalk, ora.
+- **Supported Platforms:** macOS, Linux, and Windows (with WSL recommended).
 
-- **Node.js**: >=14.0.0
-- **Key Dependencies**: @inquirer/prompts, commander, decompress, chalk, ora
-- **Platform**: macOS, Linux, Windows (with WSL recommended)
+## Contributing
 
-## 🤝 Contributing
+Contributions are welcome! Please follow these steps:
 
-Contributions are welcome! Please:
+1. Read the [Development Guide](AGENTS.md) for architecture, setup, and contribution guidelines.
+2. Use ESLint and Prettier to maintain a consistent code style.
+3. Add comprehensive tests for any new features or changes.
+4. Ensure that all interactive prompts and CLI behaviors work as expected.
 
-1. Follow the development guidelines in [AGENTS.md](AGENTS.md)
-2. Maintain consistent code style (ESLint + Prettier)
-3. Add comprehensive tests for new features
-4. Ensure interactive prompts work correctly
+## License
 
-## 📄 License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-MIT License - see [LICENSE](LICENSE) file for details.
+-----
 
-## 🔗 Links
+## Links
 
-- **[Development Guide](AGENTS.md)** - Architecture, development setup, and contributing
-- **[Changelog](CHANGELOG.md)** - Version history and feature evolution
-- **[Issues](https://github.com/Datal0re/ddd/issues)** - Report bugs and request features
-
----
+- **[Development Guide]** - Architecture, setup, and how to contribute: [AGENTS.md](AGENTS.md)
+- **[Changelog]** - Version history and feature evolution: [CHANGELOG.md](CHANGELOG.md)
+- **[Issues]** - Report bugs or request features: [https://github.com/Datal0re/ddd/issues](https://github.com/Datal0re/ddd/issues)
